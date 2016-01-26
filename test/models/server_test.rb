@@ -20,30 +20,14 @@ class ServerTest < ActiveSupport::TestCase
   test "live directory" do
     inst = Server.new(name: 'test')
     assert_equal(File.join(@@basedir, 'servers/test'), inst.env[:cwd])
-  end
-
-  test "backup directory" do
-    inst = Server.new(name: 'test')
     assert_equal(File.join(@@basedir, 'backup/test'), inst.env[:bwd])
-  end
-
-  test "archive directory" do
-    inst = Server.new(name: 'test')
     assert_equal(File.join(@@basedir, 'archive/test'), inst.env[:awd])
   end
 
   test "second live directory" do
     inst = Server.new(name: 'test2')
     assert_equal(File.join(@@basedir, 'servers/test2'), inst.env[:cwd])
-  end
-
-  test "second backup directory" do
-    inst = Server.new(name: 'test2')
     assert_equal(File.join(@@basedir, 'backup/test2'), inst.env[:bwd])
-  end
-
-  test "second archive directory" do
-    inst = Server.new(name: 'test2')
     assert_equal(File.join(@@basedir, 'archive/test2'), inst.env[:awd])
   end
 
