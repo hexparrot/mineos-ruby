@@ -1,7 +1,11 @@
 class Server < ActiveRecord::Base
   attr_reader :env
 
-  after_initialize :set_paths  
+  after_initialize :check_servername, :set_paths  
+
+  def check_servername
+    raise RuntimeError if !self.name.match(/^(?!\.)[a-zA-Z0-9_\.]+$/)
+  end
 
   def set_paths
     @@basedir = '/var/games/minecraft'

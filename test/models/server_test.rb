@@ -17,6 +17,16 @@ class ServerTest < ActiveSupport::TestCase
     assert(inst.name, 'test')
   end
 
+  test "server name is valid" do
+    ['test', 'asdf1234', 'hello_is_it_me', '1.7.10'].each do |name|
+      inst = Server.new(name: name)
+      assert_equal(name, inst.name)
+    end
+    ['.test', '#test', '?test', '!test', 'server\'s', 'test^again', 'Vanilla-1.8.9', 'feed me'].each do |name|
+      assert_raises(RuntimeError) { inst = Server.new(name: name) }
+    end
+  end
+
   test "live directory" do
     inst = Server.new(name: 'test')
     assert_equal(File.join(@@basedir, 'servers/test'), inst.env[:cwd])
