@@ -10,4 +10,9 @@ class Server < ActiveRecord::Base
     @awd = File.join(@basedir, 'archive', self.name)
   end
 
+  def create_paths
+    Dir.mkdir @cwd
+    Dir.mkdir @bwd
+    Dir.mkdir @awd
+  end
 end
