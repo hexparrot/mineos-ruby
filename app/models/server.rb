@@ -12,8 +12,11 @@ class Server < ActiveRecord::Base
   end
 
   def create_paths
-    Dir.mkdir @env[:cwd]
-    Dir.mkdir @env[:bwd]
-    Dir.mkdir @env[:awd]
+    [:cwd, :bwd, :awd].each do |directory|
+      begin
+        Dir.mkdir @env[directory]
+      rescue Errno::EEXIST
+      end
+    end
   end
 end

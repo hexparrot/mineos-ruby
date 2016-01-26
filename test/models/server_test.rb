@@ -42,4 +42,15 @@ class ServerTest < ActiveSupport::TestCase
     assert Dir.exist?(inst.env[:awd])
   end
 
+  test "create only missing server paths" do
+    inst = Server.new(name: 'test')
+    Dir.mkdir inst.env[:cwd]
+    Dir.mkdir inst.env[:bwd]
+    assert !Dir.exist?(inst.env[:awd])
+    inst.create_paths
+    assert Dir.exist?(inst.env[:cwd])
+    assert Dir.exist?(inst.env[:bwd])
+    assert Dir.exist?(inst.env[:awd])
+  end
+
 end
