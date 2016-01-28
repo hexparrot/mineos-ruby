@@ -24,6 +24,16 @@ class Server < ActiveRecord::Base
       end
     end
   end
+  
+  def delete_paths
+    require('fileutils')
+    [:cwd, :bwd, :awd].each do |directory|
+      #begin
+        FileUtils.rm_rf @env[directory]
+      #rescue Errno::EEXIST
+      #end
+    end
+  end
 
   def create_sc
     require('inifile')

@@ -82,4 +82,13 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal(false, inst.sc['onreboot']['start'])
   end
 
+  test "delete server paths" do
+    inst = Server.new(name: 'test')
+    inst.create_paths
+    inst.delete_paths
+    assert !Dir.exist?(inst.env[:cwd])
+    assert !Dir.exist?(inst.env[:bwd])
+    assert !Dir.exist?(inst.env[:awd])
+  end
+
 end
