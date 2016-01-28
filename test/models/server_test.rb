@@ -91,4 +91,26 @@ class ServerTest < ActiveSupport::TestCase
     assert !Dir.exist?(inst.env[:awd])
   end
 
+  test "check eula state" do
+    require('fileutils')
+
+    inst = Server.new(name: 'test')
+    inst.create_paths
+    eula_path = File.expand_path("public/eula.txt", Dir.pwd)
+    FileUtils.cp(eula_path, inst.env[:cwd])
+    assert !inst.eula
+  end
+
+  test "change eula state" do
+    require('fileutils')
+
+    inst = Server.new(name: 'test')
+    inst.create_paths
+    eula_path = File.expand_path("public/eula.txt", Dir.pwd)
+    FileUtils.cp(eula_path, inst.env[:cwd])
+
+    inst.accept_eula
+    assert inst.eula
+  end
+
 end

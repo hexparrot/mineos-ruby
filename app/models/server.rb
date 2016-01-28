@@ -13,6 +13,7 @@ class Server < ActiveRecord::Base
     @env = {:cwd => File.join(@@basedir, 'servers', self.name),
             :bwd => File.join(@@basedir, 'backup', self.name),
             :awd => File.join(@@basedir, 'archive', self.name),
+            :eula => File.join(@@basedir, 'servers', 'eula.txt'),
             :sc  => File.join(@@basedir, 'servers', self.name, 'server.config')}
   end
 
@@ -46,6 +47,16 @@ class Server < ActiveRecord::Base
     @config_sc[section] = { attr => value }
     @config_sc.write
     @sc = @config_sc.to_h
+  end
+
+  def eula
+    config_eula = IniFile.new( :filename => @env[:eula] )
+    @eula = config_eula.to_h['global']['eula']
+    @eula
+  end
+
+  def accept_eula
+    File.write( @env[:eula], 'eula=true\n')
   end
 
 end
