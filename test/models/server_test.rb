@@ -63,4 +63,23 @@ class ServerTest < ActiveSupport::TestCase
     assert Dir.exist?(inst.env[:awd])
   end
 
+  test "create server.config" do
+    inst = Server.new(name: 'test')
+    inst.create_paths
+    assert !File.exist?(File.join(@@basedir, 'servers/test/', 'server.config'))
+    inst.create_sc
+    assert File.exist?(File.join(@@basedir, 'servers/test/', 'server.config'))
+  end
+
+  test "modify attr from sc" do
+    inst = Server.new(name: 'test')
+    inst.create_paths
+    inst.create_sc
+    assert_equal({}, inst.sc)
+    inst.modify_sc('java_xmx', 256, 'java')
+    assert_equal(256, inst.sc['java']['java_xmx'])
+    inst.modify_sc('start', false, 'onreboot')
+    assert_equal(false, inst.sc['onreboot']['start'])
+  end
+
 end

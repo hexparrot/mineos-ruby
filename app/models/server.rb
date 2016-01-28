@@ -1,5 +1,5 @@
 class Server < ActiveRecord::Base
-  attr_reader :env
+  attr_reader :env, :sc
 
   after_initialize :check_servername, :set_paths  
 
@@ -12,7 +12,8 @@ class Server < ActiveRecord::Base
 
     @env = {:cwd => File.join(@@basedir, 'servers', self.name),
             :bwd => File.join(@@basedir, 'backup', self.name),
-            :awd => File.join(@@basedir, 'archive', self.name)}
+            :awd => File.join(@@basedir, 'archive', self.name),
+            :sc  => File.join(@@basedir, 'servers', self.name, 'server.config')}
   end
 
   def create_paths
@@ -23,4 +24,18 @@ class Server < ActiveRecord::Base
       end
     end
   end
+
+  def create_sc
+    require('inifile')
+    @config_sc = IniFile.new( :filename => @env[:sc] )
+    @config_sc.write
+    @sc = @config_sc.to_h
+  end
+
+  def modify_sc(attr, value, section)
+    @config_sc[section] = { attr => value }
+    @config_sc.write
+    @sc = @config_sc.to_h
+  end
+
 end
