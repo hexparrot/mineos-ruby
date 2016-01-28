@@ -108,4 +108,11 @@ class Server < ActiveRecord::Base
     return self.sp!
   end
 
+  def overlay_sp(hash)
+    self.sp
+    hash.each do |attr, value|
+      @config_sp['global'][attr] = value 
+    end
+    return self.sp!
+  end
 end

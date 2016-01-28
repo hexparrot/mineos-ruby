@@ -169,6 +169,29 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal(true, inst.sp['do-awesomeness'])
 
     assert_equal(number_attributes + 1, inst.sp.keys.length)
+
+    require('inifile')
+    sp = IniFile.load(File.join(@@basedir, 'servers/test/', 'server.properties'))['global']
+    assert_equal(25570, sp['server-port'])
+    assert_equal(true, sp['enable-rcon'])
+    assert_equal(true, sp['do-awesomeness'])
   end
 
+  test "overlay properteries onto server.properties" do
+    inst = Server.new(name: 'test')
+    inst.create_paths
+
+    inst.overlay_sp({ 'server-port' => 25565,
+                      'difficulty' => 1,
+                      'enable-query' => false })
+    assert_equal(25565, inst.sp['server-port'])
+    assert_equal(1, inst.sp['difficulty'])
+    assert_equal(false, inst.sp['enable-query'])
+
+    require('inifile')
+    sp = IniFile.load(File.join(@@basedir, 'servers/test/', 'server.properties'))['global']
+    assert_equal(25565, sp['server-port'])
+    assert_equal(1, sp['difficulty'])
+    assert_equal(false, sp['enable-query'])
+  end
 end
