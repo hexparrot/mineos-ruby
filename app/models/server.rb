@@ -1,5 +1,5 @@
 class Server < ActiveRecord::Base
-  attr_reader :env, :sc
+  attr_reader :env
 
   after_initialize :check_servername, :set_paths  
 
@@ -37,24 +37,28 @@ class Server < ActiveRecord::Base
     end
   end
 
-  def create_sc
-    require('inifile')
-    @config_sc = IniFile.new( :filename => @env[:sc] )
-    @config_sc.write
-    @sc = @config_sc.to_h
-  end
-
-  def modify_sc(attr, value, section)
-    if !@sc
-      if Dir.exist?(@env[:sc])
-        @config_sc = IniFile.load( @env[:sc] )
+  def sc
+    if !@config_sc
+      if File.exist?(@env[:sc])
+        @config_sc = IniFile.load(@env[:sc])
       else
         @config_sc = IniFile.new( :filename => @env[:sc] )
       end
     end
+    return @config_sc.to_h
+  end
+
+  def sc!
+    self.sc
+    @config_sc.write
+    return @config_sc.to_h
+  end
+
+  def modify_sc(attr, value, section)
+    self.sc
     @config_sc[section] = { attr => value }
     @config_sc.write
-    @sc = @config_sc.to_h
+    return @config_sc.to_h
   end
 
   def eula
@@ -67,28 +71,38 @@ class Server < ActiveRecord::Base
   end
 
   def sp
-    require('inifile')
-    @config_sp = IniFile.load( @env[:sp] )
-    temp_hash = @config_sp.to_h['global']
-    temp_hash.each do |key, value|
-      if value.nil?
-        temp_hash[key] = ''
-      end
-    end
-    return temp_hash
-  end
-
-  def modify_sp(attr, value)
-    require('inifile')
-    if !@sp
+    if !@config_sp
       if File.exist?(@env[:sp])
-        temp_hash = self.sp
+        @config_sp = IniFile.load(@env[:sp])
       else
         @config_sp = IniFile.new( :filename => @env[:sp] )
       end
-    end 
+    end
+
+    # replace all instances of nil with empty string
+    @config_sp.to_h['global'].keys.each do |key|
+      if @config_sp['global'][key].nil?
+        @config_sp['global'][key] = ''
+      end
+    end
+    
+    return @config_sp.to_h['global']
+  end
+
+  def sp!
+    self.sp
+    lines = @config_sp.to_s.split("\n")
+    lines.shift
+    IO.write(@env[:sp], lines.join("\n"))
+
+    return self.sp
+  end
+
+  def modify_sp(attr, value)
+    self.sp!
     @config_sp['global'][attr] = value
     @config_sp.write
+    return self.sp
   end
 
 end

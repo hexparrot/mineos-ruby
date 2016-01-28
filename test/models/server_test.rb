@@ -67,22 +67,28 @@ class ServerTest < ActiveSupport::TestCase
     inst = Server.new(name: 'test')
     inst.create_paths
     assert !File.exist?(File.join(@@basedir, 'servers/test/', 'server.config'))
-    inst.create_sc
+    inst.sc
+    assert !File.exist?(File.join(@@basedir, 'servers/test/', 'server.config'))
+    inst.sc!
     assert File.exist?(File.join(@@basedir, 'servers/test/', 'server.config'))
   end
 
   test "modify attr from sc" do
     inst = Server.new(name: 'test')
     inst.create_paths
-    inst.create_sc
     assert_equal({}, inst.sc)
     inst.modify_sc('java_xmx', 256, 'java')
     assert_equal(256, inst.sc['java']['java_xmx'])
     inst.modify_sc('start', false, 'onreboot')
     assert_equal(false, inst.sc['onreboot']['start'])
+
+    require('inifile')
+    sc = IniFile.load(File.join(@@basedir, 'servers/test/', 'server.config'))
+    assert_equal(256, sc['java']['java_xmx'])
+    assert_equal(false, sc['onreboot']['start'])
   end
 
-  test "modify sc without creating" do
+  test "modify sc without creating first" do
     inst = Server.new(name: 'test')
     inst.create_paths
     inst.modify_sc('java_xmx', 256, 'java')
@@ -119,6 +125,17 @@ class ServerTest < ActiveSupport::TestCase
     inst.accept_eula
     assert_equal(true, inst.eula)
   end
+
+  test "create server.properties" do
+    inst = Server.new(name: 'test')
+    inst.create_paths
+    assert !File.exist?(File.join(@@basedir, 'servers/test/', 'server.properties'))
+    inst.sp
+    assert !File.exist?(File.join(@@basedir, 'servers/test/', 'server.properties'))
+    inst.sp!
+    assert File.exist?(File.join(@@basedir, 'servers/test/', 'server.properties'))
+  end
+
 
   test "read server.properties" do
     require('fileutils')
