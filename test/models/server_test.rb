@@ -96,7 +96,7 @@ class ServerTest < ActiveSupport::TestCase
 
     inst = Server.new(name: 'test')
     inst.create_paths
-    eula_path = File.expand_path("public/eula.txt", Dir.pwd)
+    eula_path = File.expand_path("lib/assets/eula.txt", Dir.pwd)
     FileUtils.cp(eula_path, inst.env[:cwd])
     assert !inst.eula
   end
@@ -106,7 +106,7 @@ class ServerTest < ActiveSupport::TestCase
 
     inst = Server.new(name: 'test')
     inst.create_paths
-    eula_path = File.expand_path("public/eula.txt", Dir.pwd)
+    eula_path = File.expand_path("lib/assets/eula.txt", Dir.pwd)
     FileUtils.cp(eula_path, inst.env[:cwd])
 
     inst.accept_eula
