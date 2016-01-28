@@ -99,10 +99,9 @@ class Server < ActiveRecord::Base
   end
 
   def modify_sp(attr, value)
-    self.sp!
+    self.sp
     @config_sp['global'][attr] = value
-    @config_sp.write
-    return self.sp
+    return self.sp!
   end
 
 end
