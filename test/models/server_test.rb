@@ -98,7 +98,7 @@ class ServerTest < ActiveSupport::TestCase
     inst.create_paths
     eula_path = File.expand_path("lib/assets/eula.txt", Dir.pwd)
     FileUtils.cp(eula_path, inst.env[:cwd])
-    assert !inst.eula
+    assert_equal(false, inst.eula)
   end
 
   test "change eula state" do
@@ -110,7 +110,7 @@ class ServerTest < ActiveSupport::TestCase
     FileUtils.cp(eula_path, inst.env[:cwd])
 
     inst.accept_eula
-    assert inst.eula
+    assert_equal(true, inst.eula)
   end
 
   test "read server.properties" do
