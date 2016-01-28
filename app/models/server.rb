@@ -45,6 +45,13 @@ class Server < ActiveRecord::Base
   end
 
   def modify_sc(attr, value, section)
+    if !@sc
+      if Dir.exist?(@env[:sc])
+        @config_sc = IniFile.load( @env[:sc] )
+      else
+        @config_sc = IniFile.new( :filename => @env[:sc] )
+      end
+    end
     @config_sc[section] = { attr => value }
     @config_sc.write
     @sc = @config_sc.to_h

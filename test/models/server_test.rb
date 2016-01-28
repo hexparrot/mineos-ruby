@@ -82,6 +82,13 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal(false, inst.sc['onreboot']['start'])
   end
 
+  test "modify sc without creating" do
+    inst = Server.new(name: 'test')
+    inst.create_paths
+    inst.modify_sc('java_xmx', 256, 'java')
+    assert_equal(256, inst.sc['java']['java_xmx'])
+  end
+
   test "delete server paths" do
     inst = Server.new(name: 'test')
     inst.create_paths
