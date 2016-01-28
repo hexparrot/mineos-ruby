@@ -14,6 +14,7 @@ class Server < ActiveRecord::Base
             :bwd => File.join(@@basedir, 'backup', self.name),
             :awd => File.join(@@basedir, 'archive', self.name),
             :eula => File.join(@@basedir, 'servers', 'eula.txt'),
+            :sp  => File.join(@@basedir, 'servers', self.name, 'server.properties'),
             :sc  => File.join(@@basedir, 'servers', self.name, 'server.config')}
   end
 
@@ -57,6 +58,18 @@ class Server < ActiveRecord::Base
 
   def accept_eula
     File.write( @env[:eula], 'eula=true\n')
+  end
+
+  def sp
+    require('inifile')
+    config_sp = IniFile.load( @env[:sp] )
+    temp_hash = config_sp.to_h['global']
+    temp_hash.each do |key, value|
+      if value.nil?
+        temp_hash[key] = ''
+      end
+    end
+    return temp_hash
   end
 
 end

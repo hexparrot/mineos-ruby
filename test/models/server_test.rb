@@ -113,4 +113,18 @@ class ServerTest < ActiveSupport::TestCase
     assert inst.eula
   end
 
+  test "read server.properties" do
+    require('fileutils')
+
+    inst = Server.new(name: 'test')
+    inst.create_paths
+    sp_path = File.expand_path("lib/assets/server.properties", Dir.pwd)
+    FileUtils.cp(sp_path, inst.env[:cwd])
+
+    assert_equal(25565, inst.sp['server-port'])
+    assert_equal("", inst.sp['server-ip'])
+    assert !inst.sp['enable-rcon']
+    assert !inst.sp['enable-query']
+  end
+
 end
