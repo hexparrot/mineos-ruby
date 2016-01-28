@@ -3,8 +3,12 @@ class Server < ActiveRecord::Base
 
   after_initialize :check_servername, :set_paths  
 
+  def valid_servername(name)
+    return name.match(/^(?!\.)[a-zA-Z0-9_\.]+$/)
+  end
+
   def check_servername
-    raise RuntimeError if !self.name.match(/^(?!\.)[a-zA-Z0-9_\.]+$/)
+    raise RuntimeError if !self.valid_servername(self.name)
   end
 
   def set_paths
