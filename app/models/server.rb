@@ -68,14 +68,27 @@ class Server < ActiveRecord::Base
 
   def sp
     require('inifile')
-    config_sp = IniFile.load( @env[:sp] )
-    temp_hash = config_sp.to_h['global']
+    @config_sp = IniFile.load( @env[:sp] )
+    temp_hash = @config_sp.to_h['global']
     temp_hash.each do |key, value|
       if value.nil?
         temp_hash[key] = ''
       end
     end
     return temp_hash
+  end
+
+  def modify_sp(attr, value)
+    require('inifile')
+    if !@sp
+      if File.exist?(@env[:sp])
+        temp_hash = self.sp
+      else
+        @config_sp = IniFile.new( :filename => @env[:sp] )
+      end
+    end 
+    @config_sp['global'][attr] = value
+    @config_sp.write
   end
 
 end

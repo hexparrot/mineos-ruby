@@ -134,4 +134,24 @@ class ServerTest < ActiveSupport::TestCase
     assert !inst.sp['enable-query']
   end
 
+  test "modify server.properties" do
+    require('fileutils')
+
+    inst = Server.new(name: 'test')
+    inst.create_paths
+    sp_path = File.expand_path("lib/assets/server.properties", Dir.pwd)
+    FileUtils.cp(sp_path, inst.env[:cwd])
+
+    number_attributes = inst.sp.keys.length
+
+    inst.modify_sp('server-port', 25570)
+    assert_equal(25570, inst.sp['server-port'])
+    inst.modify_sp('enable-rcon', true)
+    assert_equal(true, inst.sp['enable-rcon'])
+    inst.modify_sp('do-awesomeness', true)
+    assert_equal(true, inst.sp['do-awesomeness'])
+
+    assert_equal(number_attributes + 1, inst.sp.keys.length)
+  end
+
 end
