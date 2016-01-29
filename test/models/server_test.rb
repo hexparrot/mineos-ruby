@@ -66,11 +66,11 @@ class ServerTest < ActiveSupport::TestCase
   test "create server.config" do
     inst = Server.new(name: 'test')
     inst.create_paths
-    assert !File.exist?(File.join(@@basedir, 'servers/test/', 'server.config'))
+    assert !File.exist?(inst.env[:sc])
     inst.sc
-    assert !File.exist?(File.join(@@basedir, 'servers/test/', 'server.config'))
+    assert !File.exist?(inst.env[:sc])
     inst.sc!
-    assert File.exist?(File.join(@@basedir, 'servers/test/', 'server.config'))
+    assert File.exist?(inst.env[:sc])
   end
 
   test "modify attr from sc" do
@@ -83,7 +83,7 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal(false, inst.sc['onreboot']['start'])
 
     require('inifile')
-    sc = IniFile.load(File.join(@@basedir, 'servers/test/', 'server.config'))
+    sc = IniFile.load(inst.env[:sc])
     assert_equal(256, sc['java']['java_xmx'])
     assert_equal(false, sc['onreboot']['start'])
   end
@@ -129,11 +129,11 @@ class ServerTest < ActiveSupport::TestCase
   test "create server.properties" do
     inst = Server.new(name: 'test')
     inst.create_paths
-    assert !File.exist?(File.join(@@basedir, 'servers/test/', 'server.properties'))
+    assert !File.exist?(inst.env[:sp])
     inst.sp
-    assert !File.exist?(File.join(@@basedir, 'servers/test/', 'server.properties'))
+    assert !File.exist?(inst.env[:sp])
     inst.sp!
-    assert File.exist?(File.join(@@basedir, 'servers/test/', 'server.properties'))
+    assert File.exist?(inst.env[:sp])
   end
 
 
@@ -171,13 +171,13 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal(number_attributes + 1, inst.sp.keys.length)
 
     require('inifile')
-    sp = IniFile.load(File.join(@@basedir, 'servers/test/', 'server.properties'))['global']
+    sp = IniFile.load(inst.env[:sp])['global']
     assert_equal(25570, sp['server-port'])
     assert_equal(true, sp['enable-rcon'])
     assert_equal(true, sp['do-awesomeness'])
   end
 
-  test "overlay properteries onto server.properties" do
+  test "overlay properties onto server.properties" do
     inst = Server.new(name: 'test')
     inst.create_paths
 
@@ -189,7 +189,7 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal(false, inst.sp['enable-query'])
 
     require('inifile')
-    sp = IniFile.load(File.join(@@basedir, 'servers/test/', 'server.properties'))['global']
+    sp = IniFile.load(inst.env[:sp])['global']
     assert_equal(25565, sp['server-port'])
     assert_equal(1, sp['difficulty'])
     assert_equal(false, sp['enable-query'])

@@ -17,9 +17,9 @@ class Server < ActiveRecord::Base
     @env = {:cwd => File.join(@@basedir, 'servers', self.name),
             :bwd => File.join(@@basedir, 'backup', self.name),
             :awd => File.join(@@basedir, 'archive', self.name),
-            :eula => File.join(@@basedir, 'servers', self.name, 'eula.txt'),
             :sp  => File.join(@@basedir, 'servers', self.name, 'server.properties'),
-            :sc  => File.join(@@basedir, 'servers', self.name, 'server.config')}
+            :sc  => File.join(@@basedir, 'servers', self.name, 'server.config'),
+            :eula => File.join(@@basedir, 'servers', self.name, 'eula.txt')}
   end
 
   def create_paths
@@ -34,10 +34,7 @@ class Server < ActiveRecord::Base
   def delete_paths
     require('fileutils')
     [:cwd, :bwd, :awd].each do |directory|
-      #begin
-        FileUtils.rm_rf @env[directory]
-      #rescue Errno::EEXIST
-      #end
+      FileUtils.rm_rf @env[directory]
     end
   end
 
@@ -96,6 +93,7 @@ class Server < ActiveRecord::Base
   def sp!
     self.sp
     lines = @config_sp.to_s.split("\n")
+    #inifile auto [sections] files with "global", this removes it
     lines.shift
     IO.write(@env[:sp], lines.join("\n"))
 
