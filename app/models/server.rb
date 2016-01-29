@@ -57,7 +57,11 @@ class Server < ActiveRecord::Base
 
   def modify_sc(attr, value, section)
     self.sc
-    @config_sc[section] = { attr => value }
+    if !@config_sc.has_section?(section)
+      @config_sc[section] = { attr => value }
+    else
+      @config_sc[section][attr] = value
+    end
     @config_sc.write
     return @config_sc.to_h
   end

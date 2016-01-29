@@ -79,12 +79,17 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal({}, inst.sc)
     inst.modify_sc('java_xmx', 256, 'java')
     assert_equal(256, inst.sc['java']['java_xmx'])
+    inst.modify_sc('java_xms', 256, 'java')
+    assert_equal(256, inst.sc['java']['java_xms'])
     inst.modify_sc('start', false, 'onreboot')
+    assert_equal(256, inst.sc['java']['java_xmx'])
+    assert_equal(256, inst.sc['java']['java_xms'])
     assert_equal(false, inst.sc['onreboot']['start'])
 
     require('inifile')
     sc = IniFile.load(inst.env[:sc])
     assert_equal(256, sc['java']['java_xmx'])
+    assert_equal(256, sc['java']['java_xms'])
     assert_equal(false, sc['onreboot']['start'])
   end
 
