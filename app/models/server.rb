@@ -117,4 +117,40 @@ class Server < ActiveRecord::Base
     end
     return self.sp!
   end
+
+  def get_jar_args(type)
+    args = {}
+    
+    raise RuntimeError if self.sc['java']['jarfile'].nil?
+    raise RuntimeError if self.sc['java']['java_xmx'].nil?
+    raise RuntimeError if self.sc['java']['java_xmx'].to_i <= 0
+    raise RuntimeError if self.sc['java']['java_xms'].to_i > self.sc['java']['java_xmx'].to_i
+
+    args[:jarfile] = self.sc['java']['jarfile'] 
+    args[:java_xmx] = self.sc['java']['java_xmx'].to_i
+    args[:java_tweaks] = self.sc['java']['java_tweaks']
+    args[:jar_args] = self.sc['java']['jar_args']
+    if self.sc['java']['java_xms'].to_i > 0
+      args[:java_xms] = self.sc['java']['java_xms'].to_i
+    else
+      args[:java_xms] = self.sc['java']['java_xmx'].to_i
+    end
+
+    require 'mkmf'
+    args[:binary] = find_executable0 'java'
+
+    retval = []
+    retval << args[:binary] << '-server' << "-Xmx%{java_xmx}M" % args << "-Xms%{java_xms}M" % args
+    if args[:java_tweaks]
+      retval << args[:java_tweaks]
+    end
+    retval << '-jar' << args[:jarfile]
+    if args[:jar_args].nil?
+      retval << 'nogui'
+    else
+      retval << args[:jar_args]
+    end
+
+    return retval
+  end
 end

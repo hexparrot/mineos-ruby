@@ -199,4 +199,47 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal(1, sp['difficulty'])
     assert_equal(false, sp['enable-query'])
   end
+
+  test "java jar start args-conventional" do
+    inst = Server.new(name: 'test')
+    inst.create_paths
+    #missing jarfile <-- , xmx
+    assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+
+    #missing xmx
+    inst.modify_sc('jarfile', 'mc.jar', 'java')
+    assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+
+    #invalid xmx
+    inst.modify_sc('java_xmx', 0, 'java')
+    assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+
+    inst.modify_sc('java_xmx', 1024, 'java')
+    assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms1024M', '-jar', 'mc.jar', 'nogui' ],
+                 inst.get_jar_args(:conventional_jar))
+
+    inst.modify_sc('java_xms', 768, 'java')
+    assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms768M', '-jar', 'mc.jar', 'nogui' ],
+                 inst.get_jar_args(:conventional_jar))
+
+    inst.modify_sc('java_tweaks', '-Xmn256M', 'java')
+    assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms768M', '-Xmn256M', '-jar', 'mc.jar', 'nogui' ],
+                 inst.get_jar_args(:conventional_jar))
+
+    inst.modify_sc('jar_args', 'dostuff', 'java')
+    assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms768M', '-Xmn256M', '-jar', 'mc.jar', 'dostuff' ],
+                 inst.get_jar_args(:conventional_jar))
+
+    #xmx < xms
+    inst.modify_sc('java_xmx', 256, 'java')
+    inst.modify_sc('java_xms', 768, 'java')
+    assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+
+    #xms == 0
+    inst.modify_sc('java_xmx', 1024, 'java')
+    inst.modify_sc('java_xms', 0, 'java')
+    assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms1024M', '-Xmn256M', '-jar', 'mc.jar', 'dostuff' ],
+                 inst.get_jar_args(:conventional_jar))
+
+  end
 end
