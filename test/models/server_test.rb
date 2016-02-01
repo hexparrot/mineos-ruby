@@ -204,15 +204,18 @@ class ServerTest < ActiveSupport::TestCase
     inst = Server.new(name: 'test')
     inst.create_paths
     #missing jarfile <-- , xmx
-    assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    assert_equal('no runnable jarfile selected', ex.message)
 
     #missing xmx
     inst.modify_sc('jarfile', 'mc.jar', 'java')
-    assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    assert_equal('missing java argument: Xmx', ex.message)
 
     #invalid xmx
     inst.modify_sc('java_xmx', 0, 'java')
-    assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    assert_equal('invalid java argument: Xmx must be > 0', ex.message)
 
     inst.modify_sc('java_xmx', 1024, 'java')
     assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms1024M', '-jar', 'mc.jar', 'nogui' ],
@@ -233,7 +236,8 @@ class ServerTest < ActiveSupport::TestCase
     #xmx < xms
     inst.modify_sc('java_xmx', 256, 'java')
     inst.modify_sc('java_xms', 768, 'java')
-    assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    assert_equal('invalid java argument: Xmx must be > Xms', ex.message)
 
     #xms == 0
     inst.modify_sc('java_xmx', 1024, 'java')

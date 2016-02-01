@@ -121,10 +121,10 @@ class Server < ActiveRecord::Base
   def get_jar_args(type)
     args = {}
     
-    raise RuntimeError if self.sc['java']['jarfile'].nil?
-    raise RuntimeError if self.sc['java']['java_xmx'].nil?
-    raise RuntimeError if self.sc['java']['java_xmx'].to_i <= 0
-    raise RuntimeError if self.sc['java']['java_xms'].to_i > self.sc['java']['java_xmx'].to_i
+    raise RuntimeError.new('no runnable jarfile selected') if self.sc['java']['jarfile'].nil?
+    raise RuntimeError.new('missing java argument: Xmx') if self.sc['java']['java_xmx'].nil?
+    raise RuntimeError.new('invalid java argument: Xmx must be > 0') if self.sc['java']['java_xmx'].to_i <= 0
+    raise RuntimeError.new('invalid java argument: Xmx must be > Xms') if self.sc['java']['java_xms'].to_i > self.sc['java']['java_xmx'].to_i
 
     args[:jarfile] = self.sc['java']['jarfile'] 
     args[:java_xmx] = self.sc['java']['java_xmx'].to_i
