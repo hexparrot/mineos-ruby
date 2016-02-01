@@ -317,6 +317,32 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal('invalid java argument: Xmx may not be lower than Xms', ex.message)
   end
 
+  test "php phar start args" do
+    inst = Server.new(name: 'test') 
+    inst.create_paths
+
+    #missing pharfile
+    ex = assert_raises(RuntimeError) { inst.get_jar_args(:phar) }
+    assert_equal('no runnable pharfile selected', ex.message)
+
+    #fallback for backward compat with previous webuis
+    inst.modify_sc('jarfile', 'pocket.phar', 'java')
+    assert_equal(['/usr/bin/php', 'pocket.phar'], inst.get_jar_args(:phar))
+
+    #existence of [nonjava][executable] will override
+    inst.modify_sc('executable', 'pocketmine.phar', 'nonjava')
+    assert_equal(['/usr/bin/php', 'pocketmine.phar'], inst.get_jar_args(:phar))
+
+    #empty executable should fallback
+    inst.modify_sc('executable', '', 'nonjava')
+    assert_equal(['/usr/bin/php', 'pocket.phar'], inst.get_jar_args(:phar))
+
+    #empty jarfile should error out
+    inst.modify_sc('jarfile', '', 'java')
+    ex = assert_raises(RuntimeError) { inst.get_jar_args(:phar) }
+    assert_equal('no runnable pharfile selected', ex.message)
+  end
+
   test "unrecognized get_start_args request" do
     inst = Server.new(name: 'test') 
     ex = assert_raises(NotImplementedError) { inst.get_jar_args(:bogus) }
@@ -324,5 +350,4 @@ class ServerTest < ActiveSupport::TestCase
     ex = assert_raises(NotImplementedError) { inst.get_jar_args(:more_bogus) }
     assert_equal('unrecognized get_jar_args argument: more_bogus', ex.message)
   end
-
 end

@@ -168,6 +168,18 @@ class Server < ActiveRecord::Base
         retval << args[:java_tweaks] if args[:java_tweaks]
         retval << '-jar' << args[:jarfile]
         retval << args[:jar_args] if args[:jar_args]
+      when :phar
+        args[:binary] = find_executable0 'php'
+
+        if self.sc['nonjava']['executable'].to_s.length > 0
+          args[:executable] = self.sc['nonjava']['executable']
+          retval << args[:binary] << args[:executable]
+        elsif self.sc['java']['jarfile'].to_s.length > 0
+          args[:executable] = self.sc['java']['jarfile']
+          retval << args[:binary] << args[:executable]
+        else
+          raise RuntimeError.new('no runnable pharfile selected')
+        end
       else
         raise NotImplementedError.new("unrecognized get_jar_args argument: #{type.to_s}")
     end
