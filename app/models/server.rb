@@ -119,6 +119,7 @@ class Server < ActiveRecord::Base
   end
 
   def get_jar_args(type)
+    require 'mkmf'
     args = {}
     retval = []
 
@@ -137,8 +138,6 @@ class Server < ActiveRecord::Base
         args[:jar_args] = self.sc['java']['jar_args']
         #use xms value if present and > 0, else fallback to xmx
         args[:java_xms] = self.sc['java']['java_xms'].to_i > 0 ? self.sc['java']['java_xms'].to_i : self.sc['java']['java_xmx'].to_i
-
-        require 'mkmf'
         args[:binary] = find_executable0 'java'
 
         retval << args[:binary] << '-server' << "-Xmx%{java_xmx}M" % args << "-Xms%{java_xms}M" % args
@@ -158,24 +157,19 @@ class Server < ActiveRecord::Base
         args[:jarfile] = self.sc['java']['jarfile'] 
         args[:java_tweaks] = self.sc['java']['java_tweaks']
         args[:jar_args] = self.sc['java']['jar_args']
-        
-        if self.sc['java']['java_xmx'].to_i > 0
-          args[:java_xmx] = self.sc['java']['java_xmx'].to_i
-        end
-
-        if self.sc['java']['java_xms'].to_i > 0
-          args[:java_xms] = self.sc['java']['java_xms'].to_i
-        end
-
-        require 'mkmf'
+        args[:java_xmx] = self.sc['java']['java_xmx'].to_i if self.sc['java']['java_xmx'].to_i > 0
+        args[:java_xms] = self.sc['java']['java_xms'].to_i if self.sc['java']['java_xms'].to_i > 0
         args[:binary] = find_executable0 'java'
 
         retval << args[:binary] << '-server' 
+        #Xmx and Xms are non-compulsory
         retval << "-Xmx%{java_xmx}M" % args if args[:java_xmx]
         retval << "-Xms%{java_xms}M" % args if args[:java_xms]
         retval << args[:java_tweaks] if args[:java_tweaks]
         retval << '-jar' << args[:jarfile]
         retval << args[:jar_args] if args[:jar_args]
+      else
+        raise NotImplementedError.new("unrecognized get_jar_args argument: #{type.to_s}")
     end
 
     return retval

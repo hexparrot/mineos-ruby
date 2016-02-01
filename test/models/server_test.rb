@@ -317,4 +317,12 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal('invalid java argument: Xmx may not be lower than Xms', ex.message)
   end
 
+  test "unrecognized get_start_args request" do
+    inst = Server.new(name: 'test') 
+    ex = assert_raises(NotImplementedError) { inst.get_jar_args(:bogus) }
+    assert_equal('unrecognized get_jar_args argument: bogus', ex.message)
+    ex = assert_raises(NotImplementedError) { inst.get_jar_args(:more_bogus) }
+    assert_equal('unrecognized get_jar_args argument: more_bogus', ex.message)
+  end
+
 end
