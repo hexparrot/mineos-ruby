@@ -135,25 +135,17 @@ class Server < ActiveRecord::Base
         args[:java_xmx] = self.sc['java']['java_xmx'].to_i
         args[:java_tweaks] = self.sc['java']['java_tweaks']
         args[:jar_args] = self.sc['java']['jar_args']
-        if self.sc['java']['java_xms'].to_i > 0
-          args[:java_xms] = self.sc['java']['java_xms'].to_i
-        else
-          args[:java_xms] = self.sc['java']['java_xmx'].to_i
-        end
+        #use xms value if present and > 0, else fallback to xmx
+        args[:java_xms] = self.sc['java']['java_xms'].to_i > 0 ? self.sc['java']['java_xms'].to_i : self.sc['java']['java_xmx'].to_i
 
         require 'mkmf'
         args[:binary] = find_executable0 'java'
 
         retval << args[:binary] << '-server' << "-Xmx%{java_xmx}M" % args << "-Xms%{java_xms}M" % args
-        if args[:java_tweaks]
-          retval << args[:java_tweaks]
-        end
+        retval << args[:java_tweaks] if args[:java_tweaks]
         retval << '-jar' << args[:jarfile]
-        if args[:jar_args].nil?
-          retval << 'nogui'
-        else
-          retval << args[:jar_args]
-        end
+        #if no jar args specified, auto-fill in 'nogui'
+        retval << (args[:jar_args].nil? ? 'nogui' : args[:jar_args])
       when :unconventional_jar
         raise RuntimeError.new('no runnable jarfile selected') if self.sc['java']['jarfile'].nil?
         raise RuntimeError.new('invalid java argument: Xmx must be unset or > 0') if self.sc['java']['java_xmx'].to_i < 0
