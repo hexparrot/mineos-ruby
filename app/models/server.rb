@@ -126,7 +126,9 @@ class Server < ActiveRecord::Base
       when :conventional_jar
         raise RuntimeError.new('no runnable jarfile selected') if self.sc['java']['jarfile'].nil?
         raise RuntimeError.new('missing java argument: Xmx') if self.sc['java']['java_xmx'].nil?
-        raise RuntimeError.new('invalid java argument: Xmx must be > 0') if self.sc['java']['java_xmx'].to_i <= 0
+        raise RuntimeError.new('invalid java argument: Xmx must be an integer > 0') if !self.sc['java']['java_xmx'].is_a?(Integer)
+        raise RuntimeError.new('invalid java argument: Xmx must be an integer > 0') if self.sc['java']['java_xmx'].to_i <= 0
+        raise RuntimeError.new('invalid java argument: Xms must be unset or an integer > 0') if !self.sc['java']['java_xms'].is_a?(Integer)
         raise RuntimeError.new('invalid java argument: Xmx must be > Xms') if self.sc['java']['java_xms'].to_i > self.sc['java']['java_xmx'].to_i
 
         args[:jarfile] = self.sc['java']['jarfile'] 

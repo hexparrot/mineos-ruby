@@ -212,10 +212,22 @@ class ServerTest < ActiveSupport::TestCase
     ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
     assert_equal('missing java argument: Xmx', ex.message)
 
+    #string as xmx
+    inst.modify_sc('java_xmx', 'hello', 'java')
+    ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    assert_equal('invalid java argument: Xmx must be an integer > 0', ex.message)
+
+    #string as xms
+    inst.modify_sc('java_xmx', 128, 'java')
+    inst.modify_sc('java_xms', 'hello', 'java')
+    ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    assert_equal('invalid java argument: Xms must be unset or an integer > 0', ex.message)
+
     #invalid xmx
     inst.modify_sc('java_xmx', 0, 'java')
+    inst.modify_sc('java_xms', 0, 'java')
     ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
-    assert_equal('invalid java argument: Xmx must be > 0', ex.message)
+    assert_equal('invalid java argument: Xmx must be an integer > 0', ex.message)
 
     inst.modify_sc('java_xmx', 1024, 'java')
     assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms1024M', '-jar', 'mc.jar', 'nogui' ],
