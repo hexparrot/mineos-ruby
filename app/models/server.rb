@@ -120,35 +120,68 @@ class Server < ActiveRecord::Base
 
   def get_jar_args(type)
     args = {}
-    
-    raise RuntimeError.new('no runnable jarfile selected') if self.sc['java']['jarfile'].nil?
-    raise RuntimeError.new('missing java argument: Xmx') if self.sc['java']['java_xmx'].nil?
-    raise RuntimeError.new('invalid java argument: Xmx must be > 0') if self.sc['java']['java_xmx'].to_i <= 0
-    raise RuntimeError.new('invalid java argument: Xmx must be > Xms') if self.sc['java']['java_xms'].to_i > self.sc['java']['java_xmx'].to_i
-
-    args[:jarfile] = self.sc['java']['jarfile'] 
-    args[:java_xmx] = self.sc['java']['java_xmx'].to_i
-    args[:java_tweaks] = self.sc['java']['java_tweaks']
-    args[:jar_args] = self.sc['java']['jar_args']
-    if self.sc['java']['java_xms'].to_i > 0
-      args[:java_xms] = self.sc['java']['java_xms'].to_i
-    else
-      args[:java_xms] = self.sc['java']['java_xmx'].to_i
-    end
-
-    require 'mkmf'
-    args[:binary] = find_executable0 'java'
-
     retval = []
-    retval << args[:binary] << '-server' << "-Xmx%{java_xmx}M" % args << "-Xms%{java_xms}M" % args
-    if args[:java_tweaks]
-      retval << args[:java_tweaks]
-    end
-    retval << '-jar' << args[:jarfile]
-    if args[:jar_args].nil?
-      retval << 'nogui'
-    else
-      retval << args[:jar_args]
+
+    case type
+      when :conventional_jar
+        raise RuntimeError.new('no runnable jarfile selected') if self.sc['java']['jarfile'].nil?
+        raise RuntimeError.new('missing java argument: Xmx') if self.sc['java']['java_xmx'].nil?
+        raise RuntimeError.new('invalid java argument: Xmx must be > 0') if self.sc['java']['java_xmx'].to_i <= 0
+        raise RuntimeError.new('invalid java argument: Xmx must be > Xms') if self.sc['java']['java_xms'].to_i > self.sc['java']['java_xmx'].to_i
+
+        args[:jarfile] = self.sc['java']['jarfile'] 
+        args[:java_xmx] = self.sc['java']['java_xmx'].to_i
+        args[:java_tweaks] = self.sc['java']['java_tweaks']
+        args[:jar_args] = self.sc['java']['jar_args']
+        if self.sc['java']['java_xms'].to_i > 0
+          args[:java_xms] = self.sc['java']['java_xms'].to_i
+        else
+          args[:java_xms] = self.sc['java']['java_xmx'].to_i
+        end
+
+        require 'mkmf'
+        args[:binary] = find_executable0 'java'
+
+        retval << args[:binary] << '-server' << "-Xmx%{java_xmx}M" % args << "-Xms%{java_xms}M" % args
+        if args[:java_tweaks]
+          retval << args[:java_tweaks]
+        end
+        retval << '-jar' << args[:jarfile]
+        if args[:jar_args].nil?
+          retval << 'nogui'
+        else
+          retval << args[:jar_args]
+        end
+      when :unconventional_jar
+        raise RuntimeError.new('no runnable jarfile selected') if self.sc['java']['jarfile'].nil?
+        raise RuntimeError.new('invalid java argument: Xmx must be unset or > 0') if self.sc['java']['java_xmx'].to_i < 0
+        raise RuntimeError.new('invalid java argument: Xms must be unset or > 0') if self.sc['java']['java_xms'].to_i < 0
+        raise RuntimeError.new('invalid java argument: Xms may not be set without Xmx') if self.sc['java']['java_xms'].to_i > 0 && self.sc['java']['java_xmx'].to_i <= 0
+        raise RuntimeError.new('invalid java argument: Xmx may not be lower than Xms') if self.sc['java']['java_xms'].to_i > self.sc['java']['java_xmx'].to_i
+        raise RuntimeError.new('invalid java argument: Xmx must be unset or an integer > 0') if !self.sc['java']['java_xmx'].is_a?(Integer)
+        raise RuntimeError.new('invalid java argument: Xms must be unset or an integer > 0') if !self.sc['java']['java_xms'].is_a?(Integer)
+
+        args[:jarfile] = self.sc['java']['jarfile'] 
+        args[:java_tweaks] = self.sc['java']['java_tweaks']
+        args[:jar_args] = self.sc['java']['jar_args']
+        
+        if self.sc['java']['java_xmx'].to_i > 0
+          args[:java_xmx] = self.sc['java']['java_xmx'].to_i
+        end
+
+        if self.sc['java']['java_xms'].to_i > 0
+          args[:java_xms] = self.sc['java']['java_xms'].to_i
+        end
+
+        require 'mkmf'
+        args[:binary] = find_executable0 'java'
+
+        retval << args[:binary] << '-server' 
+        retval << "-Xmx%{java_xmx}M" % args if args[:java_xmx]
+        retval << "-Xms%{java_xms}M" % args if args[:java_xms]
+        retval << args[:java_tweaks] if args[:java_tweaks]
+        retval << '-jar' << args[:jarfile]
+        retval << args[:jar_args] if args[:jar_args]
     end
 
     return retval
