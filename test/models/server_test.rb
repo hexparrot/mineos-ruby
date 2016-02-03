@@ -365,6 +365,7 @@ class ServerTest < ActiveSupport::TestCase
     
     assert(pid.is_a?(Integer))
     assert(inst.pid.is_a?(Integer))
+    assert_equal(pid, inst.pid)
     assert(inst.stdin.is_a?(IO))
     assert(inst.stdout.is_a?(IO))
     assert(inst.stderr.is_a?(IO))
@@ -418,5 +419,35 @@ class ServerTest < ActiveSupport::TestCase
     inst = Server.new(name: 'test')
     ex = assert_raises(IOError) { inst.console('hello') }
     assert_equal('I/O channel is down', ex.message)
+  end
+
+  test "memory checks" do
+    inst = Server.new(name: 'test')
+    inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    assert_equal(0.0, inst.mem[:kb])
+    assert_equal(0.0, inst.mem[:mb])
+    assert_equal(0.0, inst.mem[:gb])
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+    inst.start
+
+    assert(inst.mem[:kb].is_a?(Float))
+    assert(inst.mem[:mb].is_a?(Float))
+    assert(inst.mem[:gb].is_a?(Float))
+
+    begin
+      #Process.kill returns 1 if running
+      while Process.kill(0, inst.pid) do
+        sleep(0.5)
+      end
+    rescue Errno::ESRCH
+    end  
+
   end
 end

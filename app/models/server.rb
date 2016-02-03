@@ -204,5 +204,17 @@ class Server < ActiveRecord::Base
       raise IOError.new('I/O channel is down')
     end
   end
+
+  def mem
+    if @pid
+      require('get_process_mem')
+
+      mem_obj = GetProcessMem.new(@pid)
+      mem_obj.inspect
+      return {:kb => mem_obj.kb, :mb => mem_obj.mb, :gb => mem_obj.gb}
+    else
+      return {:kb => 0.0, :mb => 0.0, :gb => 0.0}
+    end
+  end
   
 end
