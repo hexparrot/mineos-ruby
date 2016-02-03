@@ -366,9 +366,9 @@ class ServerTest < ActiveSupport::TestCase
     assert(pid.is_a?(Integer))
     assert(inst.pid.is_a?(Integer))
     assert_equal(pid, inst.pid)
-    assert(inst.stdin.is_a?(IO))
-    assert(inst.stdout.is_a?(IO))
-    assert(inst.stderr.is_a?(IO))
+    assert(inst.pipes[:stdin].is_a?(IO))
+    assert(inst.pipes[:stdout].is_a?(IO))
+    assert(inst.pipes[:stderr].is_a?(IO))
     assert_equal(1, Process.kill(0, inst.pid))
 
     begin
@@ -395,14 +395,14 @@ class ServerTest < ActiveSupport::TestCase
     inst.start
 
     loop do
-      content = inst.stdout.readline(1024)
+      content = inst.pipes[:stdout].readline(1024)
       if content.match(/\[Server thread\/INFO\]: Done/)
         break
       end
     end
 
     inst.console('stop')
-    content = inst.stdout.readline(1024) #blocks until minecraft initiates stopping
+    content = inst.pipes[:stdout].readline(1024) #blocks until minecraft initiates stopping
     assert(content.match(/\[Server thread\/INFO\]: Stopping the server/))
     
     begin

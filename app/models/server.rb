@@ -1,7 +1,7 @@
 class Server < ActiveRecord::Base
-  attr_reader :env, :pid, :stdin, :stdout, :stderr
+  attr_reader :env, :pid, :pipes
 
-  after_initialize :check_servername, :set_paths  
+  after_initialize :check_servername, :set_env
 
   def valid_servername(name)
     return name.match(/^(?!\.)[a-zA-Z0-9_\.]+$/)
@@ -11,7 +11,7 @@ class Server < ActiveRecord::Base
     raise RuntimeError if !self.valid_servername(self.name)
   end
 
-  def set_paths
+  def set_env
     @@basedir = '/var/games/minecraft'
 
     @env = {:cwd => File.join(@@basedir, 'servers', self.name),
@@ -20,6 +20,10 @@ class Server < ActiveRecord::Base
             :sp  => File.join(@@basedir, 'servers', self.name, 'server.properties'),
             :sc  => File.join(@@basedir, 'servers', self.name, 'server.config'),
             :eula => File.join(@@basedir, 'servers', self.name, 'eula.txt')}
+
+    @pipes = {:stdin => IO.pipe,
+              :stdout => IO.pipe,
+              :stderr => IO.pipe}
   end
 
   def create_paths
@@ -191,15 +195,16 @@ class Server < ActiveRecord::Base
     require('open3')
 
     @start_args = self.get_jar_args(:conventional_jar)
-    @stdin, @stdout, @stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+    stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+    @pipes = {:stdin => stdin, :stdout => stdout, :stderr => stderr}
     @pid = wait_thr[:pid]
 
     return @pid
   end
 
   def console(text)
-    if @stdin.is_a?(IO)
-      @stdin << text + "\n"
+    if @pipes[:stdin].is_a?(IO)
+      @pipes[:stdin] << text + "\n"
     else
       raise IOError.new('I/O channel is down')
     end
