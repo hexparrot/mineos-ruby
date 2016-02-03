@@ -413,4 +413,10 @@ class ServerTest < ActiveSupport::TestCase
     end  
 
   end
+
+  test "send text to downed server" do
+    inst = Server.new(name: 'test')
+    ex = assert_raises(IOError) { inst.console('hello') }
+    assert_equal('I/O channel is down', ex.message)
+  end
 end

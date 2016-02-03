@@ -198,7 +198,11 @@ class Server < ActiveRecord::Base
   end
 
   def console(text)
-    @stdin << text + "\n"
+    if @stdin.is_a?(IO)
+      @stdin << text + "\n"
+    else
+      raise IOError.new('I/O channel is down')
+    end
   end
   
 end
