@@ -196,5 +196,9 @@ class Server < ActiveRecord::Base
 
     return @pid
   end
+
+  def console(text)
+    @stdin << text + "\n"
+  end
   
 end

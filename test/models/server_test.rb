@@ -373,10 +373,44 @@ class ServerTest < ActiveSupport::TestCase
     begin
       #Process.kill returns 1 if running
       while Process.kill(0, inst.pid) do
-        sleep(0.5)
+        sleep(0.5) #works only because process self-exits with eula=false
       end
     rescue Errno::ESRCH
       assert_equal(false, inst.eula)
     end  
+  end
+
+  test "send text to server console" do
+    inst = Server.new(name: 'test')
+    inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+    inst.accept_eula
+    inst.start
+
+    loop do
+      content = inst.stdout.readline(1024)
+      if content.match(/\[Server thread\/INFO\]: Done/)
+        break
+      end
+    end
+
+    inst.console('stop')
+    content = inst.stdout.readline(1024) #blocks until minecraft initiates stopping
+    assert(content.match(/\[Server thread\/INFO\]: Stopping the server/))
+    
+    begin
+      #Process.kill returns 1 if running
+      while Process.kill(0, inst.pid) do
+        sleep(0.5)
+      end
+    rescue Errno::ESRCH
+    end  
+
   end
 end
