@@ -350,4 +350,28 @@ class ServerTest < ActiveSupport::TestCase
     ex = assert_raises(NotImplementedError) { inst.get_jar_args(:more_bogus) }
     assert_equal('unrecognized get_jar_args argument: more_bogus', ex.message)
   end
+
+  test "server start" do
+    inst = Server.new(name: 'test')
+    inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+    pid = inst.start
+    
+    assert_equal(1, Process.kill(0, pid))
+    assert(pid.is_a?(Integer))
+    begin
+      #Process.kill returns 1 if running
+      while Process.kill(0, pid) do
+        sleep(0.5)
+      end
+    rescue Errno::ESRCH
+      assert_equal(false, inst.eula)
+    end  
+  end
 end

@@ -1,5 +1,5 @@
 class Server < ActiveRecord::Base
-  attr_reader :env
+  attr_reader :env, :pid
 
   after_initialize :check_servername, :set_paths  
 
@@ -186,4 +186,15 @@ class Server < ActiveRecord::Base
 
     return retval
   end
+
+  def start
+    require('open3')
+
+    @start_args = self.get_jar_args(:conventional_jar)
+    stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+    @pid = wait_thr[:pid]
+
+    return @pid
+  end
+  
 end
