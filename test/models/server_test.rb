@@ -363,11 +363,16 @@ class ServerTest < ActiveSupport::TestCase
     inst.modify_sc('java_xms', 256, 'java')
     pid = inst.start
     
-    assert_equal(1, Process.kill(0, pid))
     assert(pid.is_a?(Integer))
+    assert(inst.pid.is_a?(Integer))
+    assert(inst.stdin.is_a?(IO))
+    assert(inst.stdout.is_a?(IO))
+    assert(inst.stderr.is_a?(IO))
+    assert_equal(1, Process.kill(0, inst.pid))
+
     begin
       #Process.kill returns 1 if running
-      while Process.kill(0, pid) do
+      while Process.kill(0, inst.pid) do
         sleep(0.5)
       end
     rescue Errno::ESRCH
