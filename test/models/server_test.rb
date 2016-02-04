@@ -61,6 +61,45 @@ class ServerTest < ActiveSupport::TestCase
     assert Dir.exist?(inst.env[:awd])
   end
 
+  test "delete server" do
+    inst = Server.new(name: 'test')
+    inst.create(:conventional_jar)
+    inst.delete
+    assert !Dir.exist?(inst.env[:cwd])
+    assert !Dir.exist?(inst.env[:bwd])
+    assert !Dir.exist?(inst.env[:awd])
+
+    inst = Server.new(name: 'test2')
+    inst.create(:conventional_jar)
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+    pid = inst.start
+
+    assert(pid)
+
+    ex = assert_raises(RuntimeError) { inst.delete }
+    assert_equal('cannot delete a server that is running', ex.message)
+
+    assert Dir.exist?(inst.env[:cwd])
+    assert Dir.exist?(inst.env[:bwd])
+    assert Dir.exist?(inst.env[:awd])
+
+    begin
+      #Process.kill returns 1 if running
+      while Process.kill(0, pid) do
+        sleep(0.5)
+      end
+    rescue Errno::ESRCH
+    end
+
+    inst.delete
+    assert !Dir.exist?(inst.env[:cwd])
+    assert !Dir.exist?(inst.env[:bwd])
+    assert !Dir.exist?(inst.env[:awd])
+  end
+
   test "create server.config" do
     inst = Server.new(name: 'test')
     inst.create_paths

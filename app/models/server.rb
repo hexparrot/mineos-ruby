@@ -49,6 +49,14 @@ class Server < ActiveRecord::Base
       end
     end
   end
+
+  def delete
+    if self.pid
+      raise RuntimeError.new('cannot delete a server that is running')
+    else
+      self.delete_paths
+    end
+  end
   
   def delete_paths
     require('fileutils')
