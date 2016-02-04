@@ -215,6 +215,7 @@ class Server < ActiveRecord::Base
   end
 
   def start
+    raise RuntimeError.new('server is already running') if self.pid
     require('open3')
 
     @start_args = self.get_jar_args(:conventional_jar)
