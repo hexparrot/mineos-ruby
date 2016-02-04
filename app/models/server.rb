@@ -1,5 +1,5 @@
 class Server < ActiveRecord::Base
-  attr_reader :env, :pid, :pipes
+  attr_reader :env, :pipes
 
   after_initialize :check_servername, :set_env
 
@@ -200,6 +200,17 @@ class Server < ActiveRecord::Base
     @pid = wait_thr[:pid]
 
     return @pid
+  end
+
+  def pid
+    if @pid
+      begin
+        Process.getpgid(@pid) #reassigns nil if pid nonexistent, otherwise retain existing value
+      rescue Errno::ESRCH
+        @pid = nil
+      end
+    end
+    @pid
   end
 
   def console(text)
