@@ -471,4 +471,42 @@ class ServerTest < ActiveSupport::TestCase
 
     assert(inst.pid.nil?)
   end
+
+  test "create server via convenience method" do
+    inst = Server.new(name: 'test')
+    inst.create(:conventional_jar)
+
+    assert_equal(:conventional_jar, inst.server_type)
+    assert Dir.exist?(inst.env[:cwd])
+    assert Dir.exist?(inst.env[:bwd])
+    assert Dir.exist?(inst.env[:awd])
+    assert File.exist?(inst.env[:sp])
+    assert File.exist?(inst.env[:sc])
+
+    inst = Server.new(name: 'test2')
+    inst.create(:unconventional_jar)
+    assert_equal(:unconventional_jar, inst.server_type)
+    assert Dir.exist?(inst.env[:cwd])
+    assert Dir.exist?(inst.env[:bwd])
+    assert Dir.exist?(inst.env[:awd])
+    assert !File.exist?(inst.env[:sp])
+    assert File.exist?(inst.env[:sc])
+    
+    inst = Server.new(name: 'test3')
+    inst.create(:phar)
+    assert_equal(:phar, inst.server_type)
+    assert Dir.exist?(inst.env[:cwd])
+    assert Dir.exist?(inst.env[:bwd])
+    assert Dir.exist?(inst.env[:awd])
+    assert !File.exist?(inst.env[:sp])
+    assert File.exist?(inst.env[:sc])
+
+    inst = Server.new(name: 'test4')
+    ex = assert_raises(RuntimeError) { inst.create(:bogus) }
+    assert_equal('unrecognized server type: bogus', ex.message)
+    
+    inst = Server.new(name: 'test5')
+    ex = assert_raises(RuntimeError) { inst.create(:bogus_again) }
+    assert_equal('unrecognized server type: bogus_again', ex.message)
+  end
 end

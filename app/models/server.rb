@@ -1,5 +1,5 @@
 class Server < ActiveRecord::Base
-  attr_reader :env, :pipes
+  attr_reader :env, :pipes, :server_type
 
   after_initialize :check_servername, :set_env
 
@@ -24,6 +24,21 @@ class Server < ActiveRecord::Base
     @pipes = {:stdin => IO.pipe,
               :stdout => IO.pipe,
               :stderr => IO.pipe}
+  end
+
+  def create(server_type)
+    @server_type = server_type
+    case server_type
+    when :conventional_jar
+      self.create_paths
+      self.sc!
+      self.sp!
+    when :unconventional_jar, :phar
+      self.create_paths
+      self.sc!
+    else
+      raise RuntimeError.new("unrecognized server type: #{server_type.to_s}")
+    end
   end
 
   def create_paths
