@@ -32,13 +32,11 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal(File.join(@@basedir, 'servers/test'), inst.env[:cwd])
     assert_equal(File.join(@@basedir, 'backup/test'), inst.env[:bwd])
     assert_equal(File.join(@@basedir, 'archive/test'), inst.env[:awd])
-  end
 
-  test "second live directory" do
-    inst = Server.new(name: 'test2')
-    assert_equal(File.join(@@basedir, 'servers/test2'), inst.env[:cwd])
-    assert_equal(File.join(@@basedir, 'backup/test2'), inst.env[:bwd])
-    assert_equal(File.join(@@basedir, 'archive/test2'), inst.env[:awd])
+    inst2 = Server.new(name: 'test2')
+    assert_equal(File.join(@@basedir, 'servers/test2'), inst2.env[:cwd])
+    assert_equal(File.join(@@basedir, 'backup/test2'), inst2.env[:bwd])
+    assert_equal(File.join(@@basedir, 'archive/test2'), inst2.env[:awd])
   end
 
   test "create server paths" do
@@ -256,7 +254,6 @@ class ServerTest < ActiveSupport::TestCase
     inst.modify_sc('java_xms', 0, 'java')
     assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms1024M', '-Xmn256M', '-jar', 'mc.jar', 'dostuff' ],
                  inst.get_jar_args(:conventional_jar))
-
   end
 
   test "java jar start args-unconventional" do
@@ -409,7 +406,6 @@ class ServerTest < ActiveSupport::TestCase
       end
     rescue Errno::ESRCH
     end  
-
   end
 
   test "send text to downed server" do
@@ -445,7 +441,6 @@ class ServerTest < ActiveSupport::TestCase
       end
     rescue Errno::ESRCH
     end  
-
   end
 
   test "pid" do
@@ -475,6 +470,5 @@ class ServerTest < ActiveSupport::TestCase
     end
 
     assert(inst.pid.nil?)
-
   end
 end
