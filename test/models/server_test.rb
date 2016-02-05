@@ -241,58 +241,58 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
     #missing jarfile <-- , xmx
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:conventional_jar) }
     assert_equal('no runnable jarfile selected', ex.message)
 
     #missing xmx
     inst.modify_sc('jarfile', 'mc.jar', 'java')
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:conventional_jar) }
     assert_equal('missing java argument: Xmx', ex.message)
 
     #string as xmx
     inst.modify_sc('java_xmx', 'hello', 'java')
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:conventional_jar) }
     assert_equal('invalid java argument: Xmx must be an integer > 0', ex.message)
 
     #string as xms
     inst.modify_sc('java_xmx', 128, 'java')
     inst.modify_sc('java_xms', 'hello', 'java')
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:conventional_jar) }
     assert_equal('invalid java argument: Xms must be unset or an integer > 0', ex.message)
 
     #invalid xmx
     inst.modify_sc('java_xmx', 0, 'java')
     inst.modify_sc('java_xms', 0, 'java')
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:conventional_jar) }
     assert_equal('invalid java argument: Xmx must be an integer > 0', ex.message)
 
     inst.modify_sc('java_xmx', 1024, 'java')
     assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms1024M', '-jar', 'mc.jar', 'nogui' ],
-                 inst.get_jar_args(:conventional_jar))
+                 inst.get_start_args(:conventional_jar))
 
     inst.modify_sc('java_xms', 768, 'java')
     assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms768M', '-jar', 'mc.jar', 'nogui' ],
-                 inst.get_jar_args(:conventional_jar))
+                 inst.get_start_args(:conventional_jar))
 
     inst.modify_sc('java_tweaks', '-Xmn256M', 'java')
     assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms768M', '-Xmn256M', '-jar', 'mc.jar', 'nogui' ],
-                 inst.get_jar_args(:conventional_jar))
+                 inst.get_start_args(:conventional_jar))
 
     inst.modify_sc('jar_args', 'dostuff', 'java')
     assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms768M', '-Xmn256M', '-jar', 'mc.jar', 'dostuff' ],
-                 inst.get_jar_args(:conventional_jar))
+                 inst.get_start_args(:conventional_jar))
 
     #xmx < xms
     inst.modify_sc('java_xmx', 256, 'java')
     inst.modify_sc('java_xms', 768, 'java')
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:conventional_jar) }
     assert_equal('invalid java argument: Xmx must be > Xms', ex.message)
 
     #xms == 0
     inst.modify_sc('java_xmx', 1024, 'java')
     inst.modify_sc('java_xms', 0, 'java')
     assert_equal(['/usr/bin/java', '-server', '-Xmx1024M', '-Xms1024M', '-Xmn256M', '-jar', 'mc.jar', 'dostuff' ],
-                 inst.get_jar_args(:conventional_jar))
+                 inst.get_start_args(:conventional_jar))
   end
 
   def test_java_jar_start_args_unconventional
@@ -300,56 +300,56 @@ class ServerTest < Minitest::Test
     inst.create_paths
 
     #missing jarfile
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:unconventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:unconventional_jar) }
     assert_equal('no runnable jarfile selected', ex.message)
 
     #invalid xmx
     inst.modify_sc('jarfile', 'mc.jar', 'java')
     inst.modify_sc('java_xmx', -1024, 'java')
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:unconventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:unconventional_jar) }
     assert_equal('invalid java argument: Xmx must be unset or > 0', ex.message)
 
     #invalid xms
     inst.modify_sc('java_xmx', 1024, 'java')
     inst.modify_sc('java_xms', -1024, 'java')
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:unconventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:unconventional_jar) }
     assert_equal('invalid java argument: Xms must be unset or > 0', ex.message)
 
     inst.modify_sc('java_xmx', 0, 'java')
     inst.modify_sc('java_xms', 0, 'java')
     inst.modify_sc('java_tweaks', '-Xmn256M', 'java')
     assert_equal(['/usr/bin/java', '-server', '-Xmn256M', '-jar', 'mc.jar' ],
-                 inst.get_jar_args(:unconventional_jar))
+                 inst.get_start_args(:unconventional_jar))
 
     inst.modify_sc('java_xmx', 256, 'java')
     assert_equal(['/usr/bin/java', '-server', '-Xmx256M', '-Xmn256M', '-jar', 'mc.jar' ],
-                 inst.get_jar_args(:unconventional_jar))
+                 inst.get_start_args(:unconventional_jar))
 
     inst.modify_sc('jar_args', 'dostuff', 'java')
     assert_equal(['/usr/bin/java', '-server', '-Xmx256M', '-Xmn256M', '-jar', 'mc.jar', 'dostuff' ],
-                 inst.get_jar_args(:unconventional_jar))
+                 inst.get_start_args(:unconventional_jar))
 
     #string as xmx
     inst.modify_sc('java_xmx', 'hello', 'java')
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:unconventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:unconventional_jar) }
     assert_equal('invalid java argument: Xmx must be unset or an integer > 0', ex.message)
 
     #string as xms
     inst.modify_sc('java_xmx', 0, 'java')
     inst.modify_sc('java_xms', 'hello', 'java')
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:unconventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:unconventional_jar) }
     assert_equal('invalid java argument: Xms must be unset or an integer > 0', ex.message)
 
     #set xms, unset xmx
     inst.modify_sc('java_xmx', 0, 'java')
     inst.modify_sc('java_xms', 256, 'java')
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:unconventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:unconventional_jar) }
     assert_equal('invalid java argument: Xms may not be set without Xmx', ex.message)
 
     #xms > xmx
     inst.modify_sc('java_xmx', 128, 'java')
     inst.modify_sc('java_xms', 256, 'java')
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:unconventional_jar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:unconventional_jar) }
     assert_equal('invalid java argument: Xmx may not be lower than Xms', ex.message)
   end
 
@@ -358,33 +358,33 @@ class ServerTest < Minitest::Test
     inst.create_paths
 
     #missing pharfile
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:phar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:phar) }
     assert_equal('no runnable pharfile selected', ex.message)
 
     #fallback for backward compat with previous webuis
     inst.modify_sc('jarfile', 'pocket.phar', 'java')
-    assert_equal(['/usr/bin/php', 'pocket.phar'], inst.get_jar_args(:phar))
+    assert_equal(['/usr/bin/php', 'pocket.phar'], inst.get_start_args(:phar))
 
     #existence of [nonjava][executable] will override
     inst.modify_sc('executable', 'pocketmine.phar', 'nonjava')
-    assert_equal(['/usr/bin/php', 'pocketmine.phar'], inst.get_jar_args(:phar))
+    assert_equal(['/usr/bin/php', 'pocketmine.phar'], inst.get_start_args(:phar))
 
     #empty executable should fallback
     inst.modify_sc('executable', '', 'nonjava')
-    assert_equal(['/usr/bin/php', 'pocket.phar'], inst.get_jar_args(:phar))
+    assert_equal(['/usr/bin/php', 'pocket.phar'], inst.get_start_args(:phar))
 
     #empty jarfile should error out
     inst.modify_sc('jarfile', '', 'java')
-    ex = assert_raises(RuntimeError) { inst.get_jar_args(:phar) }
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:phar) }
     assert_equal('no runnable pharfile selected', ex.message)
   end
 
   def test_unrecognized_get_start_args_request
     inst = Server.new('test') 
-    ex = assert_raises(NotImplementedError) { inst.get_jar_args(:bogus) }
-    assert_equal('unrecognized get_jar_args argument: bogus', ex.message)
-    ex = assert_raises(NotImplementedError) { inst.get_jar_args(:more_bogus) }
-    assert_equal('unrecognized get_jar_args argument: more_bogus', ex.message)
+    ex = assert_raises(NotImplementedError) { inst.get_start_args(:bogus) }
+    assert_equal('unrecognized get_start_args argument: bogus', ex.message)
+    ex = assert_raises(NotImplementedError) { inst.get_start_args(:more_bogus) }
+    assert_equal('unrecognized get_start_args argument: more_bogus', ex.message)
   end
 
   def test_server_start

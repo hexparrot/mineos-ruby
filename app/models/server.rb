@@ -145,7 +145,7 @@ class Server
     return self.sp!
   end
 
-  def get_jar_args(type)
+  def get_start_args(type)
     require 'mkmf'
     args = {}
     retval = []
@@ -208,7 +208,7 @@ class Server
           raise RuntimeError.new('no runnable pharfile selected')
         end
       else
-        raise NotImplementedError.new("unrecognized get_jar_args argument: #{type.to_s}")
+        raise NotImplementedError.new("unrecognized get_start_args argument: #{type.to_s}")
     end
 
     return retval
@@ -218,7 +218,7 @@ class Server
     raise RuntimeError.new('server is already running') if self.pid
     require('open3')
 
-    @start_args = self.get_jar_args(:conventional_jar)
+    @start_args = self.get_start_args(:conventional_jar)
     stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
     @pipes = {:stdin => stdin, :stdout => stdout, :stderr => stderr}
     @pid = wait_thr[:pid]
