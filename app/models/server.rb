@@ -1,14 +1,14 @@
-class Server < ActiveRecord::Base
-  attr_reader :env, :pipes, :server_type
+class Server
+  attr_reader :name, :env, :pipes, :server_type
 
-  after_initialize :check_servername, :set_env
+  def initialize(name)
+    raise RuntimeError if !self.valid_servername(name)
+    @name = name
+    self.set_env
+  end
 
   def valid_servername(name)
     return name.match(/^(?!\.)[a-zA-Z0-9_\.]+$/)
-  end
-
-  def check_servername
-    raise RuntimeError if !self.valid_servername(self.name)
   end
 
   def set_env

@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class ServerTest < ActiveSupport::TestCase
+class ServerTest < Minitest::Test
 
   def setup
     @@basedir = '/var/games/minecraft'
@@ -12,35 +12,35 @@ class ServerTest < ActiveSupport::TestCase
     FileUtils.mkdir_p(File.join(@@basedir, 'archive'))
   end
 
-  test "name setter" do
-    inst = Server.new(name: 'test')
+  def test_name
+    inst = Server.new('test')
     assert(inst.name, 'test')
   end
 
-  test "server name is valid" do
+  def test_server_name_is_valid
     ['test', 'asdf1234', 'hello_is_it_me', '1.7.10'].each do |name|
-      inst = Server.new(name: name)
+      inst = Server.new(name)
       assert_equal(name, inst.name)
     end
     ['.test', '#test', '?test', '!test', 'server\'s', 'test^again', 'Vanilla-1.8.9', 'feed me'].each do |name|
-      assert_raises(RuntimeError) { inst = Server.new(name: name) }
+      assert_raises(RuntimeError) { inst = Server.new(name) }
     end
   end
 
-  test "live directory" do
-    inst = Server.new(name: 'test')
+  def test_live_directory
+    inst = Server.new('test')
     assert_equal(File.join(@@basedir, 'servers/test'), inst.env[:cwd])
     assert_equal(File.join(@@basedir, 'backup/test'), inst.env[:bwd])
     assert_equal(File.join(@@basedir, 'archive/test'), inst.env[:awd])
 
-    inst2 = Server.new(name: 'test2')
+    inst2 = Server.new('test2')
     assert_equal(File.join(@@basedir, 'servers/test2'), inst2.env[:cwd])
     assert_equal(File.join(@@basedir, 'backup/test2'), inst2.env[:bwd])
     assert_equal(File.join(@@basedir, 'archive/test2'), inst2.env[:awd])
   end
 
-  test "create server paths" do
-    inst = Server.new(name: 'test')
+  def test_create_server_paths
+    inst = Server.new('test')
     assert !Dir.exist?(inst.env[:cwd])
     assert !Dir.exist?(inst.env[:bwd])
     assert !Dir.exist?(inst.env[:awd])
@@ -50,8 +50,8 @@ class ServerTest < ActiveSupport::TestCase
     assert Dir.exist?(inst.env[:awd])
   end
 
-  test "create only missing server paths" do
-    inst = Server.new(name: 'test')
+  def test_create_only_missing_server_paths
+    inst = Server.new('test')
     Dir.mkdir inst.env[:cwd]
     Dir.mkdir inst.env[:bwd]
     assert !Dir.exist?(inst.env[:awd])
@@ -61,15 +61,15 @@ class ServerTest < ActiveSupport::TestCase
     assert Dir.exist?(inst.env[:awd])
   end
 
-  test "delete server" do
-    inst = Server.new(name: 'test')
+  def test_delete_server
+    inst = Server.new('test')
     inst.create(:conventional_jar)
     inst.delete
     assert !Dir.exist?(inst.env[:cwd])
     assert !Dir.exist?(inst.env[:bwd])
     assert !Dir.exist?(inst.env[:awd])
 
-    inst = Server.new(name: 'test2')
+    inst = Server.new('test2')
     inst.create(:conventional_jar)
 
     inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
@@ -100,8 +100,8 @@ class ServerTest < ActiveSupport::TestCase
     assert !Dir.exist?(inst.env[:awd])
   end
 
-  test "create server.config" do
-    inst = Server.new(name: 'test')
+  def test_create_server_config
+    inst = Server.new('test')
     inst.create_paths
     assert !File.exist?(inst.env[:sc])
     inst.sc
@@ -110,8 +110,8 @@ class ServerTest < ActiveSupport::TestCase
     assert File.exist?(inst.env[:sc])
   end
 
-  test "modify attr from sc" do
-    inst = Server.new(name: 'test')
+  def test_modify_attr_from_sc
+    inst = Server.new('test')
     inst.create_paths
     assert_equal({}, inst.sc)
     inst.modify_sc('java_xmx', 256, 'java')
@@ -130,15 +130,15 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal(false, sc['onreboot']['start'])
   end
 
-  test "modify sc without creating first" do
-    inst = Server.new(name: 'test')
+  def test_modify_sc_without_creating_first
+    inst = Server.new('test')
     inst.create_paths
     inst.modify_sc('java_xmx', 256, 'java')
     assert_equal(256, inst.sc['java']['java_xmx'])
   end
 
-  test "delete server paths" do
-    inst = Server.new(name: 'test')
+  def test_delete_server_paths
+    inst = Server.new('test')
     inst.create_paths
     inst.delete_paths
     assert !Dir.exist?(inst.env[:cwd])
@@ -146,20 +146,20 @@ class ServerTest < ActiveSupport::TestCase
     assert !Dir.exist?(inst.env[:awd])
   end
 
-  test "check eula state" do
+  def test_check_eula_state
     require('fileutils')
 
-    inst = Server.new(name: 'test')
+    inst = Server.new('test')
     inst.create_paths
     eula_path = File.expand_path("lib/assets/eula.txt", Dir.pwd)
     FileUtils.cp(eula_path, inst.env[:cwd])
     assert_equal(false, inst.eula)
   end
 
-  test "change eula state" do
+  def test_change_eula_state
     require('fileutils')
 
-    inst = Server.new(name: 'test')
+    inst = Server.new('test')
     inst.create_paths
     eula_path = File.expand_path("lib/assets/eula.txt", Dir.pwd)
     FileUtils.cp(eula_path, inst.env[:cwd])
@@ -168,8 +168,8 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal(true, inst.eula)
   end
 
-  test "create server.properties" do
-    inst = Server.new(name: 'test')
+  def test_create_server_properties
+    inst = Server.new('test')
     inst.create_paths
     assert !File.exist?(inst.env[:sp])
     inst.sp
@@ -179,10 +179,10 @@ class ServerTest < ActiveSupport::TestCase
   end
 
 
-  test "read server.properties" do
+  def test_read_server_properties
     require('fileutils')
 
-    inst = Server.new(name: 'test')
+    inst = Server.new('test')
     inst.create_paths
     sp_path = File.expand_path("lib/assets/server.properties", Dir.pwd)
     FileUtils.cp(sp_path, inst.env[:cwd])
@@ -193,10 +193,10 @@ class ServerTest < ActiveSupport::TestCase
     assert !inst.sp['enable-query']
   end
 
-  test "modify server.properties" do
+  def test_modify_server_properties
     require('fileutils')
 
-    inst = Server.new(name: 'test')
+    inst = Server.new('test')
     inst.create_paths
     sp_path = File.expand_path("lib/assets/server.properties", Dir.pwd)
     FileUtils.cp(sp_path, inst.env[:cwd])
@@ -219,8 +219,8 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal(true, sp['do-awesomeness'])
   end
 
-  test "overlay properties onto server.properties" do
-    inst = Server.new(name: 'test')
+  def test_overlay_properties_onto_server_properties
+    inst = Server.new('test')
     inst.create_paths
 
     inst.overlay_sp({ 'server-port' => 25565,
@@ -237,8 +237,8 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal(false, sp['enable-query'])
   end
 
-  test "java jar start args-conventional" do
-    inst = Server.new(name: 'test')
+  def test_java_jar_start_args_conventional
+    inst = Server.new('test')
     inst.create_paths
     #missing jarfile <-- , xmx
     ex = assert_raises(RuntimeError) { inst.get_jar_args(:conventional_jar) }
@@ -295,8 +295,8 @@ class ServerTest < ActiveSupport::TestCase
                  inst.get_jar_args(:conventional_jar))
   end
 
-  test "java jar start args-unconventional" do
-    inst = Server.new(name: 'test')
+  def test_java_jar_start_args_unconventional
+    inst = Server.new('test')
     inst.create_paths
 
     #missing jarfile
@@ -353,8 +353,8 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal('invalid java argument: Xmx may not be lower than Xms', ex.message)
   end
 
-  test "php phar start args" do
-    inst = Server.new(name: 'test') 
+  def test_php_phar_start_args
+    inst = Server.new('test') 
     inst.create_paths
 
     #missing pharfile
@@ -379,16 +379,16 @@ class ServerTest < ActiveSupport::TestCase
     assert_equal('no runnable pharfile selected', ex.message)
   end
 
-  test "unrecognized get_start_args request" do
-    inst = Server.new(name: 'test') 
+  def test_unrecognized_get_start_args_request
+    inst = Server.new('test') 
     ex = assert_raises(NotImplementedError) { inst.get_jar_args(:bogus) }
     assert_equal('unrecognized get_jar_args argument: bogus', ex.message)
     ex = assert_raises(NotImplementedError) { inst.get_jar_args(:more_bogus) }
     assert_equal('unrecognized get_jar_args argument: more_bogus', ex.message)
   end
 
-  test "server start" do
-    inst = Server.new(name: 'test')
+  def test_server_start
+    inst = Server.new('test')
     inst.create_paths
 
     jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
@@ -414,8 +414,8 @@ class ServerTest < ActiveSupport::TestCase
     end  
   end
 
-  test "start server when already running" do
-    inst = Server.new(name: 'test')
+  def test_start_server_when_already_running
+    inst = Server.new('test')
     inst.create_paths
 
     jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
@@ -440,8 +440,8 @@ class ServerTest < ActiveSupport::TestCase
     end
   end
 
-  test "send text to server console" do
-    inst = Server.new(name: 'test')
+  def test_send_test_to_server_console
+    inst = Server.new('test')
     inst.create_paths
 
     jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
@@ -473,14 +473,14 @@ class ServerTest < ActiveSupport::TestCase
     end  
   end
 
-  test "send text to downed server" do
-    inst = Server.new(name: 'test')
+  def test_send_text_to_downed_server
+    inst = Server.new('test')
     ex = assert_raises(IOError) { inst.console('hello') }
     assert_equal('I/O channel is down', ex.message)
   end
 
-  test "memory checks" do
-    inst = Server.new(name: 'test')
+  def test_memory_checks
+    inst = Server.new('test')
     inst.create_paths
 
     jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
@@ -508,8 +508,8 @@ class ServerTest < ActiveSupport::TestCase
     end  
   end
 
-  test "pid" do
-    inst = Server.new(name: 'test')
+  def test_pid
+    inst = Server.new('test')
     inst.create_paths
 
     jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
@@ -537,8 +537,8 @@ class ServerTest < ActiveSupport::TestCase
     assert(inst.pid.nil?)
   end
 
-  test "create server via convenience method" do
-    inst = Server.new(name: 'test')
+  def test_create_server_via_convenience_method
+    inst = Server.new('test')
     inst.create(:conventional_jar)
 
     assert_equal(:conventional_jar, inst.server_type)
@@ -548,7 +548,7 @@ class ServerTest < ActiveSupport::TestCase
     assert File.exist?(inst.env[:sp])
     assert File.exist?(inst.env[:sc])
 
-    inst = Server.new(name: 'test2')
+    inst = Server.new('test2')
     inst.create(:unconventional_jar)
     assert_equal(:unconventional_jar, inst.server_type)
     assert Dir.exist?(inst.env[:cwd])
@@ -557,7 +557,7 @@ class ServerTest < ActiveSupport::TestCase
     assert !File.exist?(inst.env[:sp])
     assert File.exist?(inst.env[:sc])
     
-    inst = Server.new(name: 'test3')
+    inst = Server.new('test3')
     inst.create(:phar)
     assert_equal(:phar, inst.server_type)
     assert Dir.exist?(inst.env[:cwd])
@@ -566,11 +566,11 @@ class ServerTest < ActiveSupport::TestCase
     assert !File.exist?(inst.env[:sp])
     assert File.exist?(inst.env[:sc])
 
-    inst = Server.new(name: 'test4')
+    inst = Server.new('test4')
     ex = assert_raises(RuntimeError) { inst.create(:bogus) }
     assert_equal('unrecognized server type: bogus', ex.message)
     
-    inst = Server.new(name: 'test5')
+    inst = Server.new('test5')
     ex = assert_raises(RuntimeError) { inst.create(:bogus_again) }
     assert_equal('unrecognized server type: bogus_again', ex.message)
   end
