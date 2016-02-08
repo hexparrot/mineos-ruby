@@ -256,5 +256,16 @@ class Server
       return {:kb => 0.0, :mb => 0.0, :gb => 0.0}
     end
   end
+
+  def archive
+    require('shellwords')
+    require('zlib')
+    require('archive/tar/minitar')
+
+    fn = "#{self.name}_#{Time.now.strftime('%F_%R:%S')}.tgz"
+    fp = File.join(@env[:awd], fn)
+    system("tar --force-local -czf #{fp} .", {:chdir => @env[:cwd]})
+    return fn
+  end
   
 end

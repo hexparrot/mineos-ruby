@@ -574,4 +574,36 @@ class ServerTest < Minitest::Test
     ex = assert_raises(RuntimeError) { inst.create(:bogus_again) }
     assert_equal('unrecognized server type: bogus_again', ex.message)
   end
+
+  def test_archive
+    inst = Server.new('test')
+    inst.create(:conventional_jar)
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+
+    fn = inst.archive
+    fp = File.join(inst.env[:awd], fn)
+    assert(File.exist?(fp))
+    assert(fn.start_with?("test_"))
+    assert(fn.end_with?(".tgz"))
+
+    require('zlib')
+    require('archive/tar/minitar')
+
+    found_files = []
+
+    tgz = Zlib::GzipReader.new(File.open(fp, 'rb'))
+    reader = Archive::Tar::Minitar::Reader.new(tgz)
+    reader.each_entry do |file|
+      found_files << file.full_name
+    end
+    reader.close
+    tgz.close
+
+    assert_equal(found_files.length, 3)
+    assert_equal(found_files - ['./', './server.config', './server.properties'], [])
+  end
+
 end
