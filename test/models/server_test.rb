@@ -606,4 +606,30 @@ class ServerTest < Minitest::Test
     assert_equal(found_files - ['./', './server.config', './server.properties'], [])
   end
 
+  def test_create_from_archive
+    inst = Server.new('test')
+    inst.create(:conventional_jar)
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.archive
+    inst.modify_sc('java_xmx', 512, 'java')
+
+    created = ""
+    Dir.foreach(inst.env[:awd]) { |file| created = file if !file.start_with?('.') }
+    second_inst = Server.new('test_copy')
+    fp = File.join(inst.env[:awd], created)
+    second_inst.create_from_archive(fp)
+
+    assert_equal(Dir.entries(inst.env[:cwd]) - Dir.entries(second_inst.env[:cwd]), [])
+    assert_equal('minecraft_server.1.8.9.jar', second_inst.sc['java']['jarfile'])
+    assert_equal(384, second_inst.sc['java']['java_xmx'])
+
+    #should fail because existing server.config present
+    assert_raises(RuntimeError) { second_inst.create_from_archive(fp) }
+
+    third_inst = Server.new('zing')
+    third_inst.create(:conventional_jar)
+    assert_raises(RuntimeError) { second_inst.create_from_archive(fp) }  
+  end
+
 end

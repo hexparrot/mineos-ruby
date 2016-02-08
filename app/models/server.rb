@@ -268,4 +268,9 @@ class Server
     return fn
   end
   
+  def create_from_archive(filepath)
+    self.create_paths
+    raise RuntimeError if Dir.entries(@env[:cwd]).include?('server.config')
+    a = system("tar --force-local -xf #{filepath}", {:chdir => @env[:cwd]})
+  end
 end
