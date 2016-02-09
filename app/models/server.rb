@@ -282,5 +282,5 @@ class Server
     raise RuntimeError.new('cannot restore server while it is running') if @pid
     system("rdiff-backup --restore-as-of #{steps} --force #{@env[:bwd]} #{@env[:cwd]}", {:chdir => @env[:bwd]})
   end
-r
+
 end
