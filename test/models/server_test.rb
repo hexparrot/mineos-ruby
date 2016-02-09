@@ -630,7 +630,7 @@ class ServerTest < Minitest::Test
 
     third_inst = Server.new('zing')
     third_inst.create(:conventional_jar)
-    ex = assert_raises(RuntimeError) { third_inst.create_from_archive(fp) }  
+    ex = assert_raises(RuntimeError) { third_inst.create_from_archive(fp) }
     assert_equal('cannot extract archive over existing server', ex.message)
   end
 
@@ -701,6 +701,5 @@ class ServerTest < Minitest::Test
       end
     rescue Errno::ESRCH
     end
-
   end
 end
