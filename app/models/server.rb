@@ -270,8 +270,8 @@ class Server
   
   def create_from_archive(filepath)
     self.create_paths
-    raise RuntimeError if Dir.entries(@env[:cwd]).include?('server.config')
-    a = system("tar --force-local -xf #{filepath}", {:chdir => @env[:cwd]})
+    raise RuntimeError.new('cannot extract archive over existing server') if Dir.entries(@env[:cwd]).include?('server.config')
+    system("tar --force-local -xf #{filepath}", {:chdir => @env[:cwd]})
   end
 
   def backup
@@ -281,6 +281,5 @@ class Server
   def restore(steps)
     raise RuntimeError.new('cannot restore server while it is running') if @pid
     system("rdiff-backup --restore-as-of #{steps} --force #{@env[:bwd]} #{@env[:cwd]}", {:chdir => @env[:bwd]})
-    
   end
 end

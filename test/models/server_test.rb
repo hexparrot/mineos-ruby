@@ -624,13 +624,14 @@ class ServerTest < Minitest::Test
     assert_equal('minecraft_server.1.8.9.jar', second_inst.sc['java']['jarfile'])
     assert_equal(384, second_inst.sc['java']['java_xmx'])
 
-    #should fail because existing server.config present
-    assert_raises(RuntimeError) { second_inst.create_from_archive(fp) }
+    #should fail because existing server.config created and present
+    ex = assert_raises(RuntimeError) { second_inst.create_from_archive(fp) }
+    assert_equal('cannot extract archive over existing server', ex.message)
 
     third_inst = Server.new('zing')
     third_inst.create(:conventional_jar)
-    #should also fail, despite having nothing but barebones files
-    assert_raises(RuntimeError) { third_inst.create_from_archive(fp) }  
+    ex = assert_raises(RuntimeError) { third_inst.create_from_archive(fp) }  
+    assert_equal('cannot extract archive over existing server', ex.message)
   end
 
   def test_backup
