@@ -273,4 +273,14 @@ class Server
     raise RuntimeError if Dir.entries(@env[:cwd]).include?('server.config')
     a = system("tar --force-local -xf #{filepath}", {:chdir => @env[:cwd]})
   end
+
+  def backup
+    system("rdiff-backup #{@env[:cwd] + '/'} #{@env[:bwd]}", {:chdir => @env[:bwd]})    
+  end
+
+  def restore(steps)
+    raise RuntimeError.new('cannot restore server while it is running') if @pid
+    system("rdiff-backup --restore-as-of #{steps} --force #{@env[:bwd]} #{@env[:cwd]}", {:chdir => @env[:bwd]})
+    
+  end
 end

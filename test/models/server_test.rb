@@ -629,7 +629,77 @@ class ServerTest < Minitest::Test
 
     third_inst = Server.new('zing')
     third_inst.create(:conventional_jar)
-    assert_raises(RuntimeError) { second_inst.create_from_archive(fp) }  
+    #should also fail, despite having nothing but barebones files
+    assert_raises(RuntimeError) { third_inst.create_from_archive(fp) }  
   end
 
+  def test_backup
+    inst = Server.new('test')
+    inst.create(:conventional_jar)
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.backup
+
+    assert_equal(['rdiff-backup-data'], Dir.entries(inst.env[:bwd]) - Dir.entries(inst.env[:cwd]))
+  end
+
+  def test_restore
+    inst = Server.new('test')
+    inst.create(:conventional_jar)
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.backup
+
+    inst.modify_sc('java_xmx', 1024, 'java')
+    sleep(1.2)
+    inst.backup
+    assert_equal(1024, inst.sc['java']['java_xmx'])
+
+    inst.restore('1B')
+    #current implementation makes outside changes to sc not recognized until re-loaded.
+    #re-instantiation isn't good, and should be removed in the future
+    inst = Server.new('test')
+    assert_equal(384, inst.sc['java']['java_xmx'])
+
+    inst.restore('5B')
+    inst = Server.new('test')
+    assert_equal(384, inst.sc['java']['java_xmx'])
+
+    inst.restore('0B')
+    inst = Server.new('test')
+    assert_equal(1024, inst.sc['java']['java_xmx'])
+  end
+
+  def test_restore_while_server_running
+    inst = Server.new('test')
+    inst.create(:conventional_jar)
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.modify_sc('java_xms', 384, 'java')
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.backup
+
+    pid = inst.start
+    ex = assert_raises(RuntimeError) { inst.restore('1B') }
+    assert_equal('cannot restore server while it is running', ex.message)
+
+    begin
+      #Process.kill returns 1 if running
+      while Process.kill(0, pid) do
+        sleep(0.5) #works only because process self-exits with eula=false
+      end
+    rescue Errno::ESRCH
+    end
+
+  end
 end
