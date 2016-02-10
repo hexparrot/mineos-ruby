@@ -670,4 +670,26 @@ class ServerTest < Minitest::Test
     assert(inst.status[:done].match(/\[Server thread\/INFO\]: Done/))
     assert(inst.status[:stopping].include?('Stopping server'))
   end
+
+  def test_stop
+    inst = Server.new('test')
+    inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+    inst.accept_eula
+
+    ex = assert_raises(RuntimeError) { inst.stop }
+    assert_equal('cannot stop server while it is stopped', ex.message)
+
+    pid = inst.start
+
+    nil until inst.status[:done]
+    inst.stop
+    assert(!@pid)
+  end
 end

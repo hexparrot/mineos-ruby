@@ -218,8 +218,9 @@ class Server
     @start_args = self.get_start_args(:conventional_jar)
     @stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
 
-    @thread_pipe_to_queue = Thread.new {
+    @stdout_parser = Thread.new {
       while line=stdout.gets do
+        puts line
         case line
         when /\[Server thread\/INFO\]: Starting minecraft server version/
           @status[:version] = line
@@ -239,6 +240,17 @@ class Server
     @pid = wait_thr[:pid]
 
     return @pid
+  end
+
+  def stop
+    if self.pid
+      self.console('stop')
+      nil until !self.pid
+      @stdout_parser.exit
+      nil until @stdout_parser.status == false
+    else
+      raise RuntimeError.new('cannot stop server while it is stopped')
+    end
   end
 
   def pid
