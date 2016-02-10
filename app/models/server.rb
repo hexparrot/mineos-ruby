@@ -220,7 +220,6 @@ class Server
 
     @stdout_parser = Thread.new {
       while line=stdout.gets do
-        puts line
         case line
         when /\[Server thread\/INFO\]: Starting minecraft server version/
           @status[:version] = line
@@ -234,12 +233,28 @@ class Server
           @status[:done] = line
         when /\[Server thread\/INFO\]: Stopping server/
           @status[:stopping] = line
+        when /\[Server thread\/WARN\]: Failed to load eula.txt/
+          @status[:eula] = line
+        when /\[Server thread\/WARN\]: [^F]+ FAILED TO BIND TO PORT/
+          @status[:bind] = line
         end
       end
     }
     @pid = wait_thr[:pid]
 
     return @pid
+  end
+
+  def start_catch_errors
+    pid = self.start
+    sleep(10)
+    raise RuntimeError.new('you need to agree to the eula in order to run the server') if @status[:eula]
+    raise RuntimeError.new('server port is already in use') if @status[:bind]
+    if @status[:bind] || @status[:eula]
+      nil while self.pid
+    else
+      return pid
+    end
   end
 
   def stop

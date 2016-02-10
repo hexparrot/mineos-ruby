@@ -692,4 +692,58 @@ class ServerTest < Minitest::Test
     inst.stop
     assert(!@pid)
   end
+
+  def test_catch_eula_failure
+    inst = Server.new('test')
+    inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+
+    ex = assert_raises(RuntimeError) { inst.start_catch_errors }
+    assert_equal('you need to agree to the eula in order to run the server', ex.message)
+
+    nil until !inst.pid
+    assert(inst.status[:eula].include?('Failed to load eula.txt'))
+  end
+
+  def test_catch_bind_issue
+    inst = Server.new('test')
+    inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 256, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+    inst.accept_eula
+    pid = inst.start
+    assert(pid.is_a?(Integer))
+
+    nil until inst.status[:done]
+
+    second_inst = Server.new('test')
+    second_inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, second_inst.env[:cwd])
+
+    second_inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    second_inst.modify_sc('java_xmx', 256, 'java')
+    second_inst.modify_sc('java_xms', 256, 'java')
+    second_inst.accept_eula
+
+    ex = assert_raises(RuntimeError) { second_inst.start_catch_errors }
+    assert_equal('server port is already in use', ex.message)
+
+    nil until !second_inst.pid
+    assert(second_inst.status[:bind].include?('FAILED TO BIND TO PORT!'))
+
+    inst.stop
+  end
 end
