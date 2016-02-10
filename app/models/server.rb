@@ -1,9 +1,10 @@
 class Server
-  attr_reader :name, :env, :pipes, :server_type
+  attr_reader :name, :env, :pipes, :server_type, :status
 
   def initialize(name)
     raise RuntimeError if !self.valid_servername(name)
     @name = name
+    @status = {}
     self.set_env
   end
 
@@ -220,6 +221,25 @@ class Server
 
     @start_args = self.get_start_args(:conventional_jar)
     stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+
+    @thread_pipe_to_queue = Thread.new {
+      while line=stdout.gets do
+        case line
+        when /\[Server thread\/INFO\]: Starting minecraft server version/
+          @status[:version] = line
+        when /\[Server thread\/INFO\]: Default game type: SURVIVAL/
+          @status[:type] = line
+        when /\[Server thread\/INFO\]: Starting Minecraft server on/
+          @status[:port] = line
+        when /\[Server thread\/INFO\]: Preparing level/
+          @status[:level] = line
+        when /\[Server thread\/INFO\]: Done/
+          @status[:done] = line
+        when /\[Server thread\/INFO\]: Stopping server/
+          @status[:stopping] = line
+        end
+      end
+    }
     @pipes = {:stdin => stdin, :stdout => stdout, :stderr => stderr}
     @pid = wait_thr[:pid]
 

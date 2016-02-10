@@ -86,13 +86,7 @@ class ServerTest < Minitest::Test
     assert Dir.exist?(inst.env[:bwd])
     assert Dir.exist?(inst.env[:awd])
 
-    begin
-      #Process.kill returns 1 if running
-      while Process.kill(0, pid) do
-        sleep(0.5)
-      end
-    rescue Errno::ESRCH
-    end
+    nil until !inst.pid
 
     inst.delete
     assert !Dir.exist?(inst.env[:cwd])
@@ -399,19 +393,9 @@ class ServerTest < Minitest::Test
     inst.modify_sc('java_xms', 256, 'java')
     pid = inst.start
     
-    assert(inst.pipes[:stdin].is_a?(IO))
-    assert(inst.pipes[:stdout].is_a?(IO))
-    assert(inst.pipes[:stderr].is_a?(IO))
     assert_equal(1, Process.kill(0, pid))
-
-    begin
-      #Process.kill returns 1 if running
-      while Process.kill(0, pid) do
-        sleep(0.5) #works only because process self-exits with eula=false
-      end
-    rescue Errno::ESRCH
-      assert_equal(false, inst.eula)
-    end  
+    nil until !inst.pid
+    assert_equal(false, inst.eula)
   end
 
   def test_start_server_when_already_running
@@ -431,13 +415,7 @@ class ServerTest < Minitest::Test
     ex = assert_raises(RuntimeError) { inst.start }
     assert_equal('server is already running', ex.message)
 
-    begin
-      #Process.kill returns 1 if running
-      while Process.kill(0, pid) do
-        sleep(0.5) #works only because process self-exits with eula=false
-      end
-    rescue Errno::ESRCH
-    end
+    nil until !inst.pid
   end
 
   def test_send_test_to_server_console
@@ -453,24 +431,9 @@ class ServerTest < Minitest::Test
     inst.accept_eula
     pid = inst.start
 
-    loop do
-      content = inst.pipes[:stdout].readline(1024)
-      if content.match(/\[Server thread\/INFO\]: Done/)
-        break
-      end
-    end
-
+    nil until inst.status[:done]
     inst.console('stop')
-    content = inst.pipes[:stdout].readline(1024) #blocks until minecraft initiates stopping
-    assert(content.match(/\[Server thread\/INFO\]: Stopping the server/))
-    
-    begin
-      #Process.kill returns 1 if running
-      while Process.kill(0, pid) do
-        sleep(0.5)
-      end
-    rescue Errno::ESRCH
-    end  
+    nil until !inst.pid
   end
 
   def test_send_text_to_downed_server
@@ -499,13 +462,7 @@ class ServerTest < Minitest::Test
     assert(inst.mem[:mb].is_a?(Float))
     assert(inst.mem[:gb].is_a?(Float))
 
-    begin
-      #Process.kill returns 1 if running
-      while Process.kill(0, pid) do
-        sleep(0.5)
-      end
-    rescue Errno::ESRCH
-    end  
+    nil until !inst.pid
   end
 
   def test_pid
@@ -526,15 +483,7 @@ class ServerTest < Minitest::Test
     assert(pid.is_a?(Integer))
     assert(inst.pid.is_a?(Integer))
 
-    begin
-      #Process.kill returns 1 if running
-      while Process.kill(0, pid) do
-        sleep(0.5)
-      end
-    rescue Errno::ESRCH
-    end
-
-    assert(inst.pid.nil?)
+    nil until !inst.pid
   end
 
   def test_create_server_via_convenience_method
@@ -694,12 +643,31 @@ class ServerTest < Minitest::Test
     ex = assert_raises(RuntimeError) { inst.restore('1B') }
     assert_equal('cannot restore server while it is running', ex.message)
 
-    begin
-      #Process.kill returns 1 if running
-      while Process.kill(0, pid) do
-        sleep(0.5) #works only because process self-exits with eula=false
-      end
-    rescue Errno::ESRCH
-    end
+    nil until !inst.pid
+  end
+
+  def test_parse_stdout
+    inst = Server.new('test')
+    inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+    inst.accept_eula
+    pid = inst.start
+
+    nil until inst.status[:done]
+    inst.console('stop')
+    nil until !inst.pid
+
+    assert(inst.status[:version].include?('1.8.9'))
+    assert(inst.status[:type].include?('SURVIVAL'))
+    assert(inst.status[:port].include?('*:25565'))
+    assert(inst.status[:level].include?('"world"'))
+    assert(inst.status[:done].match(/\[Server thread\/INFO\]: Done/))
+    assert(inst.status[:stopping].include?('Stopping server'))
   end
 end
