@@ -486,6 +486,28 @@ class ServerTest < Minitest::Test
     nil until !inst.pid
   end
 
+  def test_pid_catch_errors
+    inst = Server.new('test')
+    inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    assert(inst.pid.nil?)
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+    inst.accept_eula
+    pid = inst.start_catch_errors
+
+    assert_equal(pid, inst.pid)
+    assert(pid.is_a?(Integer))
+    assert(inst.pid.is_a?(Integer))
+
+    inst.stop
+  end
+
   def test_create_server_via_convenience_method
     inst = Server.new('test')
     inst.create(:conventional_jar)
