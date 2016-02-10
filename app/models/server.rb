@@ -1,5 +1,5 @@
 class Server
-  attr_reader :name, :env, :pipes, :server_type, :status
+  attr_reader :name, :env, :server_type, :status
 
   def initialize(name)
     raise RuntimeError if !self.valid_servername(name)
@@ -21,10 +21,6 @@ class Server
             :sp  => File.join(@@basedir, 'servers', self.name, 'server.properties'),
             :sc  => File.join(@@basedir, 'servers', self.name, 'server.config'),
             :eula => File.join(@@basedir, 'servers', self.name, 'eula.txt')}
-
-    @pipes = {:stdin => IO.pipe,
-              :stdout => IO.pipe,
-              :stderr => IO.pipe}
   end
 
   def create(server_type)
@@ -220,7 +216,7 @@ class Server
     require('open3')
 
     @start_args = self.get_start_args(:conventional_jar)
-    stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+    @stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
 
     @thread_pipe_to_queue = Thread.new {
       while line=stdout.gets do
@@ -240,7 +236,6 @@ class Server
         end
       end
     }
-    @pipes = {:stdin => stdin, :stdout => stdout, :stderr => stderr}
     @pid = wait_thr[:pid]
 
     return @pid
@@ -258,8 +253,8 @@ class Server
   end
 
   def console(text)
-    if @pipes[:stdin].is_a?(IO)
-      @pipes[:stdin] << text + "\n"
+    if @stdin.is_a?(IO)
+      @stdin << text + "\n"
     else
       raise IOError.new('I/O channel is down')
     end
