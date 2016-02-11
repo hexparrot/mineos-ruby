@@ -215,6 +215,7 @@ class Server
     raise RuntimeError.new('server is already running') if self.pid
     require('open3')
 
+    @status = {}
     @start_args = self.get_start_args(:conventional_jar)
     @stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
 
@@ -277,6 +278,19 @@ class Server
     else
       raise RuntimeError.new('cannot stop server while it is stopped')
     end
+  end
+
+  def kill(signal = :sigterm)
+    raise RuntimeError.new('cannot kill server while it is stopped') if !self.pid
+    case signal 
+    when :sigterm
+      Process.kill(15, self.pid)
+    when :sigkill
+      Process.kill(9, self.pid)
+    when :sigint
+      Process.kill(2, self.pid)
+    end
+    nil until !self.pid
   end
 
   def pid

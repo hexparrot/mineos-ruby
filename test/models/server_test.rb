@@ -822,4 +822,40 @@ class ServerTest < Minitest::Test
     ex = assert_raises(RuntimeError) { inst.start_catch_errors({}) }
     assert_equal('timeout must be a positive integer > 0', ex.message)
   end
+
+  def test_kill
+    inst = Server.new('test')
+    inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 256, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+    inst.accept_eula
+
+    ex = assert_raises(RuntimeError) { inst.kill }
+    assert_equal('cannot kill server while it is stopped', ex.message)
+
+    inst.start
+    nil until inst.status[:done]
+    inst.kill #sigterm
+    assert(inst.pid.nil?)
+
+    inst.start
+    nil until inst.status[:done]
+    inst.kill(:sigterm)
+    assert(inst.pid.nil?)
+
+    inst.start
+    nil until inst.status[:done]
+    inst.kill(:sigkill)
+    assert(inst.pid.nil?)
+
+    inst.start
+    nil until inst.status[:done]
+    inst.kill(:sigint)
+    assert(inst.pid.nil?)
+  end
 end
