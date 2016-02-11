@@ -304,6 +304,25 @@ class Server
     @pid
   end
 
+  def sleep_until(state, timeout_secs = 60)
+    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout_secs.is_a?(Fixnum)
+    timeout = 60 || timeout_secs
+    case state
+    when :done
+      until @status.key?(:done) do
+        raise RuntimeError.new('condition not satisfied within 2 seconds') if timeout <= 0
+        sleep(1.0)
+        timeout -= 1
+      end
+    when :down
+      while self.pid do
+        raise RuntimeError.new('condition not satisfied within 2 seconds') if timeout <= 0
+        sleep(1.0)
+        timeout -= 1
+      end
+    end
+  end
+
   def console(text)
     if @stdin.is_a?(IO)
       @stdin << text + "\n"

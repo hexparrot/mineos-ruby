@@ -858,4 +858,53 @@ class ServerTest < Minitest::Test
     inst.kill(:sigint)
     assert(inst.pid.nil?)
   end
+
+  def test_sleep_until
+    inst = Server.new('test')
+    inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 256, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+    inst.accept_eula
+
+    inst.start
+    assert(!inst.status[:done])
+    inst.sleep_until(:done)
+
+    Process.kill(9, inst.pid)
+    inst.sleep_until(:down)
+    assert(!inst.pid)
+    inst.sleep_until(:down)
+
+    ex = assert_raises(RuntimeError) { inst.sleep_until(:down, 'x') }
+    assert_equal('timeout must be a positive integer > 0', ex.message)
+    ex = assert_raises(RuntimeError) { inst.sleep_until(:down, :hello) }
+    assert_equal('timeout must be a positive integer > 0', ex.message)
+    ex = assert_raises(RuntimeError) { inst.sleep_until(:down, []) }
+    assert_equal('timeout must be a positive integer > 0', ex.message)
+    ex = assert_raises(RuntimeError) { inst.sleep_until(:down, 1.0) }
+    assert_equal('timeout must be a positive integer > 0', ex.message)
+    ex = assert_raises(RuntimeError) { inst.sleep_until(:down, {}) }
+    assert_equal('timeout must be a positive integer > 0', ex.message)
+
+    second_inst = Server.new('test_two')
+    second_inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, second_inst.env[:cwd])
+
+    second_inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    second_inst.modify_sc('java_xmx', 256, 'java')
+    second_inst.modify_sc('java_xms', 256, 'java')
+
+    second_inst.start #these should fail because of eula
+    assert(!second_inst.status[:done])
+
+    ex = assert_raises(RuntimeError) { second_inst.sleep_until(:done, 2) }
+    assert_equal('condition not satisfied within 2 seconds', ex.message)
+  end
 end
