@@ -245,11 +245,11 @@ class Server
     return @pid
   end
 
-  def start_catch_errors
-    timeout_secs = 10
+  def start_catch_errors(timeout_secs)
+    timeout = timeout_secs || 10
     pid = self.start
 
-    while timeout_secs > 0 do
+    while timeout > 0 do
       if @status.key?(:eula)
         nil while self.pid
         raise RuntimeError.new('you need to agree to the eula in order to run the server')
@@ -259,9 +259,12 @@ class Server
       elsif @status.key?(:done)
         break
       end
-      timeout_secs -= 1
+      timeout -= 1
       sleep(1.0)
     end
+
+    return :done if @status.key?(:done)
+    return :level if @status.key?(:level)
   end
 
   def stop

@@ -768,4 +768,34 @@ class ServerTest < Minitest::Test
 
     inst.stop
   end
+
+  def test_catch_normal_execution
+    inst = Server.new('test')
+    inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 256, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+    inst.accept_eula
+
+    last_state = inst.start_catch_errors(20)
+    assert_equal(:done, last_state)
+    inst.stop
+
+    second_inst = Server.new('test_two')
+    second_inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, second_inst.env[:cwd])
+
+    second_inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    second_inst.modify_sc('java_xmx', 256, 'java')
+    second_inst.modify_sc('java_xms', 256, 'java')
+    second_inst.accept_eula
+    last_state = second_inst.start_catch_errors(8)
+    assert_equal(:level, last_state)
+  end
 end
