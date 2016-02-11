@@ -246,14 +246,21 @@ class Server
   end
 
   def start_catch_errors
+    timeout_secs = 10
     pid = self.start
-    sleep(10)
-    raise RuntimeError.new('you need to agree to the eula in order to run the server') if @status[:eula]
-    raise RuntimeError.new('server port is already in use') if @status[:bind]
-    if @status[:bind] || @status[:eula]
-      nil while self.pid
-    else
-      return pid
+
+    while timeout_secs > 0 do
+      if @status.key?(:eula)
+        nil while self.pid
+        raise RuntimeError.new('you need to agree to the eula in order to run the server')
+      elsif @status.key?(:bind)
+        nil while self.pid
+        raise RuntimeError.new('server port is already in use')
+      elsif @status.key?(:done)
+        break
+      end
+      timeout_secs -= 1
+      sleep(1.0)
     end
   end
 
