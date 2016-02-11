@@ -107,7 +107,7 @@ class ServerTest < Minitest::Test
   def test_modify_attr_from_sc
     inst = Server.new('test')
     inst.create_paths
-    assert_equal({}, inst.sc)
+    assert_empty(inst.sc)
     inst.modify_sc('java_xmx', 256, 'java')
     assert_equal(256, inst.sc['java']['java_xmx'])
     inst.modify_sc('java_xms', 256, 'java')
@@ -182,7 +182,7 @@ class ServerTest < Minitest::Test
     FileUtils.cp(sp_path, inst.env[:cwd])
 
     assert_equal(25565, inst.sp['server-port'])
-    assert_equal("", inst.sp['server-ip'])
+    assert_empty(inst.sp['server-ip'])
     assert !inst.sp['enable-rcon']
     assert !inst.sp['enable-query']
   end
@@ -458,9 +458,9 @@ class ServerTest < Minitest::Test
     inst.modify_sc('java_xms', 256, 'java')
     pid = inst.start
 
-    assert(inst.mem[:kb].is_a?(Float))
-    assert(inst.mem[:mb].is_a?(Float))
-    assert(inst.mem[:gb].is_a?(Float))
+    assert_instance_of(Float, inst.mem[:kb])
+    assert_instance_of(Float, inst.mem[:mb])
+    assert_instance_of(Float, inst.mem[:gb])
 
     nil until !inst.pid
   end
@@ -480,8 +480,8 @@ class ServerTest < Minitest::Test
     pid = inst.start
 
     assert_equal(pid, inst.pid)
-    assert(pid.is_a?(Integer))
-    assert(inst.pid.is_a?(Integer))
+    assert_instance_of(Fixnum, pid)
+    assert_instance_of(Fixnum, inst.pid)
 
     nil until !inst.pid
   end
@@ -502,8 +502,8 @@ class ServerTest < Minitest::Test
     pid = inst.start_catch_errors
 
     assert_equal(pid, inst.pid)
-    assert(pid.is_a?(Integer))
-    assert(inst.pid.is_a?(Integer))
+    assert_instance_of(Fixnum, pid)
+    assert_instance_of(Fixnum, inst.pid)
 
     inst.stop
   end
@@ -591,7 +591,7 @@ class ServerTest < Minitest::Test
     fp = File.join(inst.env[:awd], created)
     second_inst.create_from_archive(fp)
 
-    assert_equal(Dir.entries(inst.env[:cwd]) - Dir.entries(second_inst.env[:cwd]), [])
+    assert_empty(Dir.entries(inst.env[:cwd]) - Dir.entries(second_inst.env[:cwd]))
     assert_equal('minecraft_server.1.8.9.jar', second_inst.sc['java']['jarfile'])
     assert_equal(384, second_inst.sc['java']['java_xmx'])
 
@@ -745,7 +745,7 @@ class ServerTest < Minitest::Test
     inst.modify_sc('java_xms', 256, 'java')
     inst.accept_eula
     pid = inst.start
-    assert(pid.is_a?(Integer))
+    assert_instance_of(Fixnum, pid)
 
     nil until inst.status[:done]
 
