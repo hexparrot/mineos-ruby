@@ -246,6 +246,7 @@ class Server
   end
 
   def start_catch_errors(timeout_secs)
+    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout_secs.is_a?(Fixnum)
     timeout = timeout_secs || 10
     pid = self.start
 

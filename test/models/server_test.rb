@@ -798,4 +798,28 @@ class ServerTest < Minitest::Test
     last_state = second_inst.start_catch_errors(8)
     assert_equal(:level, last_state)
   end
+
+  def test_catch_bogus_timeout
+    inst = Server.new('test')
+    inst.create_paths
+
+    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('java_xmx', 256, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+    inst.accept_eula
+
+    ex = assert_raises(RuntimeError) { inst.start_catch_errors('x') }
+    assert_equal('timeout must be a positive integer > 0', ex.message)
+    ex = assert_raises(RuntimeError) { inst.start_catch_errors(:hello) }
+    assert_equal('timeout must be a positive integer > 0', ex.message)
+    ex = assert_raises(RuntimeError) { inst.start_catch_errors([]) }
+    assert_equal('timeout must be a positive integer > 0', ex.message)
+    ex = assert_raises(RuntimeError) { inst.start_catch_errors(1.0) }
+    assert_equal('timeout must be a positive integer > 0', ex.message)
+    ex = assert_raises(RuntimeError) { inst.start_catch_errors({}) }
+    assert_equal('timeout must be a positive integer > 0', ex.message)
+  end
 end
