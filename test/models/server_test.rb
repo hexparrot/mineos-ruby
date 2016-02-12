@@ -486,28 +486,6 @@ class ServerTest < Minitest::Test
     nil until !inst.pid
   end
 
-  def test_pid_catch_errors
-    inst = Server.new('test')
-    inst.create_paths
-
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
-    FileUtils.cp(jar_path, inst.env[:cwd])
-
-    assert(inst.pid.nil?)
-
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
-    inst.modify_sc('java_xmx', 384, 'java')
-    inst.modify_sc('java_xms', 256, 'java')
-    inst.accept_eula
-    pid = inst.start_catch_errors
-
-    assert_equal(pid, inst.pid)
-    assert_instance_of(Fixnum, pid)
-    assert_instance_of(Fixnum, inst.pid)
-
-    inst.stop
-  end
-
   def test_create_server_via_convenience_method
     inst = Server.new('test')
     inst.create(:conventional_jar)
@@ -712,7 +690,7 @@ class ServerTest < Minitest::Test
 
     nil until inst.status[:done]
     inst.stop
-    assert(!@pid)
+    assert(!inst.pid)
   end
 
   def test_catch_eula_failure
@@ -766,7 +744,8 @@ class ServerTest < Minitest::Test
     nil until !second_inst.pid
     assert(second_inst.status[:bind].include?('FAILED TO BIND TO PORT!'))
 
-    inst.stop
+    inst.kill
+    nil until !inst.pid
   end
 
   def test_catch_normal_execution
@@ -797,6 +776,9 @@ class ServerTest < Minitest::Test
     second_inst.accept_eula
     last_state = second_inst.start_catch_errors(8)
     assert_equal(:level, last_state)
+    second_inst.kill
+    nil until !inst.pid
+    nil until !second_inst.pid
   end
 
   def test_catch_bogus_timeout
@@ -902,9 +884,12 @@ class ServerTest < Minitest::Test
     second_inst.modify_sc('java_xms', 256, 'java')
 
     second_inst.start #these should fail because of eula
-    assert(!second_inst.status[:done])
+    assert(!second_inst.status.key?(:done))
 
     ex = assert_raises(RuntimeError) { second_inst.sleep_until(:done, 2) }
     assert_equal('condition not satisfied within 2 seconds', ex.message)
+
+    nil until !inst.pid
+    nil until !second_inst.pid
   end
 end

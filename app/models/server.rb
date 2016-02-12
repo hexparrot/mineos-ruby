@@ -236,7 +236,7 @@ class Server
           @status[:stopping] = line
         when /\[Server thread\/WARN\]: Failed to load eula.txt/
           @status[:eula] = line
-        when /\[Server thread\/WARN\]: [^F]+ FAILED TO BIND TO PORT/
+        when /\[Server thread\/WARN\]: [^F]+FAILED TO BIND TO PORT/
           @status[:bind] = line
         end
       end
@@ -246,10 +246,9 @@ class Server
     return @pid
   end
 
-  def start_catch_errors(timeout_secs)
-    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout_secs.is_a?(Fixnum)
-    timeout = timeout_secs || 10
-    pid = self.start
+  def start_catch_errors(timeout = 10)
+    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Fixnum)
+    self.start
 
     while timeout > 0 do
       if @status.key?(:eula)
@@ -304,9 +303,8 @@ class Server
     @pid
   end
 
-  def sleep_until(state, timeout_secs = 60)
-    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout_secs.is_a?(Fixnum)
-    timeout = 60 || timeout_secs
+  def sleep_until(state, timeout = 60)
+    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Fixnum)
     case state
     when :done
       until @status.key?(:done) do
