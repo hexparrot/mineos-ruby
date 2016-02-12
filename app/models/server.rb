@@ -250,25 +250,26 @@ class Server
 
   def start_catch_errors(timeout = 25)
     raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Fixnum)
+    sleep_delay = 0.2
     self.start
 
     while timeout > 0 do
       if @status.key?(:eula)
-        nil while self.pid
+        self.sleep_until(:down)
         raise RuntimeError.new('you need to agree to the eula in order to run the server')
       elsif @status.key?(:bind)
-        nil while self.pid
+        self.sleep_until(:down)
         raise RuntimeError.new('server port is already in use')
       elsif @status.key?(:done)
-        sleep(0.5)
+        sleep(sleep_delay)
         if @status.key?(:fatal_error)
-          nil while self.pid
+          self.sleep_until(:down)
           raise RuntimeError.new('A fatal error has been detected by the Java Runtime Environment')
         end
         break
       end
-      timeout -= 1
-      sleep(1.0)
+      timeout -= sleep_delay
+      sleep(sleep_delay)
     end
 
     return :done if @status.key?(:done)
@@ -312,24 +313,26 @@ class Server
 
   def sleep_until(state, timeout = 60)
     raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Fixnum)
+    sleep_delay = 0.2
+
     case state
     when :done
       until @status.key?(:done) do
         raise RuntimeError.new('condition not satisfied in allowed time') if timeout <= 0
-        sleep(1.0)
-        timeout -= 1
+        sleep(sleep_delay)
+        timeout -= sleep_delay
       end
     when :down
       while self.pid do
         raise RuntimeError.new('condition not satisfied in allowed time') if timeout <= 0
-        sleep(1.0)
-        timeout -= 1
+        sleep(sleep_delay)
+        timeout -= sleep_delay
       end
     when :parser_down
       while @stdout_parser.status != false do
         raise RuntimeError.new('condition not satisfied in allowed time') if timeout <= 0
-        sleep(1.0)
-        timeout -= 1
+        sleep(sleep_delay)
+        timeout -= sleep_delay
       end
     end
   end
