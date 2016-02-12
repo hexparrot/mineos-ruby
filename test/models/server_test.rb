@@ -892,7 +892,7 @@ class ServerTest < Minitest::Test
     assert(!second_inst.status.key?(:done))
 
     ex = assert_raises(RuntimeError) { second_inst.sleep_until(:done, 2) }
-    assert_equal('condition not satisfied within 2 seconds', ex.message)
+    assert_equal('condition not satisfied in allowed time', ex.message)
 
     nil until !inst.pid
     nil until !second_inst.pid

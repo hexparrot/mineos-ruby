@@ -278,9 +278,9 @@ class Server
   def stop
     if self.pid
       self.console('stop')
-      nil until !self.pid
+      self.sleep_until(:down)
       @stdout_parser.exit
-      nil until @stdout_parser.status == false
+      self.sleep_until(:parser_down, 2)
     else
       raise RuntimeError.new('cannot stop server while it is stopped')
     end
@@ -296,7 +296,7 @@ class Server
     when :sigint
       Process.kill(2, self.pid)
     end
-    nil until !self.pid
+    self.sleep_until(:down)
   end
 
   def pid
@@ -315,13 +315,19 @@ class Server
     case state
     when :done
       until @status.key?(:done) do
-        raise RuntimeError.new('condition not satisfied within 2 seconds') if timeout <= 0
+        raise RuntimeError.new('condition not satisfied in allowed time') if timeout <= 0
         sleep(1.0)
         timeout -= 1
       end
     when :down
       while self.pid do
-        raise RuntimeError.new('condition not satisfied within 2 seconds') if timeout <= 0
+        raise RuntimeError.new('condition not satisfied in allowed time') if timeout <= 0
+        sleep(1.0)
+        timeout -= 1
+      end
+    when :parser_down
+      while @stdout_parser.status != false do
+        raise RuntimeError.new('condition not satisfied in allowed time') if timeout <= 0
         sleep(1.0)
         timeout -= 1
       end
