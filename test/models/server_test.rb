@@ -722,8 +722,13 @@ class ServerTest < Minitest::Test
     inst.modify_sc('java_xmx', 256, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     inst.accept_eula
-    pid = inst.start
-    assert_instance_of(Fixnum, pid)
+    begin
+      inst.start_catch_errors(25)
+    rescue RuntimeError => ex
+      assert_equal('A fatal error has been detected by the Java Runtime Environment', ex.message)
+      inst.kill
+      nil until !inst.pid
+    end
 
     nil until inst.status[:done]
 
@@ -738,7 +743,7 @@ class ServerTest < Minitest::Test
     second_inst.modify_sc('java_xms', 256, 'java')
     second_inst.accept_eula
 
-    ex = assert_raises(RuntimeError) { second_inst.start_catch_errors }
+    ex = assert_raises(RuntimeError) { second_inst.start_catch_errors(25) }
     assert_equal('server port is already in use', ex.message)
 
     nil until !second_inst.pid
