@@ -358,10 +358,6 @@ class Server
   end
 
   def archive
-    require('shellwords')
-    require('zlib')
-    require('archive/tar/minitar')
-
     fn = "#{self.name}_#{Time.now.strftime('%F_%R:%S')}.tgz"
     fp = File.join(@env[:awd], fn)
     system("tar --force-local -czf #{fp} .", {:chdir => @env[:cwd]})
@@ -379,7 +375,7 @@ class Server
   end
 
   def restore(steps)
-    raise RuntimeError.new('cannot restore server while it is running') if @pid
+    raise RuntimeError.new('cannot restore server while it is running') if self.pid
     system("rdiff-backup --restore-as-of #{steps} --force #{@env[:bwd]} #{@env[:cwd]}", {:chdir => @env[:bwd]})
   end
 
