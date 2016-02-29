@@ -4,6 +4,8 @@ class ServerTest < Minitest::Test
 
   def setup
     @@basedir = '/var/games/minecraft'
+    @@server_jar = 'minecraft_server.1.8.9.jar'
+    @@server_jar_path = 'lib/assets/' + @@server_jar
 
     require 'fileutils'
     FileUtils.rm_rf(@@basedir)
@@ -72,7 +74,7 @@ class ServerTest < Minitest::Test
     inst = Server.new('test2')
     inst.create(:conventional_jar)
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 384, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     pid = inst.start
@@ -385,10 +387,10 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 384, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     pid = inst.start
@@ -402,10 +404,10 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 384, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     pid = inst.start
@@ -422,10 +424,10 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 384, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     inst.accept_eula
@@ -446,14 +448,14 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
     assert_equal(0.0, inst.mem[:kb])
     assert_equal(0.0, inst.mem[:mb])
     assert_equal(0.0, inst.mem[:gb])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 384, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     pid = inst.start
@@ -469,12 +471,12 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
     assert(inst.pid.nil?)
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 384, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     pid = inst.start
@@ -528,7 +530,7 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create(:conventional_jar)
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 384, 'java')
     inst.modify_sc('java_xms', 256, 'java')
 
@@ -558,7 +560,7 @@ class ServerTest < Minitest::Test
   def test_create_from_archive
     inst = Server.new('test')
     inst.create(:conventional_jar)
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 384, 'java')
     inst.archive
     inst.modify_sc('java_xmx', 512, 'java')
@@ -570,7 +572,7 @@ class ServerTest < Minitest::Test
     second_inst.create_from_archive(fp)
 
     assert_empty(Dir.entries(inst.env[:cwd]) - Dir.entries(second_inst.env[:cwd]))
-    assert_equal('minecraft_server.1.8.9.jar', second_inst.sc['java']['jarfile'])
+    assert_equal(@@server_jar, second_inst.sc['java']['jarfile'])
     assert_equal(384, second_inst.sc['java']['java_xmx'])
 
     #should fail because existing server.config created and present
@@ -587,10 +589,10 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create(:conventional_jar)
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.backup
 
     assert_equal(['rdiff-backup-data'], Dir.entries(inst.env[:bwd]) - Dir.entries(inst.env[:cwd]))
@@ -600,11 +602,11 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create(:conventional_jar)
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
     inst.modify_sc('java_xmx', 384, 'java')
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.backup
 
     inst.modify_sc('java_xmx', 1024, 'java')
@@ -631,12 +633,12 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create(:conventional_jar)
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
     inst.modify_sc('java_xmx', 384, 'java')
     inst.modify_sc('java_xms', 384, 'java')
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.backup
 
     pid = inst.start
@@ -650,10 +652,10 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 384, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     inst.accept_eula
@@ -675,10 +677,10 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 384, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     inst.accept_eula
@@ -697,10 +699,10 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 384, 'java')
     inst.modify_sc('java_xms', 256, 'java')
 
@@ -715,10 +717,10 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 256, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     inst.accept_eula
@@ -735,10 +737,10 @@ class ServerTest < Minitest::Test
     second_inst = Server.new('test')
     second_inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, second_inst.env[:cwd])
 
-    second_inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    second_inst.modify_sc('jarfile', @@server_jar, 'java')
     second_inst.modify_sc('java_xmx', 256, 'java')
     second_inst.modify_sc('java_xms', 256, 'java')
     second_inst.accept_eula
@@ -757,10 +759,10 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 256, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     inst.accept_eula
@@ -772,10 +774,10 @@ class ServerTest < Minitest::Test
     second_inst = Server.new('test_two')
     second_inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, second_inst.env[:cwd])
 
-    second_inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    second_inst.modify_sc('jarfile', @@server_jar, 'java')
     second_inst.modify_sc('java_xmx', 256, 'java')
     second_inst.modify_sc('java_xms', 256, 'java')
     second_inst.accept_eula
@@ -790,10 +792,10 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 256, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     inst.accept_eula
@@ -814,10 +816,10 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 256, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     inst.accept_eula
@@ -850,10 +852,10 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
 
-    inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    inst.modify_sc('jarfile', @@server_jar, 'java')
     inst.modify_sc('java_xmx', 256, 'java')
     inst.modify_sc('java_xms', 256, 'java')
     inst.accept_eula
@@ -881,10 +883,10 @@ class ServerTest < Minitest::Test
     second_inst = Server.new('test_two')
     second_inst.create_paths
 
-    jar_path = File.expand_path("lib/assets/minecraft_server.1.8.9.jar", Dir.pwd)
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, second_inst.env[:cwd])
 
-    second_inst.modify_sc('jarfile', 'minecraft_server.1.8.9.jar', 'java')
+    second_inst.modify_sc('jarfile', @@server_jar, 'java')
     second_inst.modify_sc('java_xmx', 256, 'java')
     second_inst.modify_sc('java_xms', 256, 'java')
 
