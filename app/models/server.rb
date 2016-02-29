@@ -8,10 +8,13 @@ class Server
     self.set_env
   end
 
+  # Checks a name is directory-safe and follows
+  # a few other historical MineOS conventions
   def valid_servername(name)
     return name.match(/^(?!\.)[a-zA-Z0-9_\.]+$/)
   end
 
+  # Establish an easy reference @env for common paths
   def set_env
     @@basedir = '/var/games/minecraft'
 
@@ -23,6 +26,7 @@ class Server
             :eula => File.join(@@basedir, 'servers', self.name, 'eula.txt')}
   end
 
+  # Create directory paths and establish server.config (convenience)
   def create(server_type)
     @server_type = server_type
     case server_type
@@ -38,6 +42,8 @@ class Server
     end
   end
 
+  # Create directory paths in filesystem
+  # Includes /var/games/minecraft/{servers,backup,archive}/servername
   def create_paths
     [:cwd, :bwd, :awd].each do |directory|
       begin
@@ -47,6 +53,7 @@ class Server
     end
   end
 
+  # Delete server directories and files (convenience)
   def delete
     if self.pid
       raise RuntimeError.new('cannot delete a server that is running')
@@ -54,7 +61,9 @@ class Server
       self.delete_paths
     end
   end
-  
+ 
+  # Delete directory paths from filesystem
+  # Includes /var/games/minecraft/{servers,backup,archive}/servername
   def delete_paths
     require('fileutils')
     [:cwd, :bwd, :awd].each do |directory|
@@ -62,6 +71,9 @@ class Server
     end
   end
 
+  # Return hash of server.config file from in-memory
+  # This will "create" one if absent, but will not commit it to disk.
+  # See sc! for committing server.config to the filesystem.
   def sc
     if !@config_sc
       if File.exist?(@env[:sc])
@@ -73,12 +85,14 @@ class Server
     return @config_sc.to_h
   end
 
+  # Writes in-memory hash to ini-formatted server.config
   def sc!
     self.sc
     @config_sc.write
     return @config_sc.to_h
   end
 
+  # Modify in-memory hash for server.config (convenience)
   def modify_sc(attr, value, section)
     self.sc
     if !@config_sc.has_section?(section)
@@ -90,15 +104,20 @@ class Server
     return @config_sc.to_h
   end
 
+  # Reads eula.txt and returns boolean equivalent
   def eula
     config_eula = IniFile.load( @env[:eula] )
     return config_eula.to_h['global']['eula']
   end
 
+  # Writes an accepted eula.txt to the filesystem
   def accept_eula
     File.write( @env[:eula], "eula=true\n")
   end
 
+  # Return hash of server.properties file from in-memory
+  # This will "create" one if absent, but will not commit it to disk.
+  # See sp! for committing server.properties to the filesystem.
   def sp
     if !@config_sp
       if File.exist?(@env[:sp])
@@ -118,6 +137,7 @@ class Server
     return @config_sp.to_h['global']
   end
 
+  # Writes in-memory hash to ini-like server.properties
   def sp!
     self.sp
     lines = @config_sp.to_s.split("\n")
@@ -128,12 +148,14 @@ class Server
     return self.sp
   end
 
+  # Modify in-memory hash for server.properties (convenience)
   def modify_sp(attr, value)
     self.sp
     @config_sp['global'][attr] = value
     return self.sp!
   end
 
+  # Accepts hash and applies key:value pairs to server.properties (convenience)
   def overlay_sp(hash)
     self.sp
     hash.each do |attr, value|
@@ -142,6 +164,8 @@ class Server
     return self.sp!
   end
 
+  # Returns tokenized arguments for starting server in array
+  # Has different starting requirements based on server-type
   def get_start_args(type)
     require 'mkmf'
     args = {}
@@ -211,6 +235,10 @@ class Server
     return retval
   end
 
+  # Attempt to start the server executable based on server type
+  # This will start a new thread for parsing the stdout, @stdout_parser
+  # @stdout_parser will populate @status with key milestones indicating
+  # the server startup progress or potential failures.
   def start
     raise RuntimeError.new('server is already running') if self.pid
     require('open3')
@@ -248,6 +276,11 @@ class Server
     return @pid
   end
 
+  # Attempt to start the server executable based on server type
+  # This does the same as self.start but with the added functionality
+  # that if expected milestones aren't triggered in a given timeframe
+  # or if known-failure (predictable) events occur, it can raise errors
+  # which can be handled and presented more thoroughly
   def start_catch_errors(timeout = 25)
     raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Fixnum)
     sleep_delay = 0.2
@@ -276,6 +309,7 @@ class Server
     return :level if @status.key?(:level)
   end
 
+  # Attempts to stop a server by submitting 'stop' to the process
   def stop
     if self.pid
       self.console('stop')
@@ -287,6 +321,7 @@ class Server
     end
   end
 
+  # Attempts to kill a server's process ID forcefully
   def kill(signal = :sigterm)
     raise RuntimeError.new('cannot kill server while it is stopped') if !self.pid
     case signal 
@@ -300,6 +335,7 @@ class Server
     self.sleep_until(:down)
   end
 
+  # Returns the PID of a server process
   def pid
     if @pid
       begin
@@ -311,6 +347,8 @@ class Server
     @pid
   end
 
+  # A non-busywait method to halt execution until a given state triggers
+  # Each condition must be pre-programmed.
   def sleep_until(state, timeout = 60)
     raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Fixnum)
     sleep_delay = 0.2
@@ -337,6 +375,7 @@ class Server
     end
   end
 
+  # Submit a string of text to the process' stdin
   def console(text)
     if @stdin.is_a?(IO)
       @stdin << text + "\n"
@@ -345,6 +384,7 @@ class Server
     end
   end
 
+  # Return a hash of the server's process' memory footprint
   def mem
     if @pid
       require('get_process_mem')
@@ -357,6 +397,7 @@ class Server
     end
   end
 
+  # Create a gzipped tarball containing all server files
   def archive
     require 'mkmf'
 
@@ -365,7 +406,8 @@ class Server
     system("#{find_executable0 'tar'} --force-local -czf #{fp} .", {:chdir => @env[:cwd]})
     return fn
   end
-  
+ 
+  # Create a new server from an existing tarball (convenience)
   def create_from_archive(filepath)
     require 'mkmf'
 
@@ -374,12 +416,14 @@ class Server
     system("#{find_executable0 'tar'} --force-local -xf #{filepath}", {:chdir => @env[:cwd]})
   end
 
+  # Create an rdiff-backup of the main server directory
   def backup
     require 'mkmf'
 
     system("#{find_executable0 'rdiff-backup'} #{@env[:cwd] + '/'} #{@env[:bwd]}", {:chdir => @env[:bwd]})    
   end
 
+  # Restore the live server directory to the state of a previous backup
   def restore(steps)
     raise RuntimeError.new('cannot restore server while it is running') if self.pid
     system("rdiff-backup --restore-as-of #{steps} --force #{@env[:bwd]} #{@env[:cwd]}", {:chdir => @env[:bwd]})

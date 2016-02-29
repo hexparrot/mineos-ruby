@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+
+<title>class Server - RDoc Documentation</title>
+
+<script type="text/javascript">
+  var rdoc_rel_prefix = "./";
+</script>
+
+<script src="./js/jquery.js"></script>
+<script src="./js/darkfish.js"></script>
+
+<link href="./css/fonts.css" rel="stylesheet">
+<link href="./css/rdoc.css" rel="stylesheet">
+
+
+
+<body id="top" role="document" class="class">
+<nav role="navigation">
+  <div id="project-navigation">
+    <div id="home-section" role="region" title="Quick navigation" class="nav-section">
+  <h2>
+    <a href="./index.html" rel="home">Home</a>
+  </h2>
+
+  <div id="table-of-contents-navigation">
+    <a href="./table_of_contents.html#pages">Pages</a>
+    <a href="./table_of_contents.html#classes">Classes</a>
+    <a href="./table_of_contents.html#methods">Methods</a>
+  </div>
+</div>
+
+    <div id="search-section" role="search" class="project-section initially-hidden">
+  <form action="#" method="get" accept-charset="utf-8">
+    <div id="search-field-wrapper">
+      <input id="search-field" role="combobox" aria-label="Search"
+             aria-autocomplete="list" aria-controls="search-results"
+             type="text" name="search" placeholder="Search" spellcheck="false"
+             title="Type to search, Up and Down to navigate, Enter to load">
+    </div>
+
+    <ul id="search-results" aria-label="Search Results"
+        aria-busy="false" aria-expanded="false"
+        aria-atomic="false" class="initially-hidden"></ul>
+  </form>
+</div>
+
+  </div>
+
+  
+
+  <div id="class-metadata">
+    
+    <div id="parent-class-section" class="nav-section">
+  <h3>Parent</h3>
+
+  
+  <p class="link"><a href="Object.html">Object</a>
+  
+</div>
+
+    
+    
+    <!-- Method Quickref -->
+<div id="method-list-section" class="nav-section">
+  <h3>Methods</h3>
+
+  <ul class="link-list" role="directory">
+    
+    <li ><a href="#method-c-new">::new</a>
+    
+    <li ><a href="#method-i-accept_eula">#accept_eula</a>
+    
+    <li ><a href="#method-i-archive">#archive</a>
+    
+    <li ><a href="#method-i-backup">#backup</a>
+    
+    <li ><a href="#method-i-console">#console</a>
+    
+    <li ><a href="#method-i-create">#create</a>
+    
+    <li ><a href="#method-i-create_from_archive">#create_from_archive</a>
+    
+    <li ><a href="#method-i-create_paths">#create_paths</a>
+    
+    <li ><a href="#method-i-delete">#delete</a>
+    
+    <li ><a href="#method-i-delete_paths">#delete_paths</a>
+    
+    <li ><a href="#method-i-eula">#eula</a>
+    
+    <li ><a href="#method-i-get_start_args">#get_start_args</a>
+    
+    <li ><a href="#method-i-kill">#kill</a>
+    
+    <li ><a href="#method-i-mem">#mem</a>
+    
+    <li ><a href="#method-i-modify_sc">#modify_sc</a>
+    
+    <li ><a href="#method-i-modify_sp">#modify_sp</a>
+    
+    <li ><a href="#method-i-overlay_sp">#overlay_sp</a>
+    
+    <li ><a href="#method-i-pid">#pid</a>
+    
+    <li ><a href="#method-i-restore">#restore</a>
+    
+    <li ><a href="#method-i-sc">#sc</a>
+    
+    <li ><a href="#method-i-sc-21">#sc!</a>
+    
+    <li ><a href="#method-i-set_env">#set_env</a>
+    
+    <li ><a href="#method-i-sleep_until">#sleep_until</a>
+    
+    <li ><a href="#method-i-sp">#sp</a>
+    
+    <li ><a href="#method-i-sp-21">#sp!</a>
+    
+    <li ><a href="#method-i-start">#start</a>
+    
+    <li ><a href="#method-i-start_catch_errors">#start_catch_errors</a>
+    
+    <li ><a href="#method-i-stop">#stop</a>
+    
+    <li ><a href="#method-i-valid_servername">#valid_servername</a>
+    
+  </ul>
+</div>
+
+  </div>
+</nav>
+
+<main role="main" aria-labelledby="class-Server">
+  <h1 id="class-Server" class="class">
+    class Server
+  </h1>
+
+  <section class="description">
+    
+  </section>
+
+  
+  
+  
+  <section id="5Buntitled-5D" class="documentation-section">
+    
+
+    
+
+    
+
+    
+    <section class="attribute-method-details" class="method-section">
+      <header>
+        <h3>Attributes</h3>
+      </header>
+
+      
+      <div id="attribute-i-env" class="method-detail">
+        <div class="method-heading attribute-method-heading">
+          <span class="method-name">env</span><span
+            class="attribute-access-type">[R]</span>
+        </div>
+
+        <div class="method-description">
+        
+        
+        
+        </div>
+      </div>
+      
+      <div id="attribute-i-name" class="method-detail">
+        <div class="method-heading attribute-method-heading">
+          <span class="method-name">name</span><span
+            class="attribute-access-type">[R]</span>
+        </div>
+
+        <div class="method-description">
+        
+        
+        
+        </div>
+      </div>
+      
+      <div id="attribute-i-server_type" class="method-detail">
+        <div class="method-heading attribute-method-heading">
+          <span class="method-name">server_type</span><span
+            class="attribute-access-type">[R]</span>
+        </div>
+
+        <div class="method-description">
+        
+        
+        
+        </div>
+      </div>
+      
+      <div id="attribute-i-status" class="method-detail">
+        <div class="method-heading attribute-method-heading">
+          <span class="method-name">status</span><span
+            class="attribute-access-type">[R]</span>
+        </div>
+
+        <div class="method-description">
+        
+        
+        
+        </div>
+      </div>
+      
+    </section>
+    
+
+    
+     <section id="public-class-5Buntitled-5D-method-details" class="method-section">
+       <header>
+         <h3>Public Class Methods</h3>
+       </header>
+
+    
+      <div id="method-c-new" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">new</span><span
+            class="method-args">(name)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          
+          
+          
+
+          
+          <div class="method-source-code" id="new-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 4</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">name</span>)
+  <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span> <span class="ruby-keyword">if</span> <span class="ruby-operator">!</span><span class="ruby-keyword">self</span>.<span class="ruby-identifier">valid_servername</span>(<span class="ruby-identifier">name</span>)
+  <span class="ruby-ivar">@name</span> = <span class="ruby-identifier">name</span>
+  <span class="ruby-ivar">@status</span> = {}
+  <span class="ruby-keyword">self</span>.<span class="ruby-identifier">set_env</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+    </section>
+  
+     <section id="public-instance-5Buntitled-5D-method-details" class="method-section">
+       <header>
+         <h3>Public Instance Methods</h3>
+       </header>
+
+    
+      <div id="method-i-accept_eula" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">accept_eula</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Writes an accepted eula.txt to the filesystem</p>
+          
+          
+
+          
+          <div class="method-source-code" id="accept_eula-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 114</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">accept_eula</span>
+  <span class="ruby-constant">File</span>.<span class="ruby-identifier">write</span>( <span class="ruby-ivar">@env</span>[<span class="ruby-value">:eula</span>], <span class="ruby-string">&quot;eula=true\n&quot;</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-archive" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">archive</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Create a gzipped tarball containing all server files</p>
+          
+          
+
+          
+          <div class="method-source-code" id="archive-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 401</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">archive</span>
+  <span class="ruby-identifier">require</span> <span class="ruby-string">&#39;mkmf&#39;</span>
+
+  <span class="ruby-identifier">fn</span> = <span class="ruby-node">&quot;#{self.name}_#{Time.now.strftime(&#39;%F_%R:%S&#39;)}.tgz&quot;</span>
+  <span class="ruby-identifier">fp</span> = <span class="ruby-constant">File</span>.<span class="ruby-identifier">join</span>(<span class="ruby-ivar">@env</span>[<span class="ruby-value">:awd</span>], <span class="ruby-identifier">fn</span>)
+  <span class="ruby-identifier">system</span>(<span class="ruby-node">&quot;#{find_executable0 &#39;tar&#39;} --force-local -czf #{fp} .&quot;</span>, {<span class="ruby-value">:chdir</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@env</span>[<span class="ruby-value">:cwd</span>]})
+  <span class="ruby-keyword">return</span> <span class="ruby-identifier">fn</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-backup" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">backup</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Create an rdiff-backup of the main server directory</p>
+          
+          
+
+          
+          <div class="method-source-code" id="backup-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 420</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">backup</span>
+  <span class="ruby-identifier">require</span> <span class="ruby-string">&#39;mkmf&#39;</span>
+
+  <span class="ruby-identifier">system</span>(<span class="ruby-node">&quot;#{find_executable0 &#39;rdiff-backup&#39;} #{@env[:cwd] + &#39;/&#39;} #{@env[:bwd]}&quot;</span>, {<span class="ruby-value">:chdir</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@env</span>[<span class="ruby-value">:bwd</span>]})    
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-console" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">console</span><span
+            class="method-args">(text)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Submit a string of text to the process&#39; stdin</p>
+          
+          
+
+          
+          <div class="method-source-code" id="console-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 379</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">console</span>(<span class="ruby-identifier">text</span>)
+  <span class="ruby-keyword">if</span> <span class="ruby-ivar">@stdin</span>.<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">IO</span>)
+    <span class="ruby-ivar">@stdin</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">text</span> <span class="ruby-operator">+</span> <span class="ruby-string">&quot;\n&quot;</span>
+  <span class="ruby-keyword">else</span>
+    <span class="ruby-identifier">raise</span> <span class="ruby-constant">IOError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;I/O channel is down&#39;</span>)
+  <span class="ruby-keyword">end</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-create" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">create</span><span
+            class="method-args">(server_type)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Create directory paths and establish server.config (convenience)</p>
+          
+          
+
+          
+          <div class="method-source-code" id="create-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 30</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">create</span>(<span class="ruby-identifier">server_type</span>)
+  <span class="ruby-ivar">@server_type</span> = <span class="ruby-identifier">server_type</span>
+  <span class="ruby-keyword">case</span> <span class="ruby-identifier">server_type</span>
+  <span class="ruby-keyword">when</span> <span class="ruby-value">:conventional_jar</span>
+    <span class="ruby-keyword">self</span>.<span class="ruby-identifier">create_paths</span>
+    <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc!</span>
+    <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sp!</span>
+  <span class="ruby-keyword">when</span> <span class="ruby-value">:unconventional_jar</span>, <span class="ruby-value">:phar</span>
+    <span class="ruby-keyword">self</span>.<span class="ruby-identifier">create_paths</span>
+    <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc!</span>
+  <span class="ruby-keyword">else</span>
+    <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-node">&quot;unrecognized server type: #{server_type.to_s}&quot;</span>)
+  <span class="ruby-keyword">end</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-create_from_archive" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">create_from_archive</span><span
+            class="method-args">(filepath)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Create a new server from an existing tarball (convenience)</p>
+          
+          
+
+          
+          <div class="method-source-code" id="create_from_archive-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 411</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">create_from_archive</span>(<span class="ruby-identifier">filepath</span>)
+  <span class="ruby-identifier">require</span> <span class="ruby-string">&#39;mkmf&#39;</span>
+
+  <span class="ruby-keyword">self</span>.<span class="ruby-identifier">create_paths</span>
+  <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;cannot extract archive over existing server&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-constant">Dir</span>.<span class="ruby-identifier">entries</span>(<span class="ruby-ivar">@env</span>[<span class="ruby-value">:cwd</span>]).<span class="ruby-identifier">include?</span>(<span class="ruby-string">&#39;server.config&#39;</span>)
+  <span class="ruby-identifier">system</span>(<span class="ruby-node">&quot;#{find_executable0 &#39;tar&#39;} --force-local -xf #{filepath}&quot;</span>, {<span class="ruby-value">:chdir</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@env</span>[<span class="ruby-value">:cwd</span>]})
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-create_paths" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">create_paths</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Create directory paths in filesystem Includes
+/var/games/minecraft/{servers,backup,archive}/servername</p>
+          
+          
+
+          
+          <div class="method-source-code" id="create_paths-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 47</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">create_paths</span>
+  [<span class="ruby-value">:cwd</span>, <span class="ruby-value">:bwd</span>, <span class="ruby-value">:awd</span>].<span class="ruby-identifier">each</span> <span class="ruby-keyword">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">directory</span><span class="ruby-operator">|</span>
+    <span class="ruby-keyword">begin</span>
+      <span class="ruby-constant">Dir</span>.<span class="ruby-identifier">mkdir</span> <span class="ruby-ivar">@env</span>[<span class="ruby-identifier">directory</span>]
+    <span class="ruby-keyword">rescue</span> <span class="ruby-constant">Errno</span><span class="ruby-operator">::</span><span class="ruby-constant">EEXIST</span>
+    <span class="ruby-keyword">end</span>
+  <span class="ruby-keyword">end</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-delete" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">delete</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Delete server directories and files (convenience)</p>
+          
+          
+
+          
+          <div class="method-source-code" id="delete-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 57</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">delete</span>
+  <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">pid</span>
+    <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;cannot delete a server that is running&#39;</span>)
+  <span class="ruby-keyword">else</span>
+    <span class="ruby-keyword">self</span>.<span class="ruby-identifier">delete_paths</span>
+  <span class="ruby-keyword">end</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-delete_paths" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">delete_paths</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Delete directory paths from filesystem Includes
+/var/games/minecraft/{servers,backup,archive}/servername</p>
+          
+          
+
+          
+          <div class="method-source-code" id="delete_paths-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 67</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">delete_paths</span>
+  <span class="ruby-identifier">require</span>(<span class="ruby-string">&#39;fileutils&#39;</span>)
+  [<span class="ruby-value">:cwd</span>, <span class="ruby-value">:bwd</span>, <span class="ruby-value">:awd</span>].<span class="ruby-identifier">each</span> <span class="ruby-keyword">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">directory</span><span class="ruby-operator">|</span>
+    <span class="ruby-constant">FileUtils</span>.<span class="ruby-identifier">rm_rf</span> <span class="ruby-ivar">@env</span>[<span class="ruby-identifier">directory</span>]
+  <span class="ruby-keyword">end</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-eula" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">eula</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Reads eula.txt and returns boolean equivalent</p>
+          
+          
+
+          
+          <div class="method-source-code" id="eula-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 108</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">eula</span>
+  <span class="ruby-identifier">config_eula</span> = <span class="ruby-constant">IniFile</span>.<span class="ruby-identifier">load</span>( <span class="ruby-ivar">@env</span>[<span class="ruby-value">:eula</span>] )
+  <span class="ruby-keyword">return</span> <span class="ruby-identifier">config_eula</span>.<span class="ruby-identifier">to_h</span>[<span class="ruby-string">&#39;global&#39;</span>][<span class="ruby-string">&#39;eula&#39;</span>]
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-get_start_args" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">get_start_args</span><span
+            class="method-args">(type)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Returns tokenized arguments for starting server in array Has different
+starting requirements based on server-type</p>
+          
+          
+
+          
+          <div class="method-source-code" id="get_start_args-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 169</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">get_start_args</span>(<span class="ruby-identifier">type</span>)
+  <span class="ruby-identifier">require</span> <span class="ruby-string">&#39;mkmf&#39;</span>
+  <span class="ruby-identifier">args</span> = {}
+  <span class="ruby-identifier">retval</span> = []
+
+  <span class="ruby-keyword">case</span> <span class="ruby-identifier">type</span>
+    <span class="ruby-keyword">when</span> <span class="ruby-value">:conventional_jar</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;no runnable jarfile selected&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;jarfile&#39;</span>].<span class="ruby-identifier">nil?</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;missing java argument: Xmx&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xmx&#39;</span>].<span class="ruby-identifier">nil?</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;invalid java argument: Xmx must be an integer &gt; 0&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-operator">!</span><span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xmx&#39;</span>].<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">Integer</span>)
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;invalid java argument: Xmx must be an integer &gt; 0&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xmx&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-operator">&lt;=</span> <span class="ruby-value">0</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;invalid java argument: Xms must be unset or an integer &gt; 0&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-operator">!</span><span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xms&#39;</span>].<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">Integer</span>)
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;invalid java argument: Xmx must be &gt; Xms&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xms&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-operator">&gt;</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xmx&#39;</span>].<span class="ruby-identifier">to_i</span>
+
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:jarfile</span>] = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;jarfile&#39;</span>] 
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:java_xmx</span>] = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xmx&#39;</span>].<span class="ruby-identifier">to_i</span>
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:java_tweaks</span>] = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_tweaks&#39;</span>]
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:jar_args</span>] = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;jar_args&#39;</span>]
+      <span class="ruby-comment">#use xms value if present and &gt; 0, else fallback to xmx</span>
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:java_xms</span>] = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xms&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0</span> <span class="ruby-operator">?</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xms&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-operator">:</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xmx&#39;</span>].<span class="ruby-identifier">to_i</span>
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:binary</span>] = <span class="ruby-identifier">find_executable0</span> <span class="ruby-string">&#39;java&#39;</span>
+
+      <span class="ruby-identifier">retval</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:binary</span>] <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-string">&#39;-server&#39;</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-string">&quot;-Xmx%{java_xmx}M&quot;</span> <span class="ruby-operator">%</span> <span class="ruby-identifier">args</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-string">&quot;-Xms%{java_xms}M&quot;</span> <span class="ruby-operator">%</span> <span class="ruby-identifier">args</span>
+      <span class="ruby-identifier">retval</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:java_tweaks</span>] <span class="ruby-keyword">if</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:java_tweaks</span>]
+      <span class="ruby-identifier">retval</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-string">&#39;-jar&#39;</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:jarfile</span>]
+      <span class="ruby-comment">#if no jar args specified, auto-fill in &#39;nogui&#39;</span>
+      <span class="ruby-identifier">retval</span> <span class="ruby-operator">&lt;&lt;</span> (<span class="ruby-identifier">args</span>[<span class="ruby-value">:jar_args</span>].<span class="ruby-identifier">nil?</span> <span class="ruby-operator">?</span> <span class="ruby-string">&#39;nogui&#39;</span> <span class="ruby-operator">:</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:jar_args</span>])
+    <span class="ruby-keyword">when</span> <span class="ruby-value">:unconventional_jar</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;no runnable jarfile selected&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;jarfile&#39;</span>].<span class="ruby-identifier">nil?</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;invalid java argument: Xmx must be unset or &gt; 0&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xmx&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-operator">&lt;</span> <span class="ruby-value">0</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;invalid java argument: Xms must be unset or &gt; 0&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xms&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-operator">&lt;</span> <span class="ruby-value">0</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;invalid java argument: Xms may not be set without Xmx&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xms&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0</span> <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xmx&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-operator">&lt;=</span> <span class="ruby-value">0</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;invalid java argument: Xmx may not be lower than Xms&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xms&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-operator">&gt;</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xmx&#39;</span>].<span class="ruby-identifier">to_i</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;invalid java argument: Xmx must be unset or an integer &gt; 0&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-operator">!</span><span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xmx&#39;</span>].<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">Integer</span>)
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;invalid java argument: Xms must be unset or an integer &gt; 0&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-operator">!</span><span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xms&#39;</span>].<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">Integer</span>)
+
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:jarfile</span>] = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;jarfile&#39;</span>] 
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:java_tweaks</span>] = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_tweaks&#39;</span>]
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:jar_args</span>] = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;jar_args&#39;</span>]
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:java_xmx</span>] = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xmx&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xmx&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0</span>
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:java_xms</span>] = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xms&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;java_xms&#39;</span>].<span class="ruby-identifier">to_i</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0</span>
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:binary</span>] = <span class="ruby-identifier">find_executable0</span> <span class="ruby-string">&#39;java&#39;</span>
+
+      <span class="ruby-identifier">retval</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:binary</span>] <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-string">&#39;-server&#39;</span> 
+      <span class="ruby-comment">#Xmx and Xms are non-compulsory</span>
+      <span class="ruby-identifier">retval</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-string">&quot;-Xmx%{java_xmx}M&quot;</span> <span class="ruby-operator">%</span> <span class="ruby-identifier">args</span> <span class="ruby-keyword">if</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:java_xmx</span>]
+      <span class="ruby-identifier">retval</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-string">&quot;-Xms%{java_xms}M&quot;</span> <span class="ruby-operator">%</span> <span class="ruby-identifier">args</span> <span class="ruby-keyword">if</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:java_xms</span>]
+      <span class="ruby-identifier">retval</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:java_tweaks</span>] <span class="ruby-keyword">if</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:java_tweaks</span>]
+      <span class="ruby-identifier">retval</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-string">&#39;-jar&#39;</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:jarfile</span>]
+      <span class="ruby-identifier">retval</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:jar_args</span>] <span class="ruby-keyword">if</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:jar_args</span>]
+    <span class="ruby-keyword">when</span> <span class="ruby-value">:phar</span>
+      <span class="ruby-identifier">args</span>[<span class="ruby-value">:binary</span>] = <span class="ruby-identifier">find_executable0</span> <span class="ruby-string">&#39;php&#39;</span>
+
+      <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;nonjava&#39;</span>][<span class="ruby-string">&#39;executable&#39;</span>].<span class="ruby-identifier">to_s</span>.<span class="ruby-identifier">length</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0</span>
+        <span class="ruby-identifier">args</span>[<span class="ruby-value">:executable</span>] = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;nonjava&#39;</span>][<span class="ruby-string">&#39;executable&#39;</span>]
+        <span class="ruby-identifier">retval</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:binary</span>] <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:executable</span>]
+      <span class="ruby-keyword">elsif</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;jarfile&#39;</span>].<span class="ruby-identifier">to_s</span>.<span class="ruby-identifier">length</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0</span>
+        <span class="ruby-identifier">args</span>[<span class="ruby-value">:executable</span>] = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>[<span class="ruby-string">&#39;java&#39;</span>][<span class="ruby-string">&#39;jarfile&#39;</span>]
+        <span class="ruby-identifier">retval</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:binary</span>] <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">args</span>[<span class="ruby-value">:executable</span>]
+      <span class="ruby-keyword">else</span>
+        <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;no runnable pharfile selected&#39;</span>)
+      <span class="ruby-keyword">end</span>
+    <span class="ruby-keyword">else</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-node">&quot;unrecognized get_start_args argument: #{type.to_s}&quot;</span>)
+  <span class="ruby-keyword">end</span>
+
+  <span class="ruby-keyword">return</span> <span class="ruby-identifier">retval</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-kill" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">kill</span><span
+            class="method-args">(signal = :sigterm)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Attempts to kill a server&#39;s process ID forcefully</p>
+          
+          
+
+          
+          <div class="method-source-code" id="kill-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 325</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">kill</span>(<span class="ruby-identifier">signal</span> = <span class="ruby-value">:sigterm</span>)
+  <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;cannot kill server while it is stopped&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-operator">!</span><span class="ruby-keyword">self</span>.<span class="ruby-identifier">pid</span>
+  <span class="ruby-keyword">case</span> <span class="ruby-identifier">signal</span> 
+  <span class="ruby-keyword">when</span> <span class="ruby-value">:sigterm</span>
+    <span class="ruby-constant">Process</span>.<span class="ruby-identifier">kill</span>(<span class="ruby-value">15</span>, <span class="ruby-keyword">self</span>.<span class="ruby-identifier">pid</span>)
+  <span class="ruby-keyword">when</span> <span class="ruby-value">:sigkill</span>
+    <span class="ruby-constant">Process</span>.<span class="ruby-identifier">kill</span>(<span class="ruby-value">9</span>, <span class="ruby-keyword">self</span>.<span class="ruby-identifier">pid</span>)
+  <span class="ruby-keyword">when</span> <span class="ruby-value">:sigint</span>
+    <span class="ruby-constant">Process</span>.<span class="ruby-identifier">kill</span>(<span class="ruby-value">2</span>, <span class="ruby-keyword">self</span>.<span class="ruby-identifier">pid</span>)
+  <span class="ruby-keyword">end</span>
+  <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sleep_until</span>(<span class="ruby-value">:down</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-mem" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">mem</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Return a hash of the server&#39;s process&#39; memory footprint</p>
+          
+          
+
+          
+          <div class="method-source-code" id="mem-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 388</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">mem</span>
+  <span class="ruby-keyword">if</span> <span class="ruby-ivar">@pid</span>
+    <span class="ruby-identifier">require</span>(<span class="ruby-string">&#39;get_process_mem&#39;</span>)
+
+    <span class="ruby-identifier">mem_obj</span> = <span class="ruby-constant">GetProcessMem</span>.<span class="ruby-identifier">new</span>(<span class="ruby-ivar">@pid</span>)
+    <span class="ruby-identifier">mem_obj</span>.<span class="ruby-identifier">inspect</span>
+    <span class="ruby-keyword">return</span> {<span class="ruby-value">:kb</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">mem_obj</span>.<span class="ruby-identifier">kb</span>, <span class="ruby-value">:mb</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">mem_obj</span>.<span class="ruby-identifier">mb</span>, <span class="ruby-value">:gb</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">mem_obj</span>.<span class="ruby-identifier">gb</span>}
+  <span class="ruby-keyword">else</span>
+    <span class="ruby-keyword">return</span> {<span class="ruby-value">:kb</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">0.0</span>, <span class="ruby-value">:mb</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">0.0</span>, <span class="ruby-value">:gb</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">0.0</span>}
+  <span class="ruby-keyword">end</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-modify_sc" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">modify_sc</span><span
+            class="method-args">(attr, value, section)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Modify in-memory hash for server.config (convenience)</p>
+          
+          
+
+          
+          <div class="method-source-code" id="modify_sc-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 96</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">modify_sc</span>(<span class="ruby-identifier">attr</span>, <span class="ruby-identifier">value</span>, <span class="ruby-identifier">section</span>)
+  <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>
+  <span class="ruby-keyword">if</span> <span class="ruby-operator">!</span><span class="ruby-ivar">@config_sc</span>.<span class="ruby-identifier">has_section?</span>(<span class="ruby-identifier">section</span>)
+    <span class="ruby-ivar">@config_sc</span>[<span class="ruby-identifier">section</span>] = { <span class="ruby-identifier">attr</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">value</span> }
+  <span class="ruby-keyword">else</span>
+    <span class="ruby-ivar">@config_sc</span>[<span class="ruby-identifier">section</span>][<span class="ruby-identifier">attr</span>] = <span class="ruby-identifier">value</span>
+  <span class="ruby-keyword">end</span>
+  <span class="ruby-ivar">@config_sc</span>.<span class="ruby-identifier">write</span>
+  <span class="ruby-keyword">return</span> <span class="ruby-ivar">@config_sc</span>.<span class="ruby-identifier">to_h</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-modify_sp" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">modify_sp</span><span
+            class="method-args">(attr, value)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Modify in-memory hash for server.properties (convenience)</p>
+          
+          
+
+          
+          <div class="method-source-code" id="modify_sp-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 152</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">modify_sp</span>(<span class="ruby-identifier">attr</span>, <span class="ruby-identifier">value</span>)
+  <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sp</span>
+  <span class="ruby-ivar">@config_sp</span>[<span class="ruby-string">&#39;global&#39;</span>][<span class="ruby-identifier">attr</span>] = <span class="ruby-identifier">value</span>
+  <span class="ruby-keyword">return</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sp!</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-overlay_sp" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">overlay_sp</span><span
+            class="method-args">(hash)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Accepts hash and applies key:value pairs to server.properties (convenience)</p>
+          
+          
+
+          
+          <div class="method-source-code" id="overlay_sp-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 159</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">overlay_sp</span>(<span class="ruby-identifier">hash</span>)
+  <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sp</span>
+  <span class="ruby-identifier">hash</span>.<span class="ruby-identifier">each</span> <span class="ruby-keyword">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">attr</span>, <span class="ruby-identifier">value</span><span class="ruby-operator">|</span>
+    <span class="ruby-ivar">@config_sp</span>[<span class="ruby-string">&#39;global&#39;</span>][<span class="ruby-identifier">attr</span>] = <span class="ruby-identifier">value</span> 
+  <span class="ruby-keyword">end</span>
+  <span class="ruby-keyword">return</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sp!</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-pid" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">pid</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Returns the PID of a server process</p>
+          
+          
+
+          
+          <div class="method-source-code" id="pid-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 339</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">pid</span>
+  <span class="ruby-keyword">if</span> <span class="ruby-ivar">@pid</span>
+    <span class="ruby-keyword">begin</span>
+      <span class="ruby-constant">Process</span>.<span class="ruby-identifier">getpgid</span>(<span class="ruby-ivar">@pid</span>) <span class="ruby-comment">#reassigns nil if pid nonexistent, otherwise retain existing value</span>
+    <span class="ruby-keyword">rescue</span> <span class="ruby-constant">Errno</span><span class="ruby-operator">::</span><span class="ruby-constant">ESRCH</span>
+      <span class="ruby-ivar">@pid</span> = <span class="ruby-keyword">nil</span>
+    <span class="ruby-keyword">end</span>
+  <span class="ruby-keyword">end</span>
+  <span class="ruby-ivar">@pid</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-restore" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">restore</span><span
+            class="method-args">(steps)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Restore the live server directory to the state of a previous backup</p>
+          
+          
+
+          
+          <div class="method-source-code" id="restore-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 427</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">restore</span>(<span class="ruby-identifier">steps</span>)
+  <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;cannot restore server while it is running&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">pid</span>
+  <span class="ruby-identifier">system</span>(<span class="ruby-node">&quot;rdiff-backup --restore-as-of #{steps} --force #{@env[:bwd]} #{@env[:cwd]}&quot;</span>, {<span class="ruby-value">:chdir</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@env</span>[<span class="ruby-value">:bwd</span>]})
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-sc" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">sc</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Return hash of server.config file from in-memory This will “create” one if
+absent, but will not commit it to disk. See sc! for committing
+server.config to the filesystem.</p>
+          
+          
+
+          
+          <div class="method-source-code" id="sc-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 77</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">sc</span>
+  <span class="ruby-keyword">if</span> <span class="ruby-operator">!</span><span class="ruby-ivar">@config_sc</span>
+    <span class="ruby-keyword">if</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">exist?</span>(<span class="ruby-ivar">@env</span>[<span class="ruby-value">:sc</span>])
+      <span class="ruby-ivar">@config_sc</span> = <span class="ruby-constant">IniFile</span>.<span class="ruby-identifier">load</span>(<span class="ruby-ivar">@env</span>[<span class="ruby-value">:sc</span>])
+    <span class="ruby-keyword">else</span>
+      <span class="ruby-ivar">@config_sc</span> = <span class="ruby-constant">IniFile</span>.<span class="ruby-identifier">new</span>( <span class="ruby-value">:filename</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@env</span>[<span class="ruby-value">:sc</span>] )
+    <span class="ruby-keyword">end</span>
+  <span class="ruby-keyword">end</span>
+  <span class="ruby-keyword">return</span> <span class="ruby-ivar">@config_sc</span>.<span class="ruby-identifier">to_h</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-sc-21" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">sc!</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Writes in-memory hash to ini-formatted server.config</p>
+          
+          
+
+          
+          <div class="method-source-code" id="sc-21-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 89</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">sc!</span>
+  <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sc</span>
+  <span class="ruby-ivar">@config_sc</span>.<span class="ruby-identifier">write</span>
+  <span class="ruby-keyword">return</span> <span class="ruby-ivar">@config_sc</span>.<span class="ruby-identifier">to_h</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-set_env" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">set_env</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Establish an easy reference @env for common paths</p>
+          
+          
+
+          
+          <div class="method-source-code" id="set_env-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 18</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">set_env</span>
+  <span class="ruby-identifier">@@basedir</span> = <span class="ruby-string">&#39;/var/games/minecraft&#39;</span>
+
+  <span class="ruby-ivar">@env</span> = {<span class="ruby-value">:cwd</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">join</span>(<span class="ruby-identifier">@@basedir</span>, <span class="ruby-string">&#39;servers&#39;</span>, <span class="ruby-keyword">self</span>.<span class="ruby-identifier">name</span>),
+          <span class="ruby-value">:bwd</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">join</span>(<span class="ruby-identifier">@@basedir</span>, <span class="ruby-string">&#39;backup&#39;</span>, <span class="ruby-keyword">self</span>.<span class="ruby-identifier">name</span>),
+          <span class="ruby-value">:awd</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">join</span>(<span class="ruby-identifier">@@basedir</span>, <span class="ruby-string">&#39;archive&#39;</span>, <span class="ruby-keyword">self</span>.<span class="ruby-identifier">name</span>),
+          <span class="ruby-value">:sp</span>  =<span class="ruby-operator">&gt;</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">join</span>(<span class="ruby-identifier">@@basedir</span>, <span class="ruby-string">&#39;servers&#39;</span>, <span class="ruby-keyword">self</span>.<span class="ruby-identifier">name</span>, <span class="ruby-string">&#39;server.properties&#39;</span>),
+          <span class="ruby-value">:sc</span>  =<span class="ruby-operator">&gt;</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">join</span>(<span class="ruby-identifier">@@basedir</span>, <span class="ruby-string">&#39;servers&#39;</span>, <span class="ruby-keyword">self</span>.<span class="ruby-identifier">name</span>, <span class="ruby-string">&#39;server.config&#39;</span>),
+          <span class="ruby-value">:eula</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">join</span>(<span class="ruby-identifier">@@basedir</span>, <span class="ruby-string">&#39;servers&#39;</span>, <span class="ruby-keyword">self</span>.<span class="ruby-identifier">name</span>, <span class="ruby-string">&#39;eula.txt&#39;</span>)}
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-sleep_until" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">sleep_until</span><span
+            class="method-args">(state, timeout = 60)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>A non-busywait method to halt execution until a given state triggers Each
+condition must be pre-programmed.</p>
+          
+          
+
+          
+          <div class="method-source-code" id="sleep_until-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 352</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">sleep_until</span>(<span class="ruby-identifier">state</span>, <span class="ruby-identifier">timeout</span> = <span class="ruby-value">60</span>)
+  <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;timeout must be a positive integer &gt; 0&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-operator">!</span><span class="ruby-identifier">timeout</span>.<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">Fixnum</span>)
+  <span class="ruby-identifier">sleep_delay</span> = <span class="ruby-value">0.2</span>
+
+  <span class="ruby-keyword">case</span> <span class="ruby-identifier">state</span>
+  <span class="ruby-keyword">when</span> <span class="ruby-value">:done</span>
+    <span class="ruby-keyword">until</span> <span class="ruby-ivar">@status</span>.<span class="ruby-identifier">key?</span>(<span class="ruby-value">:done</span>) <span class="ruby-keyword">do</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;condition not satisfied in allowed time&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-identifier">timeout</span> <span class="ruby-operator">&lt;=</span> <span class="ruby-value">0</span>
+      <span class="ruby-identifier">sleep</span>(<span class="ruby-identifier">sleep_delay</span>)
+      <span class="ruby-identifier">timeout</span> <span class="ruby-operator">-=</span> <span class="ruby-identifier">sleep_delay</span>
+    <span class="ruby-keyword">end</span>
+  <span class="ruby-keyword">when</span> <span class="ruby-value">:down</span>
+    <span class="ruby-keyword">while</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">pid</span> <span class="ruby-keyword">do</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;condition not satisfied in allowed time&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-identifier">timeout</span> <span class="ruby-operator">&lt;=</span> <span class="ruby-value">0</span>
+      <span class="ruby-identifier">sleep</span>(<span class="ruby-identifier">sleep_delay</span>)
+      <span class="ruby-identifier">timeout</span> <span class="ruby-operator">-=</span> <span class="ruby-identifier">sleep_delay</span>
+    <span class="ruby-keyword">end</span>
+  <span class="ruby-keyword">when</span> <span class="ruby-value">:parser_down</span>
+    <span class="ruby-keyword">while</span> <span class="ruby-ivar">@stdout_parser</span>.<span class="ruby-identifier">status</span> <span class="ruby-operator">!=</span> <span class="ruby-keyword">false</span> <span class="ruby-keyword">do</span>
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;condition not satisfied in allowed time&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-identifier">timeout</span> <span class="ruby-operator">&lt;=</span> <span class="ruby-value">0</span>
+      <span class="ruby-identifier">sleep</span>(<span class="ruby-identifier">sleep_delay</span>)
+      <span class="ruby-identifier">timeout</span> <span class="ruby-operator">-=</span> <span class="ruby-identifier">sleep_delay</span>
+    <span class="ruby-keyword">end</span>
+  <span class="ruby-keyword">end</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-sp" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">sp</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Return hash of server.properties file from in-memory This will “create” one
+if absent, but will not commit it to disk. See sp! for committing
+server.properties to the filesystem.</p>
+          
+          
+
+          
+          <div class="method-source-code" id="sp-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 121</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">sp</span>
+  <span class="ruby-keyword">if</span> <span class="ruby-operator">!</span><span class="ruby-ivar">@config_sp</span>
+    <span class="ruby-keyword">if</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">exist?</span>(<span class="ruby-ivar">@env</span>[<span class="ruby-value">:sp</span>])
+      <span class="ruby-ivar">@config_sp</span> = <span class="ruby-constant">IniFile</span>.<span class="ruby-identifier">load</span>(<span class="ruby-ivar">@env</span>[<span class="ruby-value">:sp</span>])
+    <span class="ruby-keyword">else</span>
+      <span class="ruby-ivar">@config_sp</span> = <span class="ruby-constant">IniFile</span>.<span class="ruby-identifier">new</span>( <span class="ruby-value">:filename</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@env</span>[<span class="ruby-value">:sp</span>] )
+    <span class="ruby-keyword">end</span>
+  <span class="ruby-keyword">end</span>
+
+  <span class="ruby-comment"># replace all instances of nil with empty string</span>
+  <span class="ruby-ivar">@config_sp</span>.<span class="ruby-identifier">to_h</span>[<span class="ruby-string">&#39;global&#39;</span>].<span class="ruby-identifier">keys</span>.<span class="ruby-identifier">each</span> <span class="ruby-keyword">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">key</span><span class="ruby-operator">|</span>
+    <span class="ruby-keyword">if</span> <span class="ruby-ivar">@config_sp</span>[<span class="ruby-string">&#39;global&#39;</span>][<span class="ruby-identifier">key</span>].<span class="ruby-identifier">nil?</span>
+      <span class="ruby-ivar">@config_sp</span>[<span class="ruby-string">&#39;global&#39;</span>][<span class="ruby-identifier">key</span>] = <span class="ruby-string">&#39;&#39;</span>
+    <span class="ruby-keyword">end</span>
+  <span class="ruby-keyword">end</span>
+  
+  <span class="ruby-keyword">return</span> <span class="ruby-ivar">@config_sp</span>.<span class="ruby-identifier">to_h</span>[<span class="ruby-string">&#39;global&#39;</span>]
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-sp-21" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">sp!</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Writes in-memory hash to ini-like server.properties</p>
+          
+          
+
+          
+          <div class="method-source-code" id="sp-21-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 141</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">sp!</span>
+  <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sp</span>
+  <span class="ruby-identifier">lines</span> = <span class="ruby-ivar">@config_sp</span>.<span class="ruby-identifier">to_s</span>.<span class="ruby-identifier">split</span>(<span class="ruby-string">&quot;\n&quot;</span>)
+  <span class="ruby-comment">#inifile auto [sections] files with &quot;global&quot;, this removes it</span>
+  <span class="ruby-identifier">lines</span>.<span class="ruby-identifier">shift</span>
+  <span class="ruby-constant">IO</span>.<span class="ruby-identifier">write</span>(<span class="ruby-ivar">@env</span>[<span class="ruby-value">:sp</span>], <span class="ruby-identifier">lines</span>.<span class="ruby-identifier">join</span>(<span class="ruby-string">&quot;\n&quot;</span>))
+
+  <span class="ruby-keyword">return</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sp</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-start" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">start</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Attempt to start the server executable based on server type This will start
+a new thread for parsing the stdout, @stdout_parser @stdout_parser will
+populate @status with key milestones indicating the server startup progress
+or potential failures.</p>
+          
+          
+
+          
+          <div class="method-source-code" id="start-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 242</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">start</span>
+  <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;server is already running&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">pid</span>
+  <span class="ruby-identifier">require</span>(<span class="ruby-string">&#39;open3&#39;</span>)
+
+  <span class="ruby-ivar">@status</span> = {}
+  <span class="ruby-ivar">@start_args</span> = <span class="ruby-keyword">self</span>.<span class="ruby-identifier">get_start_args</span>(<span class="ruby-value">:conventional_jar</span>)
+  <span class="ruby-ivar">@stdin</span>, <span class="ruby-identifier">stdout</span>, <span class="ruby-identifier">stderr</span>, <span class="ruby-identifier">wait_thr</span> = <span class="ruby-constant">Open3</span>.<span class="ruby-identifier">popen3</span>(<span class="ruby-operator">*</span><span class="ruby-ivar">@start_args</span>, {<span class="ruby-value">:chdir</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-ivar">@env</span>[<span class="ruby-value">:cwd</span>], <span class="ruby-value">:umask</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-value">0o002</span>})
+
+  <span class="ruby-ivar">@stdout_parser</span> = <span class="ruby-constant">Thread</span>.<span class="ruby-identifier">new</span> {
+    <span class="ruby-keyword">while</span> <span class="ruby-identifier">line</span>=<span class="ruby-identifier">stdout</span>.<span class="ruby-identifier">gets</span> <span class="ruby-keyword">do</span>
+      <span class="ruby-keyword">case</span> <span class="ruby-identifier">line</span>
+      <span class="ruby-keyword">when</span> <span class="ruby-regexp">/\[Server thread\/INFO\]: Starting minecraft server version/</span>
+        <span class="ruby-ivar">@status</span>[<span class="ruby-value">:version</span>] = <span class="ruby-identifier">line</span>
+      <span class="ruby-keyword">when</span> <span class="ruby-regexp">/\[Server thread\/INFO\]: Default game type: SURVIVAL/</span>
+        <span class="ruby-ivar">@status</span>[<span class="ruby-value">:type</span>] = <span class="ruby-identifier">line</span>
+      <span class="ruby-keyword">when</span> <span class="ruby-regexp">/\[Server thread\/INFO\]: Starting Minecraft server on/</span>
+        <span class="ruby-ivar">@status</span>[<span class="ruby-value">:port</span>] = <span class="ruby-identifier">line</span>
+      <span class="ruby-keyword">when</span> <span class="ruby-regexp">/\[Server thread\/INFO\]: Preparing level/</span>
+        <span class="ruby-ivar">@status</span>[<span class="ruby-value">:level</span>] = <span class="ruby-identifier">line</span>
+      <span class="ruby-keyword">when</span> <span class="ruby-regexp">/\[Server thread\/INFO\]: Done/</span>
+        <span class="ruby-ivar">@status</span>[<span class="ruby-value">:done</span>] = <span class="ruby-identifier">line</span>
+      <span class="ruby-keyword">when</span> <span class="ruby-regexp">/\[Server thread\/INFO\]: Stopping server/</span>
+        <span class="ruby-ivar">@status</span>[<span class="ruby-value">:stopping</span>] = <span class="ruby-identifier">line</span>
+      <span class="ruby-keyword">when</span> <span class="ruby-regexp">/\[Server thread\/WARN\]: Failed to load eula.txt/</span>
+        <span class="ruby-ivar">@status</span>[<span class="ruby-value">:eula</span>] = <span class="ruby-identifier">line</span>
+      <span class="ruby-keyword">when</span> <span class="ruby-regexp">/\[Server thread\/WARN\]: [^F]+FAILED TO BIND TO PORT/</span>
+        <span class="ruby-ivar">@status</span>[<span class="ruby-value">:bind</span>] = <span class="ruby-identifier">line</span>
+      <span class="ruby-keyword">when</span> <span class="ruby-regexp">/A fatal error has been detected by the Java Runtime Environment/</span>
+        <span class="ruby-ivar">@status</span>[<span class="ruby-value">:fatal_error</span>] = <span class="ruby-identifier">line</span>
+      <span class="ruby-keyword">end</span>
+    <span class="ruby-keyword">end</span>
+  }
+  <span class="ruby-ivar">@pid</span> = <span class="ruby-identifier">wait_thr</span>[<span class="ruby-value">:pid</span>]
+
+  <span class="ruby-keyword">return</span> <span class="ruby-ivar">@pid</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-start_catch_errors" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">start_catch_errors</span><span
+            class="method-args">(timeout = 25)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Attempt to start the server executable based on server type This does the
+same as self.start but with the added functionality that if expected
+milestones aren&#39;t triggered in a given timeframe or if known-failure
+(predictable) events occur, it can raise errors which can be handled and
+presented more thoroughly</p>
+          
+          
+
+          
+          <div class="method-source-code" id="start_catch_errors-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 284</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">start_catch_errors</span>(<span class="ruby-identifier">timeout</span> = <span class="ruby-value">25</span>)
+  <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;timeout must be a positive integer &gt; 0&#39;</span>) <span class="ruby-keyword">if</span> <span class="ruby-operator">!</span><span class="ruby-identifier">timeout</span>.<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">Fixnum</span>)
+  <span class="ruby-identifier">sleep_delay</span> = <span class="ruby-value">0.2</span>
+  <span class="ruby-keyword">self</span>.<span class="ruby-identifier">start</span>
+
+  <span class="ruby-keyword">while</span> <span class="ruby-identifier">timeout</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0</span> <span class="ruby-keyword">do</span>
+    <span class="ruby-keyword">if</span> <span class="ruby-ivar">@status</span>.<span class="ruby-identifier">key?</span>(<span class="ruby-value">:eula</span>)
+      <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sleep_until</span>(<span class="ruby-value">:down</span>)
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;you need to agree to the eula in order to run the server&#39;</span>)
+    <span class="ruby-keyword">elsif</span> <span class="ruby-ivar">@status</span>.<span class="ruby-identifier">key?</span>(<span class="ruby-value">:bind</span>)
+      <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sleep_until</span>(<span class="ruby-value">:down</span>)
+      <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;server port is already in use&#39;</span>)
+    <span class="ruby-keyword">elsif</span> <span class="ruby-ivar">@status</span>.<span class="ruby-identifier">key?</span>(<span class="ruby-value">:done</span>)
+      <span class="ruby-identifier">sleep</span>(<span class="ruby-identifier">sleep_delay</span>)
+      <span class="ruby-keyword">if</span> <span class="ruby-ivar">@status</span>.<span class="ruby-identifier">key?</span>(<span class="ruby-value">:fatal_error</span>)
+        <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sleep_until</span>(<span class="ruby-value">:down</span>)
+        <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;A fatal error has been detected by the Java Runtime Environment&#39;</span>)
+      <span class="ruby-keyword">end</span>
+      <span class="ruby-keyword">break</span>
+    <span class="ruby-keyword">end</span>
+    <span class="ruby-identifier">timeout</span> <span class="ruby-operator">-=</span> <span class="ruby-identifier">sleep_delay</span>
+    <span class="ruby-identifier">sleep</span>(<span class="ruby-identifier">sleep_delay</span>)
+  <span class="ruby-keyword">end</span>
+
+  <span class="ruby-keyword">return</span> <span class="ruby-value">:done</span> <span class="ruby-keyword">if</span> <span class="ruby-ivar">@status</span>.<span class="ruby-identifier">key?</span>(<span class="ruby-value">:done</span>)
+  <span class="ruby-keyword">return</span> <span class="ruby-value">:level</span> <span class="ruby-keyword">if</span> <span class="ruby-ivar">@status</span>.<span class="ruby-identifier">key?</span>(<span class="ruby-value">:level</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-stop" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">stop</span><span
+            class="method-args">()</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Attempts to stop a server by submitting &#39;stop&#39; to the process</p>
+          
+          
+
+          
+          <div class="method-source-code" id="stop-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 313</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">stop</span>
+  <span class="ruby-keyword">if</span> <span class="ruby-keyword">self</span>.<span class="ruby-identifier">pid</span>
+    <span class="ruby-keyword">self</span>.<span class="ruby-identifier">console</span>(<span class="ruby-string">&#39;stop&#39;</span>)
+    <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sleep_until</span>(<span class="ruby-value">:down</span>)
+    <span class="ruby-ivar">@stdout_parser</span>.<span class="ruby-identifier">exit</span>
+    <span class="ruby-keyword">self</span>.<span class="ruby-identifier">sleep_until</span>(<span class="ruby-value">:parser_down</span>, <span class="ruby-value">2</span>)
+  <span class="ruby-keyword">else</span>
+    <span class="ruby-identifier">raise</span> <span class="ruby-constant">RuntimeError</span>.<span class="ruby-identifier">new</span>(<span class="ruby-string">&#39;cannot stop server while it is stopped&#39;</span>)
+  <span class="ruby-keyword">end</span>
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+      <div id="method-i-valid_servername" class="method-detail ">
+        
+        <div class="method-heading">
+          <span class="method-name">valid_servername</span><span
+            class="method-args">(name)</span>
+          
+          <span class="method-click-advice">click to toggle source</span>
+          
+        </div>
+        
+
+        <div class="method-description">
+          
+          <p>Checks a name is directory-safe and follows a few other historical MineOS
+conventions</p>
+          
+          
+
+          
+          <div class="method-source-code" id="valid_servername-source">
+            <pre><span class="ruby-comment"># File app/models/server.rb, line 13</span>
+<span class="ruby-keyword">def</span> <span class="ruby-identifier">valid_servername</span>(<span class="ruby-identifier">name</span>)
+  <span class="ruby-keyword">return</span> <span class="ruby-identifier">name</span>.<span class="ruby-identifier">match</span>(<span class="ruby-regexp">/^(?!\.)[a-zA-Z0-9_\.]+$/</span>)
+<span class="ruby-keyword">end</span></pre>
+          </div>
+          
+        </div>
+
+        
+
+        
+      </div>
+
+    
+    </section>
+  
+  </section>
+</main>
+
+
+<footer id="validator-badges" role="contentinfo">
+  <p><a href="http://validator.w3.org/check/referer">Validate</a>
+  <p>Generated by <a href="http://docs.seattlerb.org/rdoc/">RDoc</a> 4.2.1.
+  <p>Based on <a href="http://deveiate.org/projects/Darkfish-RDoc/">Darkfish</a> by <a href="http://deveiate.org">Michael Granger</a>.
+</footer>
+
