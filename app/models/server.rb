@@ -358,20 +358,26 @@ class Server
   end
 
   def archive
+    require 'mkmf'
+
     fn = "#{self.name}_#{Time.now.strftime('%F_%R:%S')}.tgz"
     fp = File.join(@env[:awd], fn)
-    system("tar --force-local -czf #{fp} .", {:chdir => @env[:cwd]})
+    system("#{find_executable0 'tar'} --force-local -czf #{fp} .", {:chdir => @env[:cwd]})
     return fn
   end
   
   def create_from_archive(filepath)
+    require 'mkmf'
+
     self.create_paths
     raise RuntimeError.new('cannot extract archive over existing server') if Dir.entries(@env[:cwd]).include?('server.config')
-    system("tar --force-local -xf #{filepath}", {:chdir => @env[:cwd]})
+    system("#{find_executable0 'tar'} --force-local -xf #{filepath}", {:chdir => @env[:cwd]})
   end
 
   def backup
-    system("rdiff-backup #{@env[:cwd] + '/'} #{@env[:bwd]}", {:chdir => @env[:bwd]})    
+    require 'mkmf'
+
+    system("#{find_executable0 'rdiff-backup'} #{@env[:cwd] + '/'} #{@env[:bwd]}", {:chdir => @env[:bwd]})    
   end
 
   def restore(steps)
