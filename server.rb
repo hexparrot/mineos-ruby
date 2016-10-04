@@ -1,3 +1,6 @@
+require 'bundler/setup'
+Bundler.require
+
 class Server
   attr_reader :name, :env, :server_type, :status
 
