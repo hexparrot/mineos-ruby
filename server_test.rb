@@ -6,7 +6,8 @@ class ServerTest < Minitest::Test
   def setup
     @@basedir = '/var/games/minecraft'
     @@server_jar = 'minecraft_server.1.8.9.jar'
-    @@server_jar_path = 'lib/assets/' + @@server_jar
+    @@assets_path = 'assets'
+    @@server_jar_path = File.join(@@assets_path, @@server_jar)
 
     require 'fileutils'
     FileUtils.rm_rf(@@basedir)
@@ -148,7 +149,7 @@ class ServerTest < Minitest::Test
 
     inst = Server.new('test')
     inst.create_paths
-    eula_path = File.expand_path("lib/assets/eula.txt", Dir.pwd)
+    eula_path = File.expand_path(File.join(@@assets_path, "eula.txt"), Dir.pwd)
     FileUtils.cp(eula_path, inst.env[:cwd])
     assert_equal(false, inst.eula)
   end
@@ -158,7 +159,7 @@ class ServerTest < Minitest::Test
 
     inst = Server.new('test')
     inst.create_paths
-    eula_path = File.expand_path("lib/assets/eula.txt", Dir.pwd)
+    eula_path = File.expand_path(File.join(@@assets_path, "eula.txt"), Dir.pwd)
     FileUtils.cp(eula_path, inst.env[:cwd])
 
     inst.accept_eula
@@ -181,7 +182,7 @@ class ServerTest < Minitest::Test
 
     inst = Server.new('test')
     inst.create_paths
-    sp_path = File.expand_path("lib/assets/server.properties", Dir.pwd)
+    sp_path = File.expand_path(File.join(@@assets_path, "server.properties"), Dir.pwd)
     FileUtils.cp(sp_path, inst.env[:cwd])
 
     assert_equal(25565, inst.sp['server-port'])
@@ -195,7 +196,7 @@ class ServerTest < Minitest::Test
 
     inst = Server.new('test')
     inst.create_paths
-    sp_path = File.expand_path("lib/assets/server.properties", Dir.pwd)
+    sp_path = File.expand_path(File.join(@@assets_path, "server.properties"), Dir.pwd)
     FileUtils.cp(sp_path, inst.env[:cwd])
 
     number_attributes = inst.sp.keys.length
