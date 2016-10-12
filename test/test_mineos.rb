@@ -915,4 +915,21 @@ class ServerTest < Minitest::Test
     nil until !inst.pid
     nil until !second_inst.pid
   end
+
+  def test_start_queue
+    inst = Server.new('test')
+    inst.create(:conventional_jar)
+
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', @@server_jar, 'java')
+    inst.modify_sc('java_xmx', 256, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+
+    assert_equal(0, inst.console_log.length)
+    inst.start
+    inst.sleep_until(:down)
+    assert_equal(6, inst.console_log.length)
+  end
 end

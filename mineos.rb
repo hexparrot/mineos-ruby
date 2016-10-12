@@ -9,6 +9,7 @@ class Server
     raise RuntimeError if !self.valid_servername(name)
     @name = name
     @status = {}
+    @console_log = Queue.new
     self.set_env
   end
 
@@ -253,6 +254,7 @@ class Server
 
     @stdout_parser = Thread.new {
       while line=stdout.gets do
+        @console_log << line
         case line
         when /\[Server thread\/INFO\]: Starting minecraft server version/
           @status[:version] = line
