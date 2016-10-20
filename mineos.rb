@@ -5,11 +5,14 @@ class Server
   attr_reader :name, :env, :server_type, :status, :console_log
   VALID_NAME_REGEX = /^(?!\.)[a-zA-Z0-9_\.]+$/
 
-  def initialize(name)
+  def initialize(name, qsize:256)
     raise RuntimeError if !self.valid_servername(name)
+    raise RuntimeError.new('queue size must be a positive integer > 0') if !qsize.is_a?(Integer)
+    raise RuntimeError.new('queue size must be a positive integer > 0') if qsize <= 0
+
     @name = name
     @status = {}
-    @console_log = Queue.new
+    @console_log = SizedQueue.new(qsize)
     self.set_env
   end
 

@@ -932,4 +932,28 @@ class ServerTest < Minitest::Test
     inst.sleep_until(:down)
     assert_equal(6, inst.console_log.length)
   end
+
+  def test_start_sizedqueue
+    ex = assert_raises(RuntimeError) { Server.new('test', qsize: nil) }
+    assert_equal('queue size must be a positive integer > 0', ex.message)
+    ex = assert_raises(RuntimeError) { Server.new('test', qsize: 'hello') }
+    assert_equal('queue size must be a positive integer > 0', ex.message)
+    ex = assert_raises(RuntimeError) { Server.new('test', qsize: true) }
+    assert_equal('queue size must be a positive integer > 0', ex.message)
+
+    inst = Server.new('test', qsize:5)
+    inst.create(:conventional_jar)
+
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', @@server_jar, 'java')
+    inst.modify_sc('java_xmx', 256, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+
+    assert_equal(0, inst.console_log.length)
+    inst.start
+    inst.sleep_until(:down)
+    assert_equal(5, inst.console_log.length)
+  end
 end
