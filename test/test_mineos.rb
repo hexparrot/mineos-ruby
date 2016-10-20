@@ -492,6 +492,16 @@ class ServerTest < Minitest::Test
 
   def test_create_server_via_convenience_method
     inst = Server.new('test')
+    inst.create
+
+    assert_equal(:conventional_jar, inst.server_type)
+    assert Dir.exist?(inst.env[:cwd])
+    assert Dir.exist?(inst.env[:bwd])
+    assert Dir.exist?(inst.env[:awd])
+    assert File.exist?(inst.env[:sp])
+    assert File.exist?(inst.env[:sc])
+
+    inst = Server.new('test')
     inst.create(:conventional_jar)
 
     assert_equal(:conventional_jar, inst.server_type)

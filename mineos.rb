@@ -30,7 +30,7 @@ class Server
   end
 
   # Create directory paths and establish server.config (convenience)
-  def create(server_type)
+  def create(server_type=:conventional_jar)
     @server_type = server_type
     case server_type
     when :conventional_jar
