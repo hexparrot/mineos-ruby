@@ -2,7 +2,8 @@ require 'bundler/setup'
 Bundler.require
 
 class Server
-  attr_reader :name, :env, :server_type, :status
+  attr_reader :name, :env, :server_type, :status, :console_log
+  VALID_NAME_REGEX = /^(?!\.)[a-zA-Z0-9_\.]+$/
 
   def initialize(name)
     raise RuntimeError if !self.valid_servername(name)
@@ -14,7 +15,7 @@ class Server
   # Checks a name is directory-safe and follows
   # a few other historical MineOS conventions
   def valid_servername(name)
-    return name.match(/^(?!\.)[a-zA-Z0-9_\.]+$/)
+    return name.match(VALID_NAME_REGEX)
   end
 
   # Establish an easy reference @env for common paths

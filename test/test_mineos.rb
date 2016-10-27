@@ -1,5 +1,5 @@
 require 'minitest/autorun'
-require 'mineos'
+require './mineos'
 
 class ServerTest < Minitest::Test
 
@@ -29,6 +29,10 @@ class ServerTest < Minitest::Test
     ['.test', '#test', '?test', '!test', 'server\'s', 'test^again', 'Vanilla-1.8.9', 'feed me'].each do |name|
       assert_raises(RuntimeError) { inst = Server.new(name) }
     end
+  end
+
+  def test_servername_regex
+    assert_instance_of(Regexp, Server::VALID_NAME_REGEX)
   end
 
   def test_live_directory
