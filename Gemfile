@@ -6,3 +6,7 @@ gem 'inifile'
 gem 'get_process_mem'
 # tarball manipulation
 gem 'minitar'
+# use generator pattern
+gem 'eventmachine'
+# rabbitmq bindings
+gem 'bunny'
