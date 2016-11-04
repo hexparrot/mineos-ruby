@@ -66,6 +66,7 @@ class ServerTest < Minitest::Test
     require 'socket'
     hostname = Socket.gethostname
 
+    step = 0
     EM.run do
       inst = Server.new('test')
       assert !Dir.exist?(inst.env[:cwd])
@@ -89,12 +90,73 @@ class ServerTest < Minitest::Test
         assert Dir.exist?(inst.env[:cwd])
         assert Dir.exist?(inst.env[:bwd])
         assert Dir.exist?(inst.env[:awd])
+        step += 1
         EM.stop
       end
  
       exchange.publish(JSON.generate({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}),
                        :routing_key => "workers.#{hostname}")
     end
+    assert_equal(1, step)
+  end
+
+  def test_get_start_args
+    require 'socket'
+    hostname = Socket.gethostname
+
+    step = 0
+    EM.run do
+      inst = Server.new('test')
+      assert !Dir.exist?(inst.env[:cwd])
+      assert !Dir.exist?(inst.env[:bwd])
+      assert !Dir.exist?(inst.env[:awd])
+  
+      conn = Bunny.new
+      conn.start
+  
+      ch = conn.create_channel
+      exchange = ch.topic("backend")
+  
+      ch
+      .queue("", :exclusive => true)
+      .bind(exchange, :routing_key => "to_hq")
+      .subscribe do |delivery_info, metadata, payload|
+        parsed = JSON.parse(payload, :symbolize_names => true)
+        case step
+        when 0
+          exchange.publish(JSON.generate({cmd: 'modify_sc', server_name: 'test', attr: 'jarfile',
+                                          value: 'minecraft_server.1.8.9.jar', section: 'java'}),
+                           :routing_key => "workers.#{hostname}")
+        when 1
+          exchange.publish(JSON.generate({cmd: 'modify_sc', server_name: 'test', attr: 'java_xmx',
+                                          value: 384, section: 'java'}),
+                           :routing_key => "workers.#{hostname}")
+        when 2
+          exchange.publish(JSON.generate({cmd: 'modify_sc', server_name: 'test', attr: 'java_xms',
+                                          value: 384, section: 'java'}),
+                           :routing_key => "workers.#{hostname}")
+        when 3
+          exchange.publish(JSON.generate({cmd: 'get_start_args', server_name: 'test', type: ':conventional_jar'}),
+                       :routing_key => "workers.#{hostname}")
+        when 4
+          retval = parsed[:retval]
+          assert_equal("/usr/bin/java", retval[0])
+          assert_equal("-server", retval[1])
+          assert_equal("-Xmx384M", retval[2])
+          assert_equal("-Xms384M", retval[3])
+          assert_equal("-jar", retval[4])
+          assert_equal("minecraft_server.1.8.9.jar", retval[5])
+          assert_equal("nogui", retval[6])
+          EM.stop
+        end
+        step += 1
+
+      end
+ 
+      exchange.publish(JSON.generate({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}),
+                       :routing_key => "workers.#{hostname}")
+    end
+    assert_equal(5, step)
   end
 
 end
