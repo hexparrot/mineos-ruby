@@ -38,7 +38,7 @@ EM.run do
   .subscribe do |delivery_info, metadata, payload|
     case payload
     when "IDENT"
-      exchange.publish(jsonify({ server_name: hostname }), :routing_key => "to_hq.ident.#{hostname}")
+      exchange.publish(jsonify({ hostname: hostname}), :routing_key => "to_hq.ident.#{hostname}")
     when "USAGE"
       require 'usagewatch'
 

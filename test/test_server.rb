@@ -54,7 +54,7 @@ class ServerTest < Minitest::Test
       .bind(exchange, :routing_key => "to_hq.ident.*")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
-        assert_equal(hostname, parsed[:server_name])
+        assert_equal(hostname, parsed[:hostname])
         EM.stop
       end
 
@@ -172,6 +172,7 @@ class ServerTest < Minitest::Test
       .bind(exchange, :routing_key => "to_hq.usage.*")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
+puts "#{delivery_info.routing_key}"
         assert(parsed[:usage].key?(:uw_cpuused))
         assert(parsed[:usage].key?(:uw_memused))
         assert(parsed[:usage].key?(:uw_load))
