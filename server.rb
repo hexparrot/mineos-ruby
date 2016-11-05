@@ -38,7 +38,7 @@ EM.run do
   .subscribe do |delivery_info, metadata, payload|
     case payload
     when "IDENT"
-      exchange.publish(jsonify({ server_name: hostname }), :routing_key => "to_hq")
+      exchange.publish(jsonify({ server_name: hostname }), :routing_key => "to_hq.ident.#{hostname}")
     else
       parsed = JSON.parse(payload, :symbolize_names => true)
       server_name = parsed.delete(:server_name)
@@ -65,7 +65,7 @@ EM.run do
 
       cb = Proc.new { |retval|
         exchange.publish(JSON.generate({:server_name => server_name, :cmd => cmd, :success => 'true', :retval => retval}),
-                         :routing_key => "to_hq")
+                         :routing_key => "to_hq.receipt.#{hostname}")
       }
       EM.defer to_call, cb
     end #end case

@@ -51,7 +51,7 @@ class ServerTest < Minitest::Test
   
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq")
+      .bind(exchange, :routing_key => "to_hq.ident.*")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert_equal(hostname, parsed[:server_name])
@@ -81,7 +81,7 @@ class ServerTest < Minitest::Test
   
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq")
+      .bind(exchange, :routing_key => "to_hq.receipt.*")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert_equal('test', parsed[:server_name])
@@ -119,7 +119,7 @@ class ServerTest < Minitest::Test
   
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq")
+      .bind(exchange, :routing_key => "to_hq.receipt.*")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         case step
