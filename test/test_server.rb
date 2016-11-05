@@ -58,7 +58,7 @@ class ServerTest < Minitest::Test
         EM.stop
       end
 
-      exchange.publish('IDENT', :routing_key => "workers")
+      exchange.publish('IDENT', :routing_key => "to_workers.directives")
     end
   end
 
@@ -95,7 +95,7 @@ class ServerTest < Minitest::Test
       end
  
       exchange.publish(JSON.generate({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}),
-                       :routing_key => "workers.#{hostname}")
+                       :routing_key => "to_workers.commands.#{hostname}")
     end
     assert_equal(1, step)
   end
@@ -107,9 +107,6 @@ class ServerTest < Minitest::Test
     step = 0
     EM.run do
       inst = Server.new('test')
-      assert !Dir.exist?(inst.env[:cwd])
-      assert !Dir.exist?(inst.env[:bwd])
-      assert !Dir.exist?(inst.env[:awd])
   
       conn = Bunny.new
       conn.start
@@ -126,18 +123,18 @@ class ServerTest < Minitest::Test
         when 0
           exchange.publish(JSON.generate({cmd: 'modify_sc', server_name: 'test', attr: 'jarfile',
                                           value: 'minecraft_server.1.8.9.jar', section: 'java'}),
-                           :routing_key => "workers.#{hostname}")
+                           :routing_key => "to_workers.commands.#{hostname}")
         when 1
           exchange.publish(JSON.generate({cmd: 'modify_sc', server_name: 'test', attr: 'java_xmx',
                                           value: 384, section: 'java'}),
-                           :routing_key => "workers.#{hostname}")
+                           :routing_key => "to_workers.commands.#{hostname}")
         when 2
           exchange.publish(JSON.generate({cmd: 'modify_sc', server_name: 'test', attr: 'java_xms',
                                           value: 384, section: 'java'}),
-                           :routing_key => "workers.#{hostname}")
+                           :routing_key => "to_workers.commands.#{hostname}")
         when 3
           exchange.publish(JSON.generate({cmd: 'get_start_args', server_name: 'test', type: ':conventional_jar'}),
-                       :routing_key => "workers.#{hostname}")
+                           :routing_key => "to_workers.commands.#{hostname}")
         when 4
           retval = parsed[:retval]
           assert_equal("/usr/bin/java", retval[0])
@@ -154,7 +151,7 @@ class ServerTest < Minitest::Test
       end
  
       exchange.publish(JSON.generate({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}),
-                       :routing_key => "workers.#{hostname}")
+                       :routing_key => "to_workers.commands.#{hostname}")
     end
     assert_equal(5, step)
   end
