@@ -65,29 +65,42 @@ EM.run do
     cmd = parsed.delete(:cmd)
     inst = Server.new(server_name)
 
-    reordered = []
-    inst.method(cmd).parameters.map do |req_or_opt, name|
-      if parsed[name][0] == ':' then
-        #if string begins with :, interpret as symbol (remove : and convert)
-        reordered << parsed[name][1..-1].to_sym
-      else
-        reordered << parsed[name]
+    return_object = {server_name: server_name, cmd: cmd, success: false, retval: nil}
+
+    if inst.respond_to?(cmd) then
+      reordered = []
+      inst.method(cmd).parameters.map do |req_or_opt, name|
+        if parsed[name][0] == ':' then
+          #if string begins with :, interpret as symbol (remove : and convert)
+          reordered << parsed[name][1..-1].to_sym
+        else
+          reordered << parsed[name]
+        end
       end
+
+      to_call = Proc.new do
+        begin
+          inst.public_send(cmd, *reordered)
+        rescue IOError
+          puts "IOERROR CAUGHT"
+        end
+      end
+
+      cb = Proc.new { |retval|
+        return_object[:retval] = retval
+        return_object[:success] = true
+        exchange.publish(jsonify(return_object),
+                         :routing_key => "to_hq.receipt.#{hostname}")
+      }
+      EM.defer to_call, cb
+    else #method not defined in api
+      cb = Proc.new { |retval|
+        exchange.publish(jsonify(return_object),
+                         :routing_key => "to_hq.receipt.#{hostname}")
+      }
+      EM.defer cb
     end
 
-    to_call = Proc.new do
-      begin
-        inst.public_send(cmd, *reordered)
-      rescue IOError
-        puts "IOERROR CAUGHT"
-      end
-    end
-
-    cb = Proc.new { |retval|
-      exchange.publish(JSON.generate({:server_name => server_name, :cmd => cmd, :success => 'true', :retval => retval}),
-                       :routing_key => "to_hq.receipt.#{hostname}")
-    }
-    EM.defer to_call, cb
   end
 
 end #EM::Run

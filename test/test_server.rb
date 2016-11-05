@@ -17,7 +17,7 @@ class ServerTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@@basedir, 'backup'))
     FileUtils.mkdir_p(File.join(@@basedir, 'archive'))
 
-    if 0 then
+    if 1 then
       @pid = fork do
         STDOUT.reopen('/dev/null', 'w')
         STDERR.reopen('/dev/null', 'w')
@@ -86,7 +86,7 @@ class ServerTest < Minitest::Test
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert_equal('test', parsed[:server_name])
         assert_equal('create', parsed[:cmd])
-        assert_equal('true', parsed[:success])
+        assert_equal(true, parsed[:success])
         assert Dir.exist?(inst.env[:cwd])
         assert Dir.exist?(inst.env[:bwd])
         assert Dir.exist?(inst.env[:awd])
@@ -172,7 +172,6 @@ class ServerTest < Minitest::Test
       .bind(exchange, :routing_key => "to_hq.usage.*")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
-puts "#{delivery_info.routing_key}"
         assert(parsed[:usage].key?(:uw_cpuused))
         assert(parsed[:usage].key?(:uw_memused))
         assert(parsed[:usage].key?(:uw_load))
@@ -185,4 +184,35 @@ puts "#{delivery_info.routing_key}"
     end
   end
 
+  def test_bogus_command
+    require 'socket'
+    hostname = Socket.gethostname
+
+    step = 0
+    EM.run do
+  
+      conn = Bunny.new
+      conn.start
+  
+      ch = conn.create_channel
+      exchange = ch.topic("backend")
+  
+      ch
+      .queue("", :exclusive => true)
+      .bind(exchange, :routing_key => "to_hq.receipt.*")
+      .subscribe do |delivery_info, metadata, payload|
+        parsed = JSON.parse(payload, :symbolize_names => true)
+        assert_equal('test', parsed[:server_name])
+        assert_equal('fakeo', parsed[:cmd])
+        assert_equal(false, parsed[:success])
+        step += 1
+        EM.stop
+      end
+ 
+      exchange.publish(JSON.generate({cmd: 'fakeo', server_name: 'test'}),
+                       :routing_key => "to_workers.commands.#{hostname}")
+    end
+    assert_equal(1, step)
+  end
 end
+
