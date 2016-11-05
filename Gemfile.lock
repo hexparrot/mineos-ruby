@@ -8,6 +8,7 @@ GEM
     get_process_mem (0.2.0)
     inifile (3.0.0)
     minitar (0.5.4)
+    usagewatch (0.0.7)
 
 PLATFORMS
   ruby
@@ -18,6 +19,7 @@ DEPENDENCIES
   get_process_mem
   inifile
   minitar
+  usagewatch
 
 BUNDLED WITH
    1.13.5

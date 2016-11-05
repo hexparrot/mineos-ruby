@@ -10,3 +10,5 @@ gem 'minitar'
 gem 'eventmachine'
 # rabbitmq bindings
 gem 'bunny'
+# resource usage
+gem 'usagewatch'

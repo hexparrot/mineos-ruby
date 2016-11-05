@@ -39,6 +39,20 @@ EM.run do
     case payload
     when "IDENT"
       exchange.publish(jsonify({ server_name: hostname }), :routing_key => "to_hq.ident.#{hostname}")
+    when "USAGE"
+      require 'usagewatch'
+
+      EM.defer {
+        usw = Usagewatch
+        retval = {
+          uw_cpuused: usw.uw_cpuused,
+          uw_memused: usw.uw_memused,
+          uw_load: usw.uw_load,
+          uw_diskused: usw.uw_diskused,
+          uw_diskused_perc: usw.uw_diskused_perc,
+        }
+        exchange.publish(jsonify({ usage: retval }), :routing_key => "to_hq.usage.#{hostname}")
+      }
     end
   end
 

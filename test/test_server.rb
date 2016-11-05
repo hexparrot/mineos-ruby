@@ -17,7 +17,7 @@ class ServerTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@@basedir, 'backup'))
     FileUtils.mkdir_p(File.join(@@basedir, 'archive'))
 
-    if 1 then
+    if 0 then
       @pid = fork do
         STDOUT.reopen('/dev/null', 'w')
         STDERR.reopen('/dev/null', 'w')
@@ -154,6 +154,34 @@ class ServerTest < Minitest::Test
                        :routing_key => "to_workers.commands.#{hostname}")
     end
     assert_equal(5, step)
+  end
+
+  def test_usage
+    require 'socket'
+    hostname = Socket.gethostname
+
+    EM.run do
+      conn = Bunny.new
+      conn.start
+  
+      ch = conn.create_channel
+      exchange = ch.topic("backend")
+  
+      ch
+      .queue("", :exclusive => true)
+      .bind(exchange, :routing_key => "to_hq.usage.*")
+      .subscribe do |delivery_info, metadata, payload|
+        parsed = JSON.parse(payload, :symbolize_names => true)
+        assert(parsed[:usage].key?(:uw_cpuused))
+        assert(parsed[:usage].key?(:uw_memused))
+        assert(parsed[:usage].key?(:uw_load))
+        assert(parsed[:usage].key?(:uw_diskused))
+        assert(parsed[:usage].key?(:uw_diskused_perc))
+        EM.stop
+      end
+
+      exchange.publish('USAGE', :routing_key => "to_workers.directives")
+    end
   end
 
 end
