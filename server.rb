@@ -1,6 +1,7 @@
 require 'json'
 require 'bunny'
 require 'eventmachine'
+require 'securerandom'
 require './mineos'
  
 servers = {}
@@ -34,11 +35,16 @@ EM.run do
 
   ch
   .queue("worker.directives")
-  .bind(exchange, :routing_key => "to_workers.directives")
+  .bind(exchange, :routing_key => "to_workers")
   .subscribe do |delivery_info, metadata, payload|
     case payload
     when "IDENT"
-      exchange.publish(jsonify({ hostname: hostname}), :routing_key => "to_hq.ident.#{hostname}")
+      exchange.publish(hostname,
+                       :routing_key => "to_hq.#{hostname}",
+                       :timestamp => Time.now.to_i,
+                       :type => payload,
+                       :correlation_id => metadata[:message_id],
+                       :message_id => SecureRandom.uuid)
     when "USAGE"
       require 'usagewatch'
 
@@ -51,16 +57,23 @@ EM.run do
           uw_diskused: usw.uw_diskused,
           uw_diskused_perc: usw.uw_diskused_perc,
         }
-        exchange.publish(jsonify({ usage: retval }), :routing_key => "to_hq.usage.#{hostname}")
+        exchange.publish(jsonify({ usage: retval }),
+                         :routing_key => "to_hq.#{hostname}",
+                         :timestamp => Time.now.to_i,
+                         :type => payload,
+                         :correlation_id => metadata[:message_id],
+                         :message_id => SecureRandom.uuid)
       }
     end
   end
 
   ch
   .queue("worker.dispatcher")
-  .bind(exchange, :routing_key => "to_workers.commands.#{hostname}")
+  .bind(exchange, :routing_key => "to_workers.#{hostname}.commands")
   .subscribe do |delivery_info, metadata, payload|
     parsed = JSON.parse(payload, :symbolize_names => true)
+puts parsed
+puts metadata
     server_name = parsed.delete(:server_name)
     cmd = parsed.delete(:cmd)
     inst = Server.new(server_name)
@@ -89,14 +102,22 @@ EM.run do
       cb = Proc.new { |retval|
         return_object[:retval] = retval
         return_object[:success] = true
-        exchange.publish(jsonify(return_object),
-                         :routing_key => "to_hq.receipt.#{hostname}")
+        exchange.publish(return_object.to_json,
+                         :routing_key => "to_hq.receipt",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt.command',
+                         :correlation_id => metadata[:message_id],
+                         :message_id => SecureRandom.uuid)
       }
       EM.defer to_call, cb
     else #method not defined in api
       cb = Proc.new { |retval|
-        exchange.publish(jsonify(return_object),
-                         :routing_key => "to_hq.receipt.#{hostname}")
+        exchange.publish(return_object.to_json,
+                         :routing_key => "to_hq.receipt",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt.command',
+                         :correlation_id => metadata[:message_id],
+                         :message_id => SecureRandom.uuid)
       }
       EM.defer cb
     end

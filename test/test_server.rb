@@ -4,6 +4,7 @@ require './mineos'
 require 'eventmachine'
 require 'bunny'
 require 'json'
+require 'securerandom'
 
 class ServerTest < Minitest::Test
 
@@ -42,24 +43,36 @@ class ServerTest < Minitest::Test
     require 'socket'
     hostname = Socket.gethostname
 
+    steps = 0
     EM.run do
       conn = Bunny.new
       conn.start
   
       ch = conn.create_channel
       exchange = ch.topic("backend")
-  
+
+      guid = SecureRandom.uuid
+
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq.ident.*")
+      .bind(exchange, :routing_key => "to_hq.*")
       .subscribe do |delivery_info, metadata, payload|
-        parsed = JSON.parse(payload, :symbolize_names => true)
-        assert_equal(hostname, parsed[:hostname])
+        assert_equal(hostname, payload) #fixme if not running test on local bunny
+        assert_equal(guid, metadata.correlation_id)
+        assert_equal('IDENT', metadata.type)
+        assert(metadata.timestamp)
+        assert(metadata.message_id)
+        steps += 1
         EM.stop
       end
 
-      exchange.publish('IDENT', :routing_key => "to_workers.directives")
+      exchange.publish('IDENT',
+                       :routing_key => "to_workers",
+                       :type => "directive",
+                       :message_id => guid,
+                       :timestamp => Time.now.to_i)
     end
+    assert_equal(1, steps)
   end
 
   def test_create_server
@@ -79,14 +92,22 @@ class ServerTest < Minitest::Test
       ch = conn.create_channel
       exchange = ch.topic("backend")
   
+      guid = SecureRandom.uuid
+
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq.receipt.*")
+      .bind(exchange, :routing_key => "to_hq.receipt")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert_equal('test', parsed[:server_name])
         assert_equal('create', parsed[:cmd])
         assert_equal(true, parsed[:success])
+
+        assert_equal(guid, metadata.correlation_id)
+        assert_equal('receipt.command', metadata.type)
+        assert(metadata.timestamp)
+        assert(metadata.message_id)
+
         assert Dir.exist?(inst.env[:cwd])
         assert Dir.exist?(inst.env[:bwd])
         assert Dir.exist?(inst.env[:awd])
@@ -94,8 +115,13 @@ class ServerTest < Minitest::Test
         EM.stop
       end
  
-      exchange.publish(JSON.generate({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}),
-                       :routing_key => "to_workers.commands.#{hostname}")
+      exchange.publish({cmd: 'create',
+                        server_name: 'test',
+                        server_type: ':conventional_jar'}.to_json,
+                       :routing_key => "to_workers.#{hostname}.commands",
+                       :type => "command",
+                       :message_id => guid,
+                       :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
@@ -113,28 +139,40 @@ class ServerTest < Minitest::Test
   
       ch = conn.create_channel
       exchange = ch.topic("backend")
-  
+
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq.receipt.*")
+      .bind(exchange, :routing_key => "to_hq.receipt")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         case step
         when 0
-          exchange.publish(JSON.generate({cmd: 'modify_sc', server_name: 'test', attr: 'jarfile',
-                                          value: 'minecraft_server.1.8.9.jar', section: 'java'}),
-                           :routing_key => "to_workers.commands.#{hostname}")
+          exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'jarfile',
+                            value: 'minecraft_server.1.8.9.jar', section: 'java'}.to_json,
+                           :routing_key => "to_workers.#{hostname}.commands",
+                           :timestamp => Time.now.to_i,
+                           :type => 'command',
+                           :message_id => SecureRandom.uuid)
         when 1
-          exchange.publish(JSON.generate({cmd: 'modify_sc', server_name: 'test', attr: 'java_xmx',
-                                          value: 384, section: 'java'}),
-                           :routing_key => "to_workers.commands.#{hostname}")
+          exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'java_xmx',
+                            value: 384, section: 'java'}.to_json,
+                           :routing_key => "to_workers.#{hostname}.commands",
+                           :timestamp => Time.now.to_i,
+                           :type => 'command',
+                           :message_id => SecureRandom.uuid)
         when 2
-          exchange.publish(JSON.generate({cmd: 'modify_sc', server_name: 'test', attr: 'java_xms',
-                                          value: 384, section: 'java'}),
-                           :routing_key => "to_workers.commands.#{hostname}")
+          exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'java_xms',
+                            value: 384, section: 'java'}.to_json,
+                           :routing_key => "to_workers.#{hostname}.commands",
+                           :timestamp => Time.now.to_i,
+                           :type => 'command',
+                           :message_id => SecureRandom.uuid)
         when 3
-          exchange.publish(JSON.generate({cmd: 'get_start_args', server_name: 'test', type: ':conventional_jar'}),
-                           :routing_key => "to_workers.commands.#{hostname}")
+          exchange.publish({cmd: 'get_start_args', server_name: 'test', type: ':conventional_jar'}.to_json,
+                           :routing_key => "to_workers.#{hostname}.commands",
+                           :timestamp => Time.now.to_i,
+                           :type => 'command',
+                           :message_id => SecureRandom.uuid)
         when 4
           retval = parsed[:retval]
           assert_equal("/usr/bin/java", retval[0])
@@ -144,14 +182,23 @@ class ServerTest < Minitest::Test
           assert_equal("-jar", retval[4])
           assert_equal("minecraft_server.1.8.9.jar", retval[5])
           assert_equal("nogui", retval[6])
+
+          assert_equal('receipt.command', metadata.type)
+          assert(metadata.timestamp)
+          assert(metadata.message_id)
+          assert(metadata.correlation_id)
+
           EM.stop
         end
         step += 1
 
       end
  
-      exchange.publish(JSON.generate({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}),
-                       :routing_key => "to_workers.commands.#{hostname}")
+      exchange.publish({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}.to_json,
+                       :routing_key => "to_workers.#{hostname}.commands",
+                       :timestamp => Time.now.to_i,
+                       :type => 'command',
+                       :message_id => SecureRandom.uuid)
     end
     assert_equal(5, step)
   end
@@ -160,16 +207,19 @@ class ServerTest < Minitest::Test
     require 'socket'
     hostname = Socket.gethostname
 
+    steps = 0
     EM.run do
       conn = Bunny.new
       conn.start
   
       ch = conn.create_channel
       exchange = ch.topic("backend")
+
+      guid = SecureRandom.uuid
   
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq.usage.*")
+      .bind(exchange, :routing_key => "to_hq.*")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert(parsed[:usage].key?(:uw_cpuused))
@@ -177,11 +227,22 @@ class ServerTest < Minitest::Test
         assert(parsed[:usage].key?(:uw_load))
         assert(parsed[:usage].key?(:uw_diskused))
         assert(parsed[:usage].key?(:uw_diskused_perc))
+
+        assert_equal(guid, metadata.correlation_id)
+        assert_equal('USAGE', metadata.type)
+        assert(metadata.timestamp)
+        assert(metadata.message_id)
+        steps += 1
         EM.stop
       end
 
-      exchange.publish('USAGE', :routing_key => "to_workers.directives")
+      exchange.publish('USAGE',
+                       :routing_key => "to_workers",
+                       :type => "directive",
+                       :message_id => guid,
+                       :timestamp => Time.now.to_i)
     end
+    assert_equal(1, steps)
   end
 
   def test_bogus_command
@@ -196,21 +257,32 @@ class ServerTest < Minitest::Test
   
       ch = conn.create_channel
       exchange = ch.topic("backend")
+
+      guid = SecureRandom.uuid
   
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq.receipt.*")
+      .bind(exchange, :routing_key => "to_hq.receipt")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert_equal('test', parsed[:server_name])
         assert_equal('fakeo', parsed[:cmd])
         assert_equal(false, parsed[:success])
+
+        assert_equal(guid, metadata.correlation_id)
+        assert_equal('receipt.command', metadata.type)
+        assert(metadata.timestamp)
+        assert(metadata.message_id)
+
         step += 1
         EM.stop
       end
  
-      exchange.publish(JSON.generate({cmd: 'fakeo', server_name: 'test'}),
-                       :routing_key => "to_workers.commands.#{hostname}")
+      exchange.publish({cmd: 'fakeo', server_name: 'test'}.to_json,
+                       :routing_key => "to_workers.#{hostname}.commands",
+                       :type => "command",
+                       :message_id => guid,
+                       :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
