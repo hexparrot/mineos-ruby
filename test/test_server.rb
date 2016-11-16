@@ -18,7 +18,7 @@ class ServerTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@@basedir, 'backup'))
     FileUtils.mkdir_p(File.join(@@basedir, 'archive'))
 
-    if 0 then
+    if 1 then
       @pid = fork do
         STDOUT.reopen('/dev/null', 'w')
         STDERR.reopen('/dev/null', 'w')
@@ -285,6 +285,47 @@ class ServerTest < Minitest::Test
                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
+  end
+
+  def test_ignore_command
+    require 'socket'
+    hostname = Socket.gethostname
+
+    step = 0
+    EM.run do
+  
+      conn = Bunny.new
+      conn.start
+  
+      ch = conn.create_channel
+      exchange = ch.topic("backend")
+
+      guid = SecureRandom.uuid
+  
+      ch
+      .queue("", :exclusive => true)
+      .bind(exchange, :routing_key => "to_hq")
+      .subscribe do |delivery_info, metadata, payload|
+        step += 1
+        assert(false)
+        EM.stop
+      end
+ 
+      exchange.publish({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}.to_json,
+                       :routing_key => "to_workers.someawesomeserver",
+                       :timestamp => Time.now.to_i,
+                       :type => 'command',
+                       :message_id => SecureRandom.uuid)
+
+      EM.add_timer(2) {
+        inst = Server.new('test')
+        assert !Dir.exist?(inst.env[:cwd])
+        assert !Dir.exist?(inst.env[:bwd])
+        assert !Dir.exist?(inst.env[:awd])
+        EM.stop
+      }
+    end
+    assert_equal(0, step)
   end
 end
 

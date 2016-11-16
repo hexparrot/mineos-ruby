@@ -123,11 +123,13 @@ EM.run do
     #puts delivery_info
     #puts metadata
     #puts payload
-    case metadata.type
-    when "directive"
-      directive_handler.call delivery_info, metadata, payload
-    when "command"
-      command_handler.call delivery_info, metadata, payload
+    if delivery_info.routing_key.split('.')[1] == hostname
+      case metadata.type
+      when "directive"
+        directive_handler.call delivery_info, metadata, payload
+      when "command"
+        command_handler.call delivery_info, metadata, payload
+      end
     end
   end
 
