@@ -18,7 +18,7 @@ class ServerTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@@basedir, 'backup'))
     FileUtils.mkdir_p(File.join(@@basedir, 'archive'))
 
-    if 1 then
+    if 0 then
       @pid = fork do
         STDOUT.reopen('/dev/null', 'w')
         STDERR.reopen('/dev/null', 'w')
@@ -39,7 +39,7 @@ class ServerTest < Minitest::Test
     end
   end
 
-  def test_ping_workers
+  def test_ident
     require 'socket'
     hostname = Socket.gethostname
 
@@ -55,7 +55,7 @@ class ServerTest < Minitest::Test
 
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq.*")
+      .bind(exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         assert_equal(hostname, payload) #fixme if not running test on local bunny
         assert_equal(guid, metadata.correlation_id)
@@ -96,7 +96,7 @@ class ServerTest < Minitest::Test
 
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq.receipt")
+      .bind(exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert_equal('test', parsed[:server_name])
@@ -118,7 +118,7 @@ class ServerTest < Minitest::Test
       exchange.publish({cmd: 'create',
                         server_name: 'test',
                         server_type: ':conventional_jar'}.to_json,
-                       :routing_key => "to_workers.#{hostname}.commands",
+                       :routing_key => "to_workers.#{hostname}",
                        :type => "command",
                        :message_id => guid,
                        :timestamp => Time.now.to_i)
@@ -142,34 +142,34 @@ class ServerTest < Minitest::Test
 
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq.receipt")
+      .bind(exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         case step
         when 0
           exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'jarfile',
                             value: 'minecraft_server.1.8.9.jar', section: 'java'}.to_json,
-                           :routing_key => "to_workers.#{hostname}.commands",
+                           :routing_key => "to_workers.#{hostname}",
                            :timestamp => Time.now.to_i,
                            :type => 'command',
                            :message_id => SecureRandom.uuid)
         when 1
           exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'java_xmx',
                             value: 384, section: 'java'}.to_json,
-                           :routing_key => "to_workers.#{hostname}.commands",
+                           :routing_key => "to_workers.#{hostname}",
                            :timestamp => Time.now.to_i,
                            :type => 'command',
                            :message_id => SecureRandom.uuid)
         when 2
           exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'java_xms',
                             value: 384, section: 'java'}.to_json,
-                           :routing_key => "to_workers.#{hostname}.commands",
+                           :routing_key => "to_workers.#{hostname}",
                            :timestamp => Time.now.to_i,
                            :type => 'command',
                            :message_id => SecureRandom.uuid)
         when 3
           exchange.publish({cmd: 'get_start_args', server_name: 'test', type: ':conventional_jar'}.to_json,
-                           :routing_key => "to_workers.#{hostname}.commands",
+                           :routing_key => "to_workers.#{hostname}",
                            :timestamp => Time.now.to_i,
                            :type => 'command',
                            :message_id => SecureRandom.uuid)
@@ -195,7 +195,7 @@ class ServerTest < Minitest::Test
       end
  
       exchange.publish({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}.to_json,
-                       :routing_key => "to_workers.#{hostname}.commands",
+                       :routing_key => "to_workers.#{hostname}",
                        :timestamp => Time.now.to_i,
                        :type => 'command',
                        :message_id => SecureRandom.uuid)
@@ -219,7 +219,7 @@ class ServerTest < Minitest::Test
   
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq.*")
+      .bind(exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert(parsed[:usage].key?(:uw_cpuused))
@@ -262,7 +262,7 @@ class ServerTest < Minitest::Test
   
       ch
       .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq.receipt")
+      .bind(exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert_equal('test', parsed[:server_name])
@@ -279,7 +279,7 @@ class ServerTest < Minitest::Test
       end
  
       exchange.publish({cmd: 'fakeo', server_name: 'test'}.to_json,
-                       :routing_key => "to_workers.#{hostname}.commands",
+                       :routing_key => "to_workers.#{hostname}",
                        :type => "command",
                        :message_id => guid,
                        :timestamp => Time.now.to_i)

@@ -33,14 +33,11 @@ EM.run do
   ch = amq.create_channel
   exchange = ch.topic("backend")
 
-  ch
-  .queue("worker.directives")
-  .bind(exchange, :routing_key => "to_workers")
-  .subscribe do |delivery_info, metadata, payload|
+  directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
     when "IDENT"
       exchange.publish(hostname,
-                       :routing_key => "to_hq.#{hostname}",
+                       :routing_key => "to_hq",
                        :timestamp => Time.now.to_i,
                        :type => payload,
                        :correlation_id => metadata[:message_id],
@@ -58,22 +55,17 @@ EM.run do
           uw_diskused_perc: usw.uw_diskused_perc,
         }
         exchange.publish(jsonify({ usage: retval }),
-                         :routing_key => "to_hq.#{hostname}",
+                         :routing_key => "to_hq",
                          :timestamp => Time.now.to_i,
                          :type => payload,
                          :correlation_id => metadata[:message_id],
                          :message_id => SecureRandom.uuid)
       }
     end
-  end
+  }
 
-  ch
-  .queue("worker.dispatcher")
-  .bind(exchange, :routing_key => "to_workers.#{hostname}.commands")
-  .subscribe do |delivery_info, metadata, payload|
+  command_handler = lambda { |delivery_info, metadata, payload|
     parsed = JSON.parse(payload, :symbolize_names => true)
-puts parsed
-puts metadata
     server_name = parsed.delete(:server_name)
     cmd = parsed.delete(:cmd)
     inst = Server.new(server_name)
@@ -103,7 +95,7 @@ puts metadata
         return_object[:retval] = retval
         return_object[:success] = true
         exchange.publish(return_object.to_json,
-                         :routing_key => "to_hq.receipt",
+                         :routing_key => "to_hq",
                          :timestamp => Time.now.to_i,
                          :type => 'receipt.command',
                          :correlation_id => metadata[:message_id],
@@ -113,7 +105,7 @@ puts metadata
     else #method not defined in api
       cb = Proc.new { |retval|
         exchange.publish(return_object.to_json,
-                         :routing_key => "to_hq.receipt",
+                         :routing_key => "to_hq",
                          :timestamp => Time.now.to_i,
                          :type => 'receipt.command',
                          :correlation_id => metadata[:message_id],
@@ -122,6 +114,21 @@ puts metadata
       EM.defer cb
     end
 
+  }
+
+  ch
+  .queue("worker.dispatcher")
+  .bind(exchange, :routing_key => "to_workers.*")
+  .subscribe do |delivery_info, metadata, payload|
+    #puts delivery_info
+    #puts metadata
+    #puts payload
+    case metadata.type
+    when "directive"
+      directive_handler.call delivery_info, metadata, payload
+    when "command"
+      command_handler.call delivery_info, metadata, payload
+    end
   end
 
 end #EM::Run
