@@ -54,10 +54,10 @@ class ServerTest < Minitest::Test
       guid = SecureRandom.uuid
 
       ch
-      .queue("", :exclusive => true)
+      .queue("")
       .bind(exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
-        assert_equal(hostname, payload) #fixme if not running test on local bunny
+        assert_equal(hostname, payload) #fixme and routing key below if not running test on local bunny
         assert_equal(guid, metadata.correlation_id)
         assert_equal('IDENT', metadata.type)
         assert(metadata.timestamp)

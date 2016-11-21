@@ -6,10 +6,6 @@ require './mineos'
  
 servers = {}
 
-def jsonify(hash_obj)
-  return JSON.generate(hash_obj)
-end
-
 EM.run do
   servers = {}
   consoles = {}
@@ -54,7 +50,7 @@ EM.run do
           uw_diskused: usw.uw_diskused,
           uw_diskused_perc: usw.uw_diskused_perc,
         }
-        exchange.publish(jsonify({ usage: retval }),
+        exchange.publish({ usage: retval }.to_json,
                          :routing_key => "to_hq",
                          :timestamp => Time.now.to_i,
                          :type => payload,
@@ -125,11 +121,14 @@ EM.run do
     #puts payload
     if delivery_info.routing_key.split('.')[1] == hostname
       case metadata.type
-      when "directive"
+      when 'directive'
         directive_handler.call delivery_info, metadata, payload
-      when "command"
+      when 'command'
         command_handler.call delivery_info, metadata, payload
       end
+    elsif metadata.type == 'directive'
+      # if host not specified
+      directive_handler.call delivery_info, metadata, payload
     end
   end
 
