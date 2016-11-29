@@ -1,14 +1,25 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    amq-protocol (2.0.1)
+    bunny (2.6.1)
+      amq-protocol (>= 2.0.1)
+    eventmachine (1.0.9.1)
     get_process_mem (0.2.0)
     inifile (3.0.0)
     minitar (0.5.4)
+    usagewatch (0.0.7)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
+  bunny
+  eventmachine
   get_process_mem
   inifile
   minitar
+  usagewatch
+
+BUNDLED WITH
+   1.13.5
