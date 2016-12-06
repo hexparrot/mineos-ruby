@@ -42,14 +42,19 @@ class HQ < Sinatra::Base
   end
   
   apost '/create/:worker/:servername' do |worker, servername|
-    candidate = available_workers.to_a.sample
+    if worker == 'any'
+      candidate = available_workers.to_a.sample
+    elsif !available_workers.include?(worker)
+      halt 404, {server_name: servername, success: false}.to_json
+    else
+      candidate = worker 
+    end
     uuid = SecureRandom.uuid
 
     ch
     .queue("")
     .bind(exchange, :routing_key => "to_hq")
     .subscribe do |delivery_info, metadata, payload|
-      parsed = JSON.parse(payload, :symbolize_names => true)
       if metadata.correlation_id == uuid then
         status 201
         body payload
