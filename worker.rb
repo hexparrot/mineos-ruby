@@ -71,11 +71,25 @@ EM.run do
     if inst.respond_to?(cmd) then
       reordered = []
       inst.method(cmd).parameters.map do |req_or_opt, name|
-        if parsed[name][0] == ':' then
-          #if string begins with :, interpret as symbol (remove : and convert)
-          reordered << parsed[name][1..-1].to_sym
-        else
-          reordered << parsed[name]
+        begin
+          if parsed[name][0] == ':' then
+            #if string begins with :, interpret as symbol (remove : and convert)
+            reordered << parsed[name][1..-1].to_sym
+          else
+            reordered << parsed[name]
+          end
+        rescue NoMethodError
+          if req_or_opt == 'req' then
+            exchange.publish(return_object.to_json,
+                             :routing_key => "to_hq",
+                             :timestamp => Time.now.to_i,
+                             :type => 'receipt.command',
+                             :correlation_id => metadata[:message_id],
+                             :message_id => SecureRandom.uuid)
+          else
+            break #if optional and absent, break loop and advance
+            # there are currently no functions with 2+ optional parameters
+          end
         end
       end
 

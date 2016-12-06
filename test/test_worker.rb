@@ -22,7 +22,7 @@ class ServerTest < Minitest::Test
       @pid = fork do
         STDOUT.reopen('/dev/null', 'w')
         STDERR.reopen('/dev/null', 'w')
-        exec "ruby server.rb"
+        exec "ruby worker.rb"
       end
     end
 
@@ -75,7 +75,7 @@ class ServerTest < Minitest::Test
     assert_equal(1, steps)
   end
 
-  def test_create_server
+  def test_create_server_explicit_parameters
     require 'socket'
     hostname = Socket.gethostname
 
@@ -125,6 +125,57 @@ class ServerTest < Minitest::Test
     end
     assert_equal(1, step)
   end
+
+  def test_create_server_implicit_parameters
+    require 'socket'
+    hostname = Socket.gethostname
+
+    step = 0
+    EM.run do
+      inst = Server.new('test')
+      assert !Dir.exist?(inst.env[:cwd])
+      assert !Dir.exist?(inst.env[:bwd])
+      assert !Dir.exist?(inst.env[:awd])
+
+      conn = Bunny.new
+      conn.start
+
+      ch = conn.create_channel
+      exchange = ch.topic("backend")
+
+      guid = SecureRandom.uuid
+
+      ch
+      .queue("", :exclusive => true)
+      .bind(exchange, :routing_key => "to_hq")
+      .subscribe do |delivery_info, metadata, payload|
+        parsed = JSON.parse(payload, :symbolize_names => true)
+        assert_equal('test', parsed[:server_name])
+        assert_equal('create', parsed[:cmd])
+        assert_equal(true, parsed[:success])
+
+        assert_equal(guid, metadata.correlation_id)
+        assert_equal('receipt.command', metadata.type)
+        assert(metadata.timestamp)
+        assert(metadata.message_id)
+
+        assert Dir.exist?(inst.env[:cwd])
+        assert Dir.exist?(inst.env[:bwd])
+        assert Dir.exist?(inst.env[:awd])
+        step += 1
+        EM.stop
+      end
+
+      exchange.publish({cmd: 'create',
+                        server_name: 'test'}.to_json,
+                       :routing_key => "to_workers.#{hostname}",
+                       :type => "command",
+                       :message_id => guid,
+                       :timestamp => Time.now.to_i)
+    end
+    assert_equal(1, step)
+  end
+
 
   def test_get_start_args
     require 'socket'
