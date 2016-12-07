@@ -1,16 +1,23 @@
 require 'minitest/autorun'
 
-require './mineos'
 require 'eventmachine'
 require 'bunny'
 require 'json'
 require 'securerandom'
+require 'socket'
 
 class ServerTest < Minitest::Test
 
   def setup
     @@basedir = '/var/games/minecraft'
-    @@amq_uri = 'localhost'
+    @@hostname = Socket.gethostname
+    @@amqp = 'amqp://localhost'
+
+    conn = Bunny.new(@@amqp)
+    conn.start
+
+    @ch = conn.create_channel
+    @exchange = @ch.topic('backend')
 
     require 'fileutils'
     FileUtils.rm_rf(@@basedir)
@@ -27,76 +34,89 @@ class ServerTest < Minitest::Test
     end
 
     Process.detach(@pid)
-    sleep(1)
   end
 
   def teardown
-    begin
-      Process.kill(9, @pid) if @pid
-    rescue Errno::ESRCH
-    else
-      sleep(1)
-    end
+    Process.kill 9, @pid 
+    sleep(0.1)
   end
 
   def test_ident
-    require 'socket'
-    hostname = Socket.gethostname
+    guid = SecureRandom.uuid
+    step = 0
 
-    steps = 0
     EM.run do
-      conn = Bunny.new
-      conn.start
-  
-      ch = conn.create_channel
-      exchange = ch.topic("backend")
-
-      guid = SecureRandom.uuid
-
-      ch
-      .queue("")
-      .bind(exchange, :routing_key => "to_hq")
-      .subscribe do |delivery_info, metadata, payload|
-        assert_equal(hostname, payload) #fixme and routing key below if not running test on local bunny
+      @ch
+      .queue('')
+      .bind(@exchange, :routing_key => "to_hq")
+      .subscribe(:exclusive => true) do |delivery_info, metadata, payload|
+        parsed = JSON.parse(payload, :symbolize_names => true)
+        assert_equal(@@hostname, parsed[:host])
         assert_equal(guid, metadata.correlation_id)
         assert_equal('IDENT', metadata.type)
         assert(metadata.timestamp)
         assert(metadata.message_id)
-        steps += 1
+        step += 1
         EM.stop
       end
 
-      exchange.publish('IDENT',
-                       :routing_key => "to_workers",
-                       :type => "directive",
-                       :message_id => guid,
-                       :timestamp => Time.now.to_i)
+      @exchange.publish('IDENT',
+                        :routing_key => "to_workers",
+                        :type => "directive",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
-    assert_equal(1, steps)
+    assert_equal(1, step)
+  end
+
+  def test_serverlist
+    guid = SecureRandom.uuid
+    step = 0
+
+    EM.run do
+      @ch
+      .queue('', :exclusive => true)
+      .bind(@exchange, :routing_key => "to_hq")
+      .subscribe do |delivery_info, metadata, payload|
+        case step
+        when 0
+          @exchange.publish('LIST',
+                            :routing_key => "to_workers",
+                            :type => "directive",
+                            :message_id => guid,
+                            :timestamp => Time.now.to_i)
+        when 1
+          parsed = JSON.parse(payload, :symbolize_names => true)
+          servers = parsed[:servers]
+          assert_equal('test', servers.first)
+          assert_equal(1, servers.length)
+          assert_equal(guid, metadata.correlation_id)
+          assert_equal('LIST', metadata.type)
+          assert(metadata.timestamp)
+          assert(metadata.message_id)
+          EM.stop
+        end
+        step += 1
+      end
+
+      @exchange.publish({cmd: 'create',
+                         server_name: 'test'}.to_json,
+                        :routing_key => "to_workers.#{@@hostname}",
+                        :type => "command",
+                        :message_id => SecureRandom.uuid,
+                        :timestamp => Time.now.to_i)
+    end
+    assert_equal(2, step)
   end
 
   def test_create_server_explicit_parameters
-    require 'socket'
-    hostname = Socket.gethostname
-
+    guid = SecureRandom.uuid
     step = 0
-    EM.run do
-      inst = Server.new('test')
-      assert !Dir.exist?(inst.env[:cwd])
-      assert !Dir.exist?(inst.env[:bwd])
-      assert !Dir.exist?(inst.env[:awd])
-  
-      conn = Bunny.new
-      conn.start
-  
-      ch = conn.create_channel
-      exchange = ch.topic("backend")
-  
-      guid = SecureRandom.uuid
 
-      ch
-      .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq")
+    EM.run do
+      @ch
+      .queue('', :exclusive => true)
+      .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert_equal('test', parsed[:server_name])
@@ -108,46 +128,29 @@ class ServerTest < Minitest::Test
         assert(metadata.timestamp)
         assert(metadata.message_id)
 
-        assert Dir.exist?(inst.env[:cwd])
-        assert Dir.exist?(inst.env[:bwd])
-        assert Dir.exist?(inst.env[:awd])
         step += 1
         EM.stop
       end
  
-      exchange.publish({cmd: 'create',
-                        server_name: 'test',
-                        server_type: ':conventional_jar'}.to_json,
-                       :routing_key => "to_workers.#{hostname}",
-                       :type => "command",
-                       :message_id => guid,
-                       :timestamp => Time.now.to_i)
+      @exchange.publish({cmd: 'create',
+                         server_name: 'test',
+                         server_type: ':conventional_jar'}.to_json,
+                        :routing_key => "to_workers.#{@@hostname}",
+                        :type => "command",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
 
   def test_create_server_implicit_parameters
-    require 'socket'
-    hostname = Socket.gethostname
-
+    guid = SecureRandom.uuid
     step = 0
+
     EM.run do
-      inst = Server.new('test')
-      assert !Dir.exist?(inst.env[:cwd])
-      assert !Dir.exist?(inst.env[:bwd])
-      assert !Dir.exist?(inst.env[:awd])
-
-      conn = Bunny.new
-      conn.start
-
-      ch = conn.create_channel
-      exchange = ch.topic("backend")
-
-      guid = SecureRandom.uuid
-
-      ch
-      .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq")
+      @ch
+      .queue('', :exclusive => true)
+      .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert_equal('test', parsed[:server_name])
@@ -159,71 +162,57 @@ class ServerTest < Minitest::Test
         assert(metadata.timestamp)
         assert(metadata.message_id)
 
-        assert Dir.exist?(inst.env[:cwd])
-        assert Dir.exist?(inst.env[:bwd])
-        assert Dir.exist?(inst.env[:awd])
         step += 1
         EM.stop
       end
 
-      exchange.publish({cmd: 'create',
-                        server_name: 'test'}.to_json,
-                       :routing_key => "to_workers.#{hostname}",
-                       :type => "command",
-                       :message_id => guid,
-                       :timestamp => Time.now.to_i)
+      @exchange.publish({cmd: 'create',
+                         server_name: 'test'}.to_json,
+                        :routing_key => "to_workers.#{@@hostname}",
+                        :type => "command",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
 
 
   def test_get_start_args
-    require 'socket'
-    hostname = Socket.gethostname
-
     step = 0
     EM.run do
-      inst = Server.new('test')
-  
-      conn = Bunny.new
-      conn.start
-  
-      ch = conn.create_channel
-      exchange = ch.topic("backend")
-
-      ch
-      .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq")
+      @ch
+      .queue('', :exclusive => true)
+      .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         case step
         when 0
-          exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'jarfile',
-                            value: 'minecraft_server.1.8.9.jar', section: 'java'}.to_json,
-                           :routing_key => "to_workers.#{hostname}",
-                           :timestamp => Time.now.to_i,
-                           :type => 'command',
-                           :message_id => SecureRandom.uuid)
+          @exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'jarfile',
+                             value: 'minecraft_server.1.8.9.jar', section: 'java'}.to_json,
+                            :routing_key => "to_workers.#{@@hostname}",
+                            :timestamp => Time.now.to_i,
+                            :type => 'command',
+                            :message_id => SecureRandom.uuid)
         when 1
-          exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'java_xmx',
-                            value: 384, section: 'java'}.to_json,
-                           :routing_key => "to_workers.#{hostname}",
-                           :timestamp => Time.now.to_i,
-                           :type => 'command',
-                           :message_id => SecureRandom.uuid)
+          @exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'java_xmx',
+                             value: 384, section: 'java'}.to_json,
+                            :routing_key => "to_workers.#{@@hostname}",
+                            :timestamp => Time.now.to_i,
+                            :type => 'command',
+                            :message_id => SecureRandom.uuid)
         when 2
-          exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'java_xms',
-                            value: 384, section: 'java'}.to_json,
-                           :routing_key => "to_workers.#{hostname}",
-                           :timestamp => Time.now.to_i,
-                           :type => 'command',
-                           :message_id => SecureRandom.uuid)
+          @exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'java_xms',
+                             value: 384, section: 'java'}.to_json,
+                            :routing_key => "to_workers.#{@@hostname}",
+                            :timestamp => Time.now.to_i,
+                            :type => 'command',
+                            :message_id => SecureRandom.uuid)
         when 3
-          exchange.publish({cmd: 'get_start_args', server_name: 'test', type: ':conventional_jar'}.to_json,
-                           :routing_key => "to_workers.#{hostname}",
-                           :timestamp => Time.now.to_i,
-                           :type => 'command',
-                           :message_id => SecureRandom.uuid)
+          @exchange.publish({cmd: 'get_start_args', server_name: 'test', type: ':conventional_jar'}.to_json,
+                            :routing_key => "to_workers.#{@@hostname}",
+                            :timestamp => Time.now.to_i,
+                            :type => 'command',
+                            :message_id => SecureRandom.uuid)
         when 4
           retval = parsed[:retval]
           assert_equal("/usr/bin/java", retval[0])
@@ -242,35 +231,25 @@ class ServerTest < Minitest::Test
           EM.stop
         end
         step += 1
-
       end
  
-      exchange.publish({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}.to_json,
-                       :routing_key => "to_workers.#{hostname}",
-                       :timestamp => Time.now.to_i,
-                       :type => 'command',
-                       :message_id => SecureRandom.uuid)
+      @exchange.publish({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}.to_json,
+                        :routing_key => "to_workers.#{@@hostname}",
+                        :timestamp => Time.now.to_i,
+                        :type => 'command',
+                        :message_id => SecureRandom.uuid)
     end
     assert_equal(5, step)
   end
 
   def test_usage
-    require 'socket'
-    hostname = Socket.gethostname
+    guid = SecureRandom.uuid
+    step = 0
 
-    steps = 0
     EM.run do
-      conn = Bunny.new
-      conn.start
-  
-      ch = conn.create_channel
-      exchange = ch.topic("backend")
-
-      guid = SecureRandom.uuid
-  
-      ch
-      .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq")
+      @ch
+      .queue('', :exclusive => true)
+      .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert(parsed[:usage].key?(:uw_cpuused))
@@ -283,37 +262,28 @@ class ServerTest < Minitest::Test
         assert_equal('USAGE', metadata.type)
         assert(metadata.timestamp)
         assert(metadata.message_id)
-        steps += 1
+
+        step += 1
         EM.stop
       end
 
-      exchange.publish('USAGE',
-                       :routing_key => "to_workers",
-                       :type => "directive",
-                       :message_id => guid,
-                       :timestamp => Time.now.to_i)
+      @exchange.publish('USAGE',
+                        :routing_key => "to_workers",
+                        :type => "directive",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
-    assert_equal(1, steps)
+    assert_equal(1, step)
   end
 
   def test_bogus_command
-    require 'socket'
-    hostname = Socket.gethostname
-
+    guid = SecureRandom.uuid
     step = 0
-    EM.run do
-  
-      conn = Bunny.new
-      conn.start
-  
-      ch = conn.create_channel
-      exchange = ch.topic("backend")
 
-      guid = SecureRandom.uuid
-  
-      ch
-      .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq")
+    EM.run do
+      @ch
+      .queue('', :exclusive => true)
+      .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse(payload, :symbolize_names => true)
         assert_equal('test', parsed[:server_name])
@@ -329,50 +299,39 @@ class ServerTest < Minitest::Test
         EM.stop
       end
  
-      exchange.publish({cmd: 'fakeo', server_name: 'test'}.to_json,
-                       :routing_key => "to_workers.#{hostname}",
-                       :type => "command",
-                       :message_id => guid,
-                       :timestamp => Time.now.to_i)
+      @exchange.publish({cmd: 'fakeo', server_name: 'test'}.to_json,
+                        :routing_key => "to_workers.#{@@hostname}",
+                        :type => "command",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
 
   def test_ignore_command
-    require 'socket'
-    hostname = Socket.gethostname
-
+    guid = SecureRandom.uuid
     step = 0
-    EM.run do
-  
-      conn = Bunny.new
-      conn.start
-  
-      ch = conn.create_channel
-      exchange = ch.topic("backend")
 
-      guid = SecureRandom.uuid
-  
-      ch
-      .queue("", :exclusive => true)
-      .bind(exchange, :routing_key => "to_hq")
+    EM.run do
+      @ch
+      .queue('', :exclusive => true)
+      .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         step += 1
         assert(false)
         EM.stop
       end
  
-      exchange.publish({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}.to_json,
-                       :routing_key => "to_workers.someawesomeserver",
-                       :timestamp => Time.now.to_i,
-                       :type => 'command',
-                       :message_id => SecureRandom.uuid)
+      @exchange.publish({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}.to_json,
+                        :routing_key => "to_workers.someawesomeserver",
+                        :timestamp => Time.now.to_i,
+                        :type => 'command',
+                        :message_id => SecureRandom.uuid)
 
-      EM.add_timer(2) {
-        inst = Server.new('test')
-        assert !Dir.exist?(inst.env[:cwd])
-        assert !Dir.exist?(inst.env[:bwd])
-        assert !Dir.exist?(inst.env[:awd])
+      EM.add_timer(1) {
+        assert !Dir.exist?(File.join(@@basedir, 'servers', 'test'))
+        assert !Dir.exist?(File.join(@@basedir, 'archive', 'test'))
+        assert !Dir.exist?(File.join(@@basedir, 'backup', 'test'))
         EM.stop
       }
     end
