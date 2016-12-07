@@ -3,29 +3,28 @@ require 'eventmachine'
 require 'json'
 require 'securerandom'
 
-#setup
-
- 
 class HQ < Sinatra::Base
   set :server, :thin
   register Sinatra::Async
   enable :show_exceptions
 
-  require 'bunny'
   require 'set'
+  available_workers = Set.new
+
+  require 'bunny'
   conn = Bunny.new
   conn.start
   
   ch = conn.create_channel
   exchange = ch.topic('backend')
-  
-  available_workers = Set.new
+
   ch
-  .queue("directives")
+  .queue('directives')
   .bind(exchange, :routing_key => "to_hq")
   .subscribe do |delivery_info, metadata, payload|
+    parsed = JSON.parse(payload, :symbolize_names => true)
     if metadata.type == 'IDENT' then
-      available_workers.add(payload)
+      available_workers.add(parsed[:host])
     end
   end
   
@@ -50,7 +49,7 @@ class HQ < Sinatra::Base
     uuid = SecureRandom.uuid
 
     ch
-    .queue("")
+    .queue('')
     .bind(exchange, :routing_key => "to_hq")
     .subscribe do |delivery_info, metadata, payload|
       if metadata.correlation_id == uuid then
@@ -60,8 +59,7 @@ class HQ < Sinatra::Base
     end
 
     exchange.publish({cmd: 'create',
-                      server_name: servername,
-                      server_type: ':conventional_jar'}.to_json,
+                      server_name: servername}.to_json,
                      :routing_key => "to_workers.#{candidate}",
                      :type => "command",
                      :message_id => uuid,

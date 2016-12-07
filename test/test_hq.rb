@@ -1,4 +1,7 @@
 require 'airborne'
+require 'socket'
+
+HOSTNAME=Socket.gethostname
 
 Airborne.configure do |config|
   config.base_url = 'http://localhost:4567'
@@ -14,8 +17,7 @@ end
 
 describe 'create server on specific node' do
   it 'should 201 if successfully created' do
-    require 'socket'
-    post "/create/#{Socket.gethostname}/test"
+    post "/create/#{HOSTNAME}/test"
     expect_status 201
     expect_json(server_name: 'test')
     expect_json(success: true)
