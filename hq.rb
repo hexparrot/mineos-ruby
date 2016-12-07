@@ -35,12 +35,10 @@ class HQ < Sinatra::Base
                     :message_id => SecureRandom.uuid,
                     :timestamp => Time.now.to_i)
 
-
-
   get '/workerlist' do
     {:hosts => available_workers.to_a}.to_json
   end
-  
+
   apost '/create/:worker/:servername' do |worker, servername|
     if worker == 'any'
       candidate = available_workers.to_a.sample

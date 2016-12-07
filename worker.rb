@@ -38,6 +38,13 @@ EM.run do
                        :type => payload,
                        :correlation_id => metadata[:message_id],
                        :message_id => SecureRandom.uuid)
+    when "LIST"
+      exchange.publish(server_dirs.to_a.join(','),
+                       :routing_key => "to_hq",
+                       :timestamp => Time.now.to_i,
+                       :type => payload,
+                       :correlation_id => metadata[:message_id],
+                       :message_id => SecureRandom.uuid)
     when "USAGE"
       require 'usagewatch'
 
@@ -140,8 +147,17 @@ EM.run do
       when 'command'
         command_handler.call delivery_info, metadata, payload
       end
-    elsif metadata.type == 'directive'
-      # if host not specified
+    end
+  end
+
+  ch
+  .queue("worker.dispatcher")
+  .bind(exchange, :routing_key => "to_workers")
+  .subscribe do |delivery_info, metadata, payload|
+    #puts delivery_info
+    #puts metadata
+    #puts payload
+    if metadata.type == 'directive'
       directive_handler.call delivery_info, metadata, payload
     end
   end

@@ -65,7 +65,6 @@ class ServerTest < Minitest::Test
         steps += 1
         EM.stop
       end
-
       exchange.publish('IDENT',
                        :routing_key => "to_workers",
                        :type => "directive",
@@ -73,6 +72,55 @@ class ServerTest < Minitest::Test
                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, steps)
+  end
+
+  def test_serverlist
+    require 'socket'
+    hostname = Socket.gethostname
+
+    step = 0
+    EM.run do
+      conn = Bunny.new
+      conn.start
+
+      ch = conn.create_channel
+      exchange = ch.topic("backend")
+
+      guid = SecureRandom.uuid
+
+      ch
+      .queue("", :exclusive => true)
+      .bind(exchange, :routing_key => "to_hq")
+      .subscribe do |delivery_info, metadata, payload|
+        case step
+        when 0
+          exchange.publish('LIST',
+                           :routing_key => "to_workers",
+                           :type => "directive",
+                           :message_id => guid,
+                           :timestamp => Time.now.to_i)
+        when 1
+          servers = payload.split(',')
+          assert_equal('test', servers.first)
+          assert_equal(1, servers.length)
+          assert_equal(guid, metadata.correlation_id)
+          assert_equal('LIST', metadata.type)
+          assert(metadata.timestamp)
+          assert(metadata.message_id)
+          EM.stop
+        end
+        step += 1
+
+      end
+
+      exchange.publish({cmd: 'create',
+                        server_name: 'test'}.to_json,
+                       :routing_key => "to_workers.#{hostname}",
+                       :type => "command",
+                       :message_id => SecureRandom.uuid,
+                       :timestamp => Time.now.to_i)
+    end
+    assert_equal(2, step)
   end
 
   def test_create_server_explicit_parameters
