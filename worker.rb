@@ -4,12 +4,10 @@ require 'eventmachine'
 require 'securerandom'
 require './mineos'
  
-servers = {}
-
 EM.run do
   servers = {}
-  consoles = {}
   hostname = Socket.gethostname
+  amqp = 'amqp://localhost'
 
   server_dirs = Enumerator.new do |enum|
     Dir['/var/games/minecraft/servers/*'].each { |d| 
@@ -23,23 +21,23 @@ EM.run do
     servers[sn] = Server.new(sn)
   end
 
-  amq = Bunny.new
-  amq.start
+  conn = Bunny.new(amqp)
+  conn.start
 
-  ch = amq.create_channel
+  ch = conn.create_channel
   exchange = ch.topic("backend")
 
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
     when "IDENT"
-      exchange.publish(hostname,
+      exchange.publish({host: hostname}.to_json,
                        :routing_key => "to_hq",
                        :timestamp => Time.now.to_i,
                        :type => payload,
                        :correlation_id => metadata[:message_id],
                        :message_id => SecureRandom.uuid)
     when "LIST"
-      exchange.publish(server_dirs.to_a.join(','),
+      exchange.publish({servers: server_dirs.to_a}.to_json,
                        :routing_key => "to_hq",
                        :timestamp => Time.now.to_i,
                        :type => payload,
@@ -48,7 +46,7 @@ EM.run do
     when "USAGE"
       require 'usagewatch'
 
-      EM.defer {
+      EM.defer do
         usw = Usagewatch
         retval = {
           uw_cpuused: usw.uw_cpuused,
@@ -57,13 +55,13 @@ EM.run do
           uw_diskused: usw.uw_diskused,
           uw_diskused_perc: usw.uw_diskused_perc,
         }
-        exchange.publish({ usage: retval }.to_json,
+        exchange.publish({usage: retval}.to_json,
                          :routing_key => "to_hq",
                          :timestamp => Time.now.to_i,
                          :type => payload,
                          :correlation_id => metadata[:message_id],
                          :message_id => SecureRandom.uuid)
-      }
+      end
     end
   }
 
@@ -134,13 +132,14 @@ EM.run do
   }
 
   ch
-  .queue("worker.dispatcher")
-  .bind(exchange, :routing_key => "to_workers.#")
+  .queue('worker.dispatcher')
+  .bind(exchange, :routing_key => 'to_workers.#')
   .subscribe do |delivery_info, metadata, payload|
     #puts delivery_info
     #puts metadata
     #puts payload
-    if delivery_info.routing_key.split('.')[1] == hostname
+    if delivery_info.routing_key.split('.')[1] == hostname ||
+       delivery_info.routing_key == 'to_workers' then
       case metadata.type
       when 'directive'
         directive_handler.call delivery_info, metadata, payload
@@ -149,17 +148,4 @@ EM.run do
       end
     end
   end
-
-  ch
-  .queue("worker.dispatcher")
-  .bind(exchange, :routing_key => "to_workers")
-  .subscribe do |delivery_info, metadata, payload|
-    #puts delivery_info
-    #puts metadata
-    #puts payload
-    if metadata.type == 'directive'
-      directive_handler.call delivery_info, metadata, payload
-    end
-  end
-
 end #EM::Run
