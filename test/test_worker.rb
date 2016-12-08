@@ -281,6 +281,37 @@ class ServerTest < Minitest::Test
     assert_equal(1, step)
   end
 
+  def test_request_usage
+    guid = SecureRandom.uuid
+    step = 0
+
+    EM.run do
+      @ch
+      .queue('', :exclusive => true)
+      .bind(@exchange, :routing_key => "to_hq")
+      .subscribe do |delivery_info, metadata, payload|
+        parsed = JSON.parse(payload, :symbolize_names => true)
+        assert(parsed[:usage].key?(:uw_cpuused))
+
+        assert_equal(guid, metadata.correlation_id)
+        assert_equal('uw_cpuused', metadata.type)
+        assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert(metadata.timestamp)
+        assert(metadata.message_id)
+
+        step += 1
+        EM.stop
+      end
+
+      @exchange.publish('uw_cpuused',
+                        :routing_key => "to_workers",
+                        :type => 'directive',
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
+    end
+    assert_equal(1, step)
+  end
+
   def test_bogus_command
     guid = SecureRandom.uuid
     step = 0

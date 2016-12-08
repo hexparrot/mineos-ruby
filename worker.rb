@@ -65,6 +65,19 @@ EM.run do
                          :headers => {hostname: hostname},
                          :message_id => SecureRandom.uuid)
       end
+    when /(uw_\w+)/
+      require 'usagewatch'
+
+      EM.defer do
+        usw = Usagewatch
+        exchange.publish({usage: {$1 =>  usw.public_send($1)}}.to_json,
+                         :routing_key => "to_hq",
+                         :timestamp => Time.now.to_i,
+                         :type => payload,
+                         :correlation_id => metadata[:message_id],
+                         :headers => {hostname: hostname},
+                         :message_id => SecureRandom.uuid)
+      end
     end
   }
 
