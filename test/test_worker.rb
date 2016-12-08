@@ -54,6 +54,7 @@ class ServerTest < Minitest::Test
         assert_equal(@@hostname, parsed[:host])
         assert_equal(guid, metadata.correlation_id)
         assert_equal('IDENT', metadata.type)
+        assert_equal(@@hostname, metadata[:headers]['hostname'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
         step += 1
@@ -92,6 +93,7 @@ class ServerTest < Minitest::Test
           assert_equal(1, servers.length)
           assert_equal(guid, metadata.correlation_id)
           assert_equal('LIST', metadata.type)
+          assert_equal(@@hostname, metadata[:headers]['hostname'])
           assert(metadata.timestamp)
           assert(metadata.message_id)
           EM.stop
@@ -125,6 +127,7 @@ class ServerTest < Minitest::Test
 
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
+        assert_equal(@@hostname, metadata[:headers]['hostname'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
 
@@ -159,6 +162,7 @@ class ServerTest < Minitest::Test
 
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
+        assert_equal(@@hostname, metadata[:headers]['hostname'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
 
@@ -260,6 +264,7 @@ class ServerTest < Minitest::Test
 
         assert_equal(guid, metadata.correlation_id)
         assert_equal('USAGE', metadata.type)
+        assert_equal(@@hostname, metadata[:headers]['hostname'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
 
@@ -292,6 +297,7 @@ class ServerTest < Minitest::Test
 
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
+        assert_equal(@@hostname, metadata[:headers]['hostname'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
 

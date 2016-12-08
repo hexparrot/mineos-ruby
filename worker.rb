@@ -35,6 +35,7 @@ EM.run do
                        :timestamp => Time.now.to_i,
                        :type => payload,
                        :correlation_id => metadata[:message_id],
+                       :headers => {hostname: hostname},
                        :message_id => SecureRandom.uuid)
     when "LIST"
       exchange.publish({servers: server_dirs.to_a}.to_json,
@@ -42,6 +43,7 @@ EM.run do
                        :timestamp => Time.now.to_i,
                        :type => payload,
                        :correlation_id => metadata[:message_id],
+                       :headers => {hostname: hostname},
                        :message_id => SecureRandom.uuid)
     when "USAGE"
       require 'usagewatch'
@@ -60,6 +62,7 @@ EM.run do
                          :timestamp => Time.now.to_i,
                          :type => payload,
                          :correlation_id => metadata[:message_id],
+                         :headers => {hostname: hostname},
                          :message_id => SecureRandom.uuid)
       end
     end
@@ -90,6 +93,7 @@ EM.run do
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.command',
                              :correlation_id => metadata[:message_id],
+                             :headers => {hostname: hostname},
                              :message_id => SecureRandom.uuid)
           else
             break #if optional and absent, break loop and advance
@@ -114,6 +118,7 @@ EM.run do
                          :timestamp => Time.now.to_i,
                          :type => 'receipt.command',
                          :correlation_id => metadata[:message_id],
+                         :headers => {hostname: hostname},
                          :message_id => SecureRandom.uuid)
       }
       EM.defer to_call, cb
@@ -124,6 +129,7 @@ EM.run do
                          :timestamp => Time.now.to_i,
                          :type => 'receipt.command',
                          :correlation_id => metadata[:message_id],
+                         :headers => {hostname: hostname},
                          :message_id => SecureRandom.uuid)
       }
       EM.defer cb
