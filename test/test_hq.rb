@@ -15,6 +15,18 @@ describe 'worker list' do
   end
 end
 
+describe 'server listing' do
+  it 'should return a list of workers and each server on it' do
+    get "/serverlist"
+    expect_status 200
+    expect_json_types(hosts: :array)
+    expect_json_types(timestamp: :integer)
+    expect_json_types('hosts.*', hostname: :string,
+                                 servers: :array_of_strings,
+                                 timestamp: :date) 
+  end
+end
+
 describe 'create server on specific node' do
   it 'should 201 if successfully created' do
     post "/create/#{HOSTNAME}/test"
@@ -44,3 +56,4 @@ describe 'create server on any available node' do
     expect_json_types(success: :boolean)
   end
 end
+

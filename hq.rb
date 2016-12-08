@@ -18,24 +18,69 @@ class HQ < Sinatra::Base
   ch = conn.create_channel
   exchange = ch.topic('backend')
 
+  promises = {}
+
   ch
-  .queue('directives')
+  .queue('')
   .bind(exchange, :routing_key => "to_hq")
   .subscribe do |delivery_info, metadata, payload|
     parsed = JSON.parse(payload, :symbolize_names => true)
-    if metadata.type == 'IDENT' then
+    case metadata.type
+    when 'IDENT'
       available_workers.add(parsed[:host])
+    when 'LIST'
+      yet_to_respond = promises[metadata.correlation_id][:retval][:hosts].length
+      promises[metadata.correlation_id][:retval][:hosts].each do |obj|
+        if obj[:hostname] == metadata[:headers]['hostname'] then
+          obj[:servers] = parsed[:servers]
+          obj[:timestamp] = metadata[:timestamp]
+          yet_to_respond -= 1
+        end
+      end
+
+      if yet_to_respond == 0 then
+        #timeout needs to be added for if server does not respond
+        #this mechanism expected to fail without 100% reply rate
+        promises[metadata.correlation_id][:callback].call 200, promises[metadata.correlation_id][:retval].to_json
+      end
     end
   end
-  
+ 
   exchange.publish('IDENT',
-                    :routing_key => "to_workers",
-                    :type => "directive",
-                    :message_id => SecureRandom.uuid,
-                    :timestamp => Time.now.to_i)
+                   :routing_key => "to_workers",
+                   :type => "directive",
+                   :message_id => SecureRandom.uuid,
+                   :timestamp => Time.now.to_i)
 
   get '/workerlist' do
     {:hosts => available_workers.to_a}.to_json
+  end
+
+  aget '/serverlist' do
+    uuid = SecureRandom.uuid
+
+    promises[uuid] = {
+      callback: 
+        Proc.new { |status_code, retval|
+          status status_code
+          body retval
+        },
+      retval: {hosts: [], timestamp: Time.now.to_i}
+    }
+
+    available_workers.each do |worker|
+      promises[uuid][:retval][:hosts] << {
+        hostname: worker,
+        servers: [],
+        timestamp: nil
+      }
+    end
+
+    exchange.publish('LIST',
+                     :routing_key => "to_workers",
+                     :type => "directive",
+                     :message_id => uuid,
+                     :timestamp => Time.now.to_i)
   end
 
   apost '/create/:worker/:servername' do |worker, servername|
