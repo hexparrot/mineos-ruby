@@ -1,7 +1,4 @@
 require 'airborne'
-require 'socket'
-
-HOSTNAME=Socket.gethostname
 
 Airborne.configure do |config|
   config.base_url = 'http://localhost:4567'
@@ -28,8 +25,11 @@ describe 'server listing' do
 end
 
 describe 'create server on specific node' do
+  require 'socket'
+  WORKER_HOSTNAME=Socket.gethostname
+
   it 'should 201 if successfully created' do
-    post "/create/#{HOSTNAME}/test"
+    post "/#{WORKER_HOSTNAME}/test", {cmd: 'create'}
     expect_status 201
     expect_json(server_name: 'test')
     expect_json(success: true)
@@ -39,7 +39,7 @@ end
 
 describe 'create server on nonexistent node' do
   it 'should 404 because it has no valid worker target' do
-    post '/create/best/test'
+    post '/best/test', {cmd: 'create'}
     expect_status 404
     expect_json(server_name: 'test')
     expect_json(success: false)
@@ -49,7 +49,7 @@ end
 
 describe 'create server on any available node' do
   it 'should 201 and create the server skeleton' do
-    post "/create/any/test"
+    post "/any/test", {cmd: 'create'}
     expect_status 201
     expect_json(server_name: 'test')
     expect_json(success: true)
@@ -57,3 +57,9 @@ describe 'create server on any available node' do
   end
 end
 
+describe 'bogus command on existing node' do
+  it 'should 400 and do nothing' do
+    post "/any/test", {cmd: 'breakdown'}
+    expect_status 400
+  end
+end

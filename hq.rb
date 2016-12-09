@@ -52,6 +52,8 @@ class HQ < Sinatra::Base
                    :message_id => SecureRandom.uuid,
                    :timestamp => Time.now.to_i)
 
+## route handlers
+
   get '/workerlist' do
     {:hosts => available_workers.to_a}.to_json
   end
@@ -83,32 +85,40 @@ class HQ < Sinatra::Base
                      :timestamp => Time.now.to_i)
   end
 
-  apost '/create/:worker/:servername' do |worker, servername|
-    if worker == 'any'
-      candidate = available_workers.to_a.sample
-    elsif !available_workers.include?(worker)
-      halt 404, {server_name: servername, success: false}.to_json
-    else
-      candidate = worker 
-    end
-    uuid = SecureRandom.uuid
+  apost '/:worker/:servername' do |worker, servername|
+    body_parameters = JSON.parse request.body.read
 
-    ch
-    .queue('')
-    .bind(exchange, :routing_key => "to_hq")
-    .subscribe do |delivery_info, metadata, payload|
-      if metadata.correlation_id == uuid then
-        status 201
-        body payload
+    case body_parameters['cmd']
+    when 'create'
+      if worker == 'any'
+        candidate = available_workers.to_a.sample
+      elsif !available_workers.include?(worker)
+        halt 404, {server_name: servername, success: false}.to_json
+      else
+        candidate = worker 
       end
-    end
+      uuid = SecureRandom.uuid
 
-    exchange.publish({cmd: 'create',
-                      server_name: servername}.to_json,
-                     :routing_key => "to_workers.#{candidate}",
-                     :type => "command",
-                     :message_id => uuid,
-                     :timestamp => Time.now.to_i)
+      ch
+      .queue('')
+      .bind(exchange, :routing_key => "to_hq")
+      .subscribe do |delivery_info, metadata, payload|
+        if metadata.correlation_id == uuid then
+          status 201
+          body payload
+        end
+      end
+
+      exchange.publish({cmd: 'create',
+                        server_name: servername}.to_json,
+                       :routing_key => "to_workers.#{candidate}",
+                       :type => "command",
+                       :message_id => uuid,
+                       :timestamp => Time.now.to_i)
+    else
+      status 400
+      body
+    end
   end
 
   run!
