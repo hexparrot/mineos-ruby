@@ -63,3 +63,11 @@ describe 'bogus command on existing node' do
     expect_status 400
   end
 end
+
+describe 'bogus command on nonexistent node' do
+  it 'should 404 and do nothing' do
+    post "/best/test", {cmd: 'breakdown'}
+    expect_status 404
+  end
+end
+

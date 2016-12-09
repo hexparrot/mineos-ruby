@@ -88,15 +88,16 @@ class HQ < Sinatra::Base
   apost '/:worker/:servername' do |worker, servername|
     body_parameters = JSON.parse request.body.read
 
+    if worker == 'any'
+      candidate = available_workers.to_a.sample
+    elsif !available_workers.include?(worker)
+      halt 404, {server_name: servername, success: false}.to_json
+    else
+      candidate = worker
+    end
+
     case body_parameters['cmd']
     when 'create'
-      if worker == 'any'
-        candidate = available_workers.to_a.sample
-      elsif !available_workers.include?(worker)
-        halt 404, {server_name: servername, success: false}.to_json
-      else
-        candidate = worker 
-      end
       uuid = SecureRandom.uuid
 
       ch
