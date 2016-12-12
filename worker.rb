@@ -104,18 +104,10 @@ EM.run do
             reordered << parsed[name]
           end
         rescue NoMethodError
-          if req_or_opt == 'req' then
-            exchange.publish(return_object.to_json,
-                             :routing_key => "to_hq",
-                             :timestamp => Time.now.to_i,
-                             :type => 'receipt.command',
-                             :correlation_id => metadata[:message_id],
-                             :headers => {hostname: hostname},
-                             :message_id => SecureRandom.uuid)
-          else
-            break #if optional and absent, break loop and advance
-            # there are currently no functions with 2+ optional parameters
-          end
+          #occurs if optional arguments are not provided (non-fatal)
+          #invalid arguments will break at inst.public_send below
+          #break out if first argument opt or not is absent
+          break
         end
       end
 
@@ -124,6 +116,14 @@ EM.run do
           inst.public_send(cmd, *reordered)
         rescue IOError
           puts "IOERROR CAUGHT"
+        rescue ArgumentError
+          exchange.publish(return_object.to_json,
+                           :routing_key => "to_hq",
+                           :timestamp => Time.now.to_i,
+                           :type => 'receipt.command',
+                           :correlation_id => metadata[:message_id],
+                           :headers => {hostname: hostname},
+                           :message_id => SecureRandom.uuid)
         end
       end
 
@@ -135,7 +135,8 @@ EM.run do
                          :timestamp => Time.now.to_i,
                          :type => 'receipt.command',
                          :correlation_id => metadata[:message_id],
-                         :headers => {hostname: hostname},
+                         :headers => {hostname: hostname,
+                                      exception: false},
                          :message_id => SecureRandom.uuid)
       }
       EM.defer to_call, cb
@@ -146,7 +147,8 @@ EM.run do
                          :timestamp => Time.now.to_i,
                          :type => 'receipt.command',
                          :correlation_id => metadata[:message_id],
-                         :headers => {hostname: hostname},
+                         :headers => {hostname: hostname,
+                                      exception: 'NoMethodError'},
                          :message_id => SecureRandom.uuid)
       }
       EM.defer cb

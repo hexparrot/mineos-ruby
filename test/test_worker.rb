@@ -130,6 +130,7 @@ class ServerTest < Minitest::Test
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal(false, metadata[:headers]['exception'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
 
@@ -165,6 +166,7 @@ class ServerTest < Minitest::Test
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal(false, metadata[:headers]['exception'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
 
@@ -230,6 +232,7 @@ class ServerTest < Minitest::Test
           assert_equal("nogui", retval[6])
 
           assert_equal('receipt.command', metadata.type)
+          assert_equal(false, metadata[:headers]['exception'])
           assert(metadata.timestamp)
           assert(metadata.message_id)
           assert(metadata.correlation_id)
@@ -333,6 +336,7 @@ class ServerTest < Minitest::Test
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal('NoMethodError', metadata[:headers]['exception'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
 
@@ -341,6 +345,40 @@ class ServerTest < Minitest::Test
       end
  
       @exchange.publish({cmd: 'fakeo', server_name: 'test'}.to_json,
+                        :routing_key => "to_workers.#{@@hostname}",
+                        :type => "command",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
+    end
+    assert_equal(1, step)
+  end
+
+  def test_provided_insufficient_arguments
+    guid = SecureRandom.uuid
+    step = 0
+
+    EM.run do
+      @ch
+      .queue('', :exclusive => true)
+      .bind(@exchange, :routing_key => "to_hq")
+      .subscribe do |delivery_info, metadata, payload|
+        parsed = JSON.parse(payload, :symbolize_names => true)
+        assert_equal('test', parsed[:server_name])
+        assert_equal('modify_sp', parsed[:cmd])
+        assert_equal(false, parsed[:success])
+
+        assert_equal(guid, metadata.correlation_id)
+        assert_equal('receipt.command', metadata.type)
+        assert_equal(@@hostname, metadata[:headers]['hostname'])
+#        assert_equal('ArgumentError', metadata[:headers]['exception'])
+        assert(metadata.timestamp)
+        assert(metadata.message_id)
+
+        step += 1
+        EM.stop
+      end
+ 
+      @exchange.publish({cmd: 'modify_sp', server_name: 'test'}.to_json,
                         :routing_key => "to_workers.#{@@hostname}",
                         :type => "command",
                         :message_id => guid,
