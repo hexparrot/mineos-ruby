@@ -46,23 +46,6 @@ describe 'create server on nonexistent node' do
   end
 end
 
-describe 'create server on any available node' do
-  it 'should 201 and create the server skeleton' do
-    post "/any/test", {cmd: 'create'}
-    expect_status 201
-    expect_json(server_name: 'test')
-    expect_json(success: true)
-    expect_json_types(success: :boolean)
-  end
-end
-
-describe 'bogus command on existing node' do
-  it 'should 400 and do nothing' do
-    post "/any/test", {cmd: 'breakdown'}
-    expect_status 400
-  end
-end
-
 describe 'bogus command on nonexistent node' do
   it 'should 404 and do nothing' do
     post "/best/test", {cmd: 'breakdown'}

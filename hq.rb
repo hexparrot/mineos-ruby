@@ -104,9 +104,7 @@ class HQ < Sinatra::Base
       body retval
     }
 
-    if worker == 'any'
-      candidate = available_workers.to_a.sample
-    elsif !available_workers.include?(worker)
+    if !available_workers.include?(worker)
       halt 404, {server_name: servername, success: false}.to_json
     else
       candidate = worker
