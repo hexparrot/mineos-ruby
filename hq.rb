@@ -43,6 +43,9 @@ class HQ < Sinatra::Base
         #this mechanism expected to fail without 100% reply rate
         promises[metadata.correlation_id][:callback].call 200, promises[metadata.correlation_id][:retval].to_json
       end
+    when 'receipt.command'
+      promises[metadata.correlation_id][:retval][:success] = parsed[:success]
+      promises[metadata.correlation_id][:callback].call 201, promises[metadata.correlation_id][:retval].to_json
     end
   end
  
@@ -100,15 +103,18 @@ class HQ < Sinatra::Base
     when 'create'
       uuid = SecureRandom.uuid
 
-      ch
-      .queue('')
-      .bind(exchange, :routing_key => "to_hq")
-      .subscribe do |delivery_info, metadata, payload|
-        if metadata.correlation_id == uuid then
-          status 201
-          body payload
-        end
-      end
+      promises[uuid] = {
+        callback: 
+          Proc.new { |status_code, retval|
+            status status_code
+            body retval
+          },
+        retval: {
+          server_name: servername,
+          cmd: body_parameters['cmd'],
+          success: false
+        }
+      }
 
       exchange.publish({cmd: 'create',
                         server_name: servername}.to_json,
