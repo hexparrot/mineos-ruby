@@ -26,22 +26,25 @@ class HQ < Sinatra::Base
   .subscribe do |delivery_info, metadata, payload|
     parsed = JSON.parse(payload, :symbolize_names => true)
     case metadata.type
-    when 'IDENT'
-      available_workers.add(parsed[:host])
-    when 'LIST'
-      yet_to_respond = promises[metadata.correlation_id][:retval][:hosts].length
-      promises[metadata.correlation_id][:retval][:hosts].each do |obj|
-        if obj[:hostname] == metadata[:headers]['hostname'] then
-          obj[:servers] = parsed[:servers]
-          obj[:timestamp] = metadata[:timestamp]
-          yet_to_respond -= 1
+    when 'receipt.directive'
+      case metadata[:headers]['directive']
+      when 'IDENT'
+        available_workers.add(parsed[:host])
+      when 'LIST'
+        yet_to_respond = promises[metadata.correlation_id][:retval][:hosts].length
+        promises[metadata.correlation_id][:retval][:hosts].each do |obj|
+          if obj[:hostname] == metadata[:headers]['hostname'] then
+            obj[:servers] = parsed[:servers]
+            obj[:timestamp] = metadata[:timestamp]
+            yet_to_respond -= 1
+          end
         end
-      end
-
-      if yet_to_respond == 0 then
-        #timeout needs to be added for if server does not respond
-        #this mechanism expected to fail without 100% reply rate
-        promises[metadata.correlation_id][:callback].call 200, promises[metadata.correlation_id][:retval].to_json
+  
+        if yet_to_respond == 0 then
+          #timeout needs to be added for if server does not respond
+          #this mechanism expected to fail without 100% reply rate
+          promises[metadata.correlation_id][:callback].call 200, promises[metadata.correlation_id][:retval].to_json
+        end
       end
     when 'receipt.command'
       promises[metadata.correlation_id][:retval][:success] = parsed[:success]

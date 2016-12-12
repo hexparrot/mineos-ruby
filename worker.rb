@@ -33,17 +33,19 @@ EM.run do
       exchange.publish({host: hostname}.to_json,
                        :routing_key => "to_hq",
                        :timestamp => Time.now.to_i,
-                       :type => payload,
+                       :type => 'receipt.directive',
                        :correlation_id => metadata[:message_id],
-                       :headers => {hostname: hostname},
+                       :headers => {hostname: hostname,
+                                    directive: 'IDENT'},
                        :message_id => SecureRandom.uuid)
     when "LIST"
       exchange.publish({servers: server_dirs.to_a}.to_json,
                        :routing_key => "to_hq",
                        :timestamp => Time.now.to_i,
-                       :type => payload,
+                       :type => 'receipt.directive',
                        :correlation_id => metadata[:message_id],
-                       :headers => {hostname: hostname},
+                       :headers => {hostname: hostname,
+                                    directive: 'LIST'},
                        :message_id => SecureRandom.uuid)
     when "USAGE"
       require 'usagewatch'
@@ -60,9 +62,10 @@ EM.run do
         exchange.publish({usage: retval}.to_json,
                          :routing_key => "to_hq",
                          :timestamp => Time.now.to_i,
-                         :type => payload,
+                         :type => 'receipt.directive',
                          :correlation_id => metadata[:message_id],
-                         :headers => {hostname: hostname},
+                         :headers => {hostname: hostname,
+                                      directive: 'USAGE'},
                          :message_id => SecureRandom.uuid)
       end
     when /(uw_\w+)/
@@ -73,9 +76,10 @@ EM.run do
         exchange.publish({usage: {$1 =>  usw.public_send($1)}}.to_json,
                          :routing_key => "to_hq",
                          :timestamp => Time.now.to_i,
-                         :type => payload,
+                         :type => 'receipt.directive',
                          :correlation_id => metadata[:message_id],
-                         :headers => {hostname: hostname},
+                         :headers => {hostname: hostname,
+                                      directive: 'REQUEST_USAGE'},
                          :message_id => SecureRandom.uuid)
       end
     end
