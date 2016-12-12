@@ -19,6 +19,7 @@ class HQ < Sinatra::Base
   exchange = ch.topic('backend')
 
   promises = {}
+  promise_retvals = {}
 
   ch
   .queue('')
@@ -31,8 +32,8 @@ class HQ < Sinatra::Base
       when 'IDENT'
         available_workers.add(parsed[:host])
       when 'LIST'
-        yet_to_respond = promises[metadata.correlation_id][:retval][:hosts].length
-        promises[metadata.correlation_id][:retval][:hosts].each do |obj|
+        yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
+        promise_retvals[metadata.correlation_id][:hosts].each do |obj|
           if obj[:hostname] == metadata[:headers]['hostname'] then
             obj[:servers] = parsed[:servers]
             obj[:timestamp] = metadata[:timestamp]
@@ -43,14 +44,14 @@ class HQ < Sinatra::Base
         if yet_to_respond == 0 then
           #timeout needs to be added for if server does not respond
           #this mechanism expected to fail without 100% reply rate
-          promises[metadata.correlation_id][:callback].call 200, promises[metadata.correlation_id][:retval].to_json
+          promises[metadata.correlation_id].call 200, promise_retvals[metadata.correlation_id].to_json
         end
       end
     when 'receipt.command'
       if parsed[:cmd] == 'create' then
-        promises[metadata.correlation_id][:callback].call 201, payload
+        promises[metadata.correlation_id].call 201, payload
       else
-        promises[metadata.correlation_id][:callback].call 200, payload
+        promises[metadata.correlation_id].call 200, payload
       end
     end
   end
@@ -70,17 +71,15 @@ class HQ < Sinatra::Base
   aget '/serverlist' do
     uuid = SecureRandom.uuid
 
-    promises[uuid] = {
-      callback: 
-        Proc.new { |status_code, retval|
-          status status_code
-          body retval
-        },
-      retval: {hosts: [], timestamp: Time.now.to_i}
+    promises[uuid] = Proc.new { |status_code, retval|
+      status status_code
+      body retval
     }
 
+    promise_retvals[uuid] = {hosts: [], timestamp: Time.now.to_i}
+
     available_workers.each do |worker|
-      promises[uuid][:retval][:hosts] << {
+      promise_retvals[uuid][:hosts] << {
         hostname: worker,
         servers: [],
         timestamp: nil
@@ -97,6 +96,14 @@ class HQ < Sinatra::Base
   apost '/:worker/:servername' do |worker, servername|
     body_parameters = JSON.parse request.body.read
 
+    uuid = SecureRandom.uuid
+    body_parameters['server_name'] = servername
+
+    promises[uuid] = Proc.new { |status_code, retval|
+      status status_code
+      body retval
+    }
+
     if worker == 'any'
       candidate = available_workers.to_a.sample
     elsif !available_workers.include?(worker)
@@ -105,51 +112,12 @@ class HQ < Sinatra::Base
       candidate = worker
     end
 
-    case body_parameters['cmd']
-    when 'create'
-      uuid = SecureRandom.uuid
-
-      promises[uuid] = {
-        callback: 
-          Proc.new { |status_code, retval|
-            status status_code
-            body retval
-          },
-        retval: {
-          server_name: servername,
-          cmd: body_parameters['cmd'],
-          success: false
-        }
-      }
-
-      exchange.publish({cmd: 'create',
-                        server_name: servername}.to_json,
-                       :routing_key => "to_workers.#{candidate}",
-                       :type => "command",
-                       :message_id => uuid,
-                       :timestamp => Time.now.to_i)
-    when 'modify_sc'
-      uuid = SecureRandom.uuid
-
-      promises[uuid] = {
-        callback: 
-          Proc.new { |status_code, retval|
-            status status_code
-            body retval
-          },
-        retval: {
-          server_name: servername,
-          cmd: body_parameters['cmd'],
-          success: false
-        }
-      }
-
+    if ['create', 'modify_sc'].include?(body_parameters['cmd'])
       exchange.publish(body_parameters.to_json,
                        :routing_key => "to_workers.#{candidate}",
                        :type => "command",
                        :message_id => uuid,
                        :timestamp => Time.now.to_i)
-    
     else
       status 400
       body
