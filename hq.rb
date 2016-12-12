@@ -47,8 +47,11 @@ class HQ < Sinatra::Base
         end
       end
     when 'receipt.command'
-      promises[metadata.correlation_id][:retval][:success] = parsed[:success]
-      promises[metadata.correlation_id][:callback].call 201, promises[metadata.correlation_id][:retval].to_json
+      if parsed[:cmd] == 'create' then
+        promises[metadata.correlation_id][:callback].call 201, payload
+      else
+        promises[metadata.correlation_id][:callback].call 200, payload
+      end
     end
   end
  
@@ -125,6 +128,28 @@ class HQ < Sinatra::Base
                        :type => "command",
                        :message_id => uuid,
                        :timestamp => Time.now.to_i)
+    when 'modify_sc'
+      uuid = SecureRandom.uuid
+
+      promises[uuid] = {
+        callback: 
+          Proc.new { |status_code, retval|
+            status status_code
+            body retval
+          },
+        retval: {
+          server_name: servername,
+          cmd: body_parameters['cmd'],
+          success: false
+        }
+      }
+
+      exchange.publish(body_parameters.to_json,
+                       :routing_key => "to_workers.#{candidate}",
+                       :type => "command",
+                       :message_id => uuid,
+                       :timestamp => Time.now.to_i)
+    
     else
       status 400
       body

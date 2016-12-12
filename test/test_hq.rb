@@ -1,4 +1,6 @@
 require 'airborne'
+require 'socket'
+WORKER_HOSTNAME=Socket.gethostname
 
 Airborne.configure do |config|
   config.base_url = 'http://localhost:4567'
@@ -25,9 +27,6 @@ describe 'server listing' do
 end
 
 describe 'create server on specific node' do
-  require 'socket'
-  WORKER_HOSTNAME=Socket.gethostname
-
   it 'should 201 if successfully created' do
     post "/#{WORKER_HOSTNAME}/test", {cmd: 'create'}
     expect_status 201
@@ -71,3 +70,13 @@ describe 'bogus command on nonexistent node' do
   end
 end
 
+describe 'modify_sc' do
+  it 'should 200 and return sc hash' do
+    post "/#{WORKER_HOSTNAME}/test", {cmd: 'create'}
+    post "/#{WORKER_HOSTNAME}/test", {cmd: 'modify_sc', section: 'java', attr: 'java_xmx', value: 1024}
+    expect_status 200
+    expect_json(server_name: 'test')
+    expect_json(success: true)
+    expect_json_types(retval: :object)
+  end
+end
