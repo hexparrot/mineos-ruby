@@ -66,7 +66,16 @@ describe 'modify_sc' do
     post "/#{WORKER_HOSTNAME}/test", {cmd: 'modify_sc', section: 'java', attr: 'java_xmx', value: 1024}
     expect_status 200
     expect_json(server_name: 'test')
+    expect_json(cmd: 'modify_sc')
     expect_json(success: true)
     expect_json_types(retval: :object)
+    expect_json('retval', java: {java_xmx: 1024})
+    post "/#{WORKER_HOSTNAME}/test", {cmd: 'modify_sc', section: 'java', attr: 'java_xms', value: 768}
+    expect_status 200
+    expect_json(server_name: 'test')
+    expect_json(cmd: 'modify_sc')
+    expect_json(success: true)
+    expect_json_types(retval: :object)
+    expect_json('retval', java: {java_xms: 768, java_xmx: 1024})
   end
 end
