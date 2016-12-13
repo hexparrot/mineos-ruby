@@ -25,17 +25,17 @@ class HQ < Sinatra::Base
   .queue('')
   .bind(exchange, :routing_key => "to_hq")
   .subscribe do |delivery_info, metadata, payload|
-    parsed = JSON.parse(payload, :symbolize_names => true)
+    parsed = JSON.parse payload
     case metadata.type
     when 'receipt.directive'
       case metadata[:headers]['directive']
       when 'IDENT'
-        available_workers.add(parsed[:host])
+        available_workers.add(parsed['host'])
       when 'LIST'
         yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
         promise_retvals[metadata.correlation_id][:hosts].each do |obj|
           if obj[:hostname] == metadata[:headers]['hostname'] then
-            obj[:servers] = parsed[:servers]
+            obj[:servers] = parsed['servers']
             obj[:timestamp] = metadata[:timestamp]
             yet_to_respond -= 1
           end
@@ -50,7 +50,7 @@ class HQ < Sinatra::Base
     when 'receipt.command'
       if metadata[:headers]['exception'] then
         promises[metadata.correlation_id].call 400, payload
-      elsif parsed[:cmd] == 'create' then
+      elsif parsed['cmd'] == 'create' then
         promises[metadata.correlation_id].call 201, payload
       else
         promises[metadata.correlation_id].call 200, payload

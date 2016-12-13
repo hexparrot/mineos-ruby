@@ -86,7 +86,7 @@ EM.run do
   }
 
   command_handler = lambda { |delivery_info, metadata, payload|
-    parsed = JSON.parse(payload, :symbolize_names => true)
+    parsed = JSON.parse payload
     server_name = parsed.delete(:server_name)
     cmd = parsed.delete(:cmd)
     inst = Server.new(server_name)

@@ -25,7 +25,7 @@ class ServerTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@@basedir, 'backup'))
     FileUtils.mkdir_p(File.join(@@basedir, 'archive'))
 
-    @spawn_worker = false
+    @spawn_worker = true
     if @spawn_worker then
       @pid = fork do
         STDOUT.reopen('/dev/null', 'w')
@@ -53,8 +53,8 @@ class ServerTest < Minitest::Test
       .queue('')
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe(:exclusive => true) do |delivery_info, metadata, payload|
-        parsed = JSON.parse(payload, :symbolize_names => true)
-        assert_equal(@@hostname, parsed[:host])
+        parsed = JSON.parse payload
+        assert_equal(@@hostname, parsed['host'])
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.directive', metadata.type)
         assert_equal('IDENT', metadata[:headers]['directive'])
@@ -91,8 +91,8 @@ class ServerTest < Minitest::Test
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
         when 1
-          parsed = JSON.parse(payload, :symbolize_names => true)
-          servers = parsed[:servers]
+          parsed = JSON.parse payload
+          servers = parsed['servers']
           assert_equal('test', servers.first)
           assert_equal(1, servers.length)
           assert_equal(guid, metadata.correlation_id)
@@ -125,10 +125,10 @@ class ServerTest < Minitest::Test
       .queue('', :exclusive => true)
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
-        parsed = JSON.parse(payload, :symbolize_names => true)
-        assert_equal('test', parsed[:server_name])
-        assert_equal('create', parsed[:cmd])
-        assert_equal(true, parsed[:success])
+        parsed = JSON.parse payload
+        assert_equal('test', parsed['server_name'])
+        assert_equal('create', parsed['cmd'])
+        assert_equal(true, parsed['success'])
 
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
@@ -161,10 +161,10 @@ class ServerTest < Minitest::Test
       .queue('', :exclusive => true)
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
-        parsed = JSON.parse(payload, :symbolize_names => true)
-        assert_equal('test', parsed[:server_name])
-        assert_equal('create', parsed[:cmd])
-        assert_equal(true, parsed[:success])
+        parsed = JSON.parse payload
+        assert_equal('test', parsed['server_name'])
+        assert_equal('create', parsed['cmd'])
+        assert_equal(true, parsed['success'])
 
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
@@ -195,7 +195,7 @@ class ServerTest < Minitest::Test
       .queue('', :exclusive => true)
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
-        parsed = JSON.parse(payload, :symbolize_names => true)
+        parsed = JSON.parse payload
         case step
         when 0
           @exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'jarfile',
@@ -225,7 +225,7 @@ class ServerTest < Minitest::Test
                             :type => 'command',
                             :message_id => SecureRandom.uuid)
         when 4
-          retval = parsed[:retval]
+          retval = parsed['retval']
           assert_equal("/usr/bin/java", retval[0])
           assert_equal("-server", retval[1])
           assert_equal("-Xmx384M", retval[2])
@@ -263,12 +263,12 @@ class ServerTest < Minitest::Test
       .queue('', :exclusive => true)
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
-        parsed = JSON.parse(payload, :symbolize_names => true)
-        assert(parsed[:usage].key?(:uw_cpuused))
-        assert(parsed[:usage].key?(:uw_memused))
-        assert(parsed[:usage].key?(:uw_load))
-        assert(parsed[:usage].key?(:uw_diskused))
-        assert(parsed[:usage].key?(:uw_diskused_perc))
+        parsed = JSON.parse payload
+        assert(parsed['usage'].key?('uw_cpuused'))
+        assert(parsed['usage'].key?('uw_memused'))
+        assert(parsed['usage'].key?('uw_load'))
+        assert(parsed['usage'].key?('uw_diskused'))
+        assert(parsed['usage'].key?('uw_diskused_perc'))
 
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.directive', metadata.type)
@@ -299,8 +299,8 @@ class ServerTest < Minitest::Test
       .queue('', :exclusive => true)
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
-        parsed = JSON.parse(payload, :symbolize_names => true)
-        assert(parsed[:usage].key?(:uw_cpuused))
+        parsed = JSON.parse payload
+        assert(parsed['usage'].key?('uw_cpuused'))
 
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.directive', metadata.type)
@@ -331,10 +331,10 @@ class ServerTest < Minitest::Test
       .queue('', :exclusive => true)
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
-        parsed = JSON.parse(payload, :symbolize_names => true)
-        assert_equal('test', parsed[:server_name])
-        assert_equal('fakeo', parsed[:cmd])
-        assert_equal(false, parsed[:success])
+        parsed = JSON.parse payload
+        assert_equal('test', parsed['server_name'])
+        assert_equal('fakeo', parsed['cmd'])
+        assert_equal(false, parsed['success'])
 
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
@@ -366,10 +366,10 @@ class ServerTest < Minitest::Test
       .queue('', :exclusive => true)
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
-        parsed = JSON.parse(payload, :symbolize_names => true)
-        assert_equal('test', parsed[:server_name])
-        assert_equal('modify_sp', parsed[:cmd])
-        assert_equal(false, parsed[:success])
+        parsed = JSON.parse payload
+        assert_equal('test', parsed['server_name'])
+        assert_equal('modify_sp', parsed['cmd'])
+        assert_equal(false, parsed['success'])
 
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
