@@ -53,6 +53,13 @@ describe 'bogus command on nonexistent node' do
   end
 end
 
+describe 'bogus command on existing node' do
+  it 'should 400 and do nothing' do
+    post "/#{WORKER_HOSTNAME}/test", {cmd: 'breakdown'}
+    expect_status 400
+  end
+end
+
 describe 'modify_sc' do
   it 'should 200 and return sc hash' do
     post "/#{WORKER_HOSTNAME}/test", {cmd: 'create'}

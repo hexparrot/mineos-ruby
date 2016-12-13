@@ -48,7 +48,9 @@ class HQ < Sinatra::Base
         end
       end
     when 'receipt.command'
-      if parsed[:cmd] == 'create' then
+      if metadata[:headers]['exception'] then
+        promises[metadata.correlation_id].call 400, payload
+      elsif parsed[:cmd] == 'create' then
         promises[metadata.correlation_id].call 201, payload
       else
         promises[metadata.correlation_id].call 200, payload
@@ -107,18 +109,11 @@ class HQ < Sinatra::Base
     if !available_workers.include?(worker)
       halt 404, {server_name: servername, success: false}.to_json
     else
-      candidate = worker
-    end
-
-    if ['create', 'modify_sc'].include?(body_parameters['cmd'])
       exchange.publish(body_parameters.to_json,
-                       :routing_key => "to_workers.#{candidate}",
+                       :routing_key => "to_workers.#{worker}",
                        :type => "command",
                        :message_id => uuid,
                        :timestamp => Time.now.to_i)
-    else
-      status 400
-      body
     end
   end
 
