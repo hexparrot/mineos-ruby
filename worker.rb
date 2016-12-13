@@ -116,13 +116,15 @@ EM.run do
           inst.public_send(cmd, *reordered)
         rescue IOError
           puts "IOERROR CAUGHT"
-        rescue ArgumentError
+        rescue ArgumentError => e
           exchange.publish(return_object.to_json,
                            :routing_key => "to_hq",
                            :timestamp => Time.now.to_i,
                            :type => 'receipt.command',
                            :correlation_id => metadata[:message_id],
-                           :headers => {hostname: hostname},
+                           :headers => {hostname: hostname,
+                                        exception: {name: 'ArgumentError',
+                                                    detail: e.to_s }},
                            :message_id => SecureRandom.uuid)
         end
       end
@@ -148,7 +150,8 @@ EM.run do
                          :type => 'receipt.command',
                          :correlation_id => metadata[:message_id],
                          :headers => {hostname: hostname,
-                                      exception: 'NoMethodError'},
+                                      exception: {name: 'NameError',
+                                                  detail: "undefined method `#{cmd}' for class `Server'" }},
                          :message_id => SecureRandom.uuid)
       }
       EM.defer cb

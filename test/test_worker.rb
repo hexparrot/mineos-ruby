@@ -25,19 +25,22 @@ class ServerTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@@basedir, 'backup'))
     FileUtils.mkdir_p(File.join(@@basedir, 'archive'))
 
-    if 1 then
+    @spawn_worker = false
+    if @spawn_worker then
       @pid = fork do
         STDOUT.reopen('/dev/null', 'w')
         STDERR.reopen('/dev/null', 'w')
         exec "ruby worker.rb"
       end
+      Process.detach(@pid)
     end
 
-    Process.detach(@pid)
   end
 
   def teardown
-    Process.kill 9, @pid 
+    if @spawn_worker then
+      Process.kill 9, @pid 
+    end
     sleep(0.1)
   end
 
@@ -336,7 +339,8 @@ class ServerTest < Minitest::Test
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
         assert_equal(@@hostname, metadata[:headers]['hostname'])
-        assert_equal('NoMethodError', metadata[:headers]['exception'])
+        assert_equal('NameError', metadata[:headers]['exception']['name'])
+        assert_equal("undefined method `fakeo' for class `Server'", metadata[:headers]['exception']['detail'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
 
@@ -370,7 +374,8 @@ class ServerTest < Minitest::Test
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
         assert_equal(@@hostname, metadata[:headers]['hostname'])
-#        assert_equal('ArgumentError', metadata[:headers]['exception'])
+        assert_equal('ArgumentError', metadata[:headers]['exception']['name'])
+        assert_equal('wrong number of arguments (given 0, expected 2)', metadata[:headers]['exception']['detail'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
 
