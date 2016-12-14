@@ -160,7 +160,7 @@ EM.run do
   }
 
   ch
-  .queue('worker.dispatcher')
+  .queue('')
   .bind(exchange, :routing_key => 'to_workers.#')
   .subscribe do |delivery_info, metadata, payload|
     #puts delivery_info

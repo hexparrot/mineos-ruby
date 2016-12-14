@@ -48,8 +48,6 @@ class HQ < Sinatra::Base
         end
       end
     when 'receipt.command'
-puts payload
-puts metadata
       if metadata[:headers]['exception'] then
         promises[metadata.correlation_id].call 400, payload
       elsif parsed['cmd'] == 'create' then
