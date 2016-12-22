@@ -103,13 +103,13 @@ EM.run do
       reordered = []
       inst.method(cmd).parameters.map do |req_or_opt, name|
         begin
-          if parsed[name][0] == ':' then
+          if parsed[name.to_s][0] == ':' then
             #if string begins with :, interpret as symbol (remove : and convert)
-            reordered << parsed[name][1..-1].to_sym
+            reordered << parsed[name.to_s][1..-1].to_sym
           else
-            reordered << parsed[name]
+            reordered << parsed[name.to_s]
           end
-        rescue NoMethodError
+        rescue NoMethodError => e
           #occurs if optional arguments are not provided (non-fatal)
           #invalid arguments will break at inst.public_send below
           #break out if first argument opt or not is absent
@@ -122,7 +122,7 @@ EM.run do
           inst.public_send(cmd, *reordered)
         rescue IOError
           puts "IOERROR CAUGHT"
-        rescue ArgumentError => e
+        rescue ArgumentError
           exchange.publish(return_object.to_json,
                            :routing_key => "to_hq",
                            :timestamp => Time.now.to_i,
