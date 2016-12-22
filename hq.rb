@@ -11,8 +11,15 @@ class HQ < Sinatra::Base
   require 'set'
   available_workers = Set.new
 
+  require 'yaml'
+  mineos_config = YAML::load_file('config')
+
   require 'bunny'
-  conn = Bunny.new
+  conn = Bunny.new(:host => mineos_config['rabbitmq']['host'],
+                   :port => mineos_config['rabbitmq']['port'],
+                   :user => mineos_config['rabbitmq']['user'],
+                   :pass => mineos_config['rabbitmq']['pass'],
+                   :vhost => mineos_config['rabbitmq']['vhost'])
   conn.start
   
   ch = conn.create_channel

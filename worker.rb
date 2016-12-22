@@ -1,5 +1,4 @@
 require 'json'
-require 'bunny'
 require 'eventmachine'
 require 'securerandom'
 require './mineos'
@@ -7,7 +6,6 @@ require './mineos'
 EM.run do
   servers = {}
   hostname = Socket.gethostname
-  amqp = 'amqp://localhost'
 
   server_dirs = Enumerator.new do |enum|
     Dir['/var/games/minecraft/servers/*'].each { |d| 
@@ -21,7 +19,15 @@ EM.run do
     servers[sn] = Server.new(sn)
   end
 
-  conn = Bunny.new(amqp)
+  require 'yaml'
+  mineos_config = YAML::load_file('config')
+
+  require 'bunny'
+  conn = Bunny.new(:host => mineos_config['rabbitmq']['host'],
+                   :port => mineos_config['rabbitmq']['port'],
+                   :user => mineos_config['rabbitmq']['user'],
+                   :pass => mineos_config['rabbitmq']['pass'],
+                   :vhost => mineos_config['rabbitmq']['vhost'])
   conn.start
 
   ch = conn.create_channel
@@ -87,8 +93,8 @@ EM.run do
 
   command_handler = lambda { |delivery_info, metadata, payload|
     parsed = JSON.parse payload
-    server_name = parsed.delete(:server_name)
-    cmd = parsed.delete(:cmd)
+    server_name = parsed.delete("server_name")
+    cmd = parsed.delete("cmd")
     inst = Server.new(server_name)
 
     return_object = {server_name: server_name, cmd: cmd, success: false, retval: nil}
