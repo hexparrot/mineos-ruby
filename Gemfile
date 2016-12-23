@@ -12,3 +12,9 @@ gem 'eventmachine'
 gem 'bunny'
 # resource usage
 gem 'usagewatch'
+# test rest api via rspec
+gem 'airborne'
+# sinatra for restapi
+gem 'async_sinatra'
+# thin client for sinatra
+gem 'thin'
