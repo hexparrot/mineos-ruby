@@ -122,7 +122,7 @@ EM.run do
           inst.public_send(cmd, *reordered)
         rescue IOError
           puts "IOERROR CAUGHT"
-        rescue ArgumentError
+        rescue ArgumentError => e
           exchange.publish(return_object.to_json,
                            :routing_key => "to_hq",
                            :timestamp => Time.now.to_i,
@@ -182,4 +182,15 @@ EM.run do
       end
     end
   end
+
+  exchange.publish({host: hostname}.to_json,
+                    :routing_key => "to_hq",
+                    :timestamp => Time.now.to_i,
+                    :type => 'receipt.directive',
+                    :correlation_id => nil,
+                    :headers => {hostname: hostname,
+                                 directive: 'IDENT'},
+                    :message_id => SecureRandom.uuid)
+
+
 end #EM::Run
