@@ -13,7 +13,15 @@ class ServerTest < Minitest::Test
     @@hostname = Socket.gethostname
     @@amqp = 'amqp://localhost'
 
-    conn = Bunny.new(@@amqp)
+    require 'yaml'
+    mineos_config = YAML::load_file('../config/secrets.yml')
+
+    require 'bunny'
+    conn = Bunny.new(:host => mineos_config['rabbitmq']['host'],
+                     :port => mineos_config['rabbitmq']['port'],
+                     :user => mineos_config['rabbitmq']['user'],
+                     :pass => mineos_config['rabbitmq']['pass'],
+                     :vhost => mineos_config['rabbitmq']['vhost'])
     conn.start
 
     @ch = conn.create_channel

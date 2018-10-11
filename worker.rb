@@ -20,7 +20,7 @@ EM.run do
   end
 
   require 'yaml'
-  mineos_config = YAML::load_file('config')
+  mineos_config = YAML::load_file('config/secrets.yml')
 
   require 'bunny'
   conn = Bunny.new(:host => mineos_config['rabbitmq']['host'],
