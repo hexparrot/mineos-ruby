@@ -5,6 +5,7 @@ require 'securerandom'
 
 class HQ < Sinatra::Base
   set :server, :thin
+  set :bind, '0.0.0.0'
   register Sinatra::Async
   enable :show_exceptions
 
