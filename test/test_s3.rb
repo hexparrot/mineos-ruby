@@ -1,5 +1,5 @@
 require 'minitest/autorun'
-require './mineos_objstore'
+require './mineos_s3'
 
 class ServerTest < Minitest::Test
 
