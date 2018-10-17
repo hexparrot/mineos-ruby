@@ -14,6 +14,18 @@ class ServerTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@@basedir, 'servers'))
     FileUtils.mkdir_p(File.join(@@basedir, 'backup'))
     FileUtils.mkdir_p(File.join(@@basedir, 'archive'))
+
+    require 'yaml'
+    config = YAML::load_file('config/objstore.yml')
+
+    require 'aws-sdk-s3'
+    Aws.config.update(
+      endpoint: config['object_store']['host'],
+      access_key_id: config['object_store']['access_key'],
+      secret_access_key: config['object_store']['secret_key'],
+      force_path_style: true,
+      region: 'us-west-1'
+    )
   end
 
   def teardown
@@ -46,11 +58,79 @@ class ServerTest < Minitest::Test
     assert_equal('http://127.0.0.1', inst.endpoint)
   end
 
+  def test_exists?
+    inst = Server_os.new('test')
+    assert_equal(false, inst.be_exists?)
+  end
+
+  def test_create_and_destroy_bucket
+    inst = Server_os.new('test')
+    assert_equal(false, inst.be_exists?)
+    inst.be_create_dest!
+    assert_equal(true, inst.be_exists?)
+    inst.be_destroy_dest!
+    assert_equal(false, inst.be_exists?)
+  end
+
+  def test_be_list_files
+    require 'set'
+    inst = Server_os.new('test')
+    files = inst.be_list_files
+    assert_equal(0, files.length)
+    assert(files.is_a?(Set))
+  end
+
   def test_archive_then_upload
     inst = Server_os.new('test')
-    inst.create_paths
+    inst.create(:conventional_jar)
+    fn = inst.archive_then_upload
+    files = inst.be_list_files
+    assert_equal(1, files.length)
+    fp = "archive/#{fn}"
+    assert_equal(fp, files.first)
+    assert(files.is_a?(Set))
+    inst.be_destroy_dest!
+  end
 
-    ex = assert_raises(NotImplementedError) { inst.archive_then_upload }
-    assert_equal('You must use a derived mineos class to archive_then_upload', ex.message)
+  def test_destroy_bucket_with_contents
+    inst = Server_os.new('test')
+    inst.create(:conventional_jar)
+    fn = inst.archive_then_upload
+    inst.be_destroy_dest!
+    assert_equal(false, inst.be_exists?)
+    files = inst.be_list_files
+    assert_equal(0, files.length)
+  end
+
+  def test_upload_sp
+    inst = Server_os.new('test')
+    inst.create(:conventional_jar)
+    inst.modify_sp('value', 'transmitted!')
+    inst.sp!
+    inst.be_upload_file!(env: :cwd, filename: 'server.properties')
+    files = inst.be_list_files
+    assert_equal(1, files.length)
+    fp = "servers/server.properties"
+    assert_equal(fp, files.first)
+    inst.be_destroy_dest!
+  end
+
+  def test_bad_upload_file_doesnt_exist
+    inst = Server_os.new('test')
+    ex = assert_raises(RuntimeError) { inst.be_upload_file!(env: :cwd, filename: 'nonexistent.file') }
+    assert_equal('requested file does not exist', ex.message)
+  end
+
+  def test_bad_upload_file_path_exploiting
+    inst = Server_os.new('test')
+    ex = assert_raises(RuntimeError) { inst.be_upload_file!(env: :cwd, filename: '../../../root/.bash_history') }
+    assert_equal('parent path traversal not allowed', ex.message)
+  end
+
+  def test_bad_upload_file_path_env
+    inst = Server_os.new('test')
+    ex = assert_raises(RuntimeError) { inst.be_upload_file!(env: :zing, filename: '.bash_history') }
+    assert_equal('invalid path environment requested', ex.message)
   end
 end
+

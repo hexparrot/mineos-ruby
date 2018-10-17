@@ -1,0 +1,5 @@
+object_store:
+  host: 'http://10.137.0.19:9000'
+  access_key: 'E9VP74J9DIBU15UIS3Z3'
+  secret_key: 'TMMb7Yj3Kgt5TkzgWCXXi+63EZSaMffM3aShURUd' 
+
