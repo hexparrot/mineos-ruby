@@ -16,6 +16,13 @@ class ServerTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@@basedir, 'archive'))
   end
 
+  def test_blank_name
+    ex = assert_raises(ArgumentError) { inst = Server.new }
+    assert_nil(defined? inst)
+    ex = assert_raises(RuntimeError) { inst = Server.new('') }
+    assert_nil(defined? inst)
+  end
+
   def test_name
     inst = Server.new('test')
     assert(inst.name, 'test')
@@ -955,5 +962,13 @@ class ServerTest < Minitest::Test
     inst.start
     inst.sleep_until(:down)
     assert_equal(5, inst.console_log.length)
+  end
+
+  def test_archive_then_upload
+    inst = Server.new('test')
+    inst.create_paths
+
+    ex = assert_raises(NotImplementedError) { inst.archive_then_upload }
+    assert_equal('You must use a derived mineos class to archive_then_upload', ex.message)
   end
 end

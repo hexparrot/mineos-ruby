@@ -425,6 +425,11 @@ class Server
     system("#{find_executable0 'tar'} --force-local -xf #{filepath}", {:chdir => @env[:cwd]})
   end
 
+  # Create an archive, then upload it to somewhere (likely hq)
+  def archive_then_upload
+    raise NotImplementedError.new('You must use a derived mineos class to archive_then_upload')
+  end
+
   # Create an rdiff-backup of the main server directory
   def backup
     require 'mkmf'
