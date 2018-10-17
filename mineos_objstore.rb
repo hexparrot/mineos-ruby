@@ -1,7 +1,7 @@
 require './mineos'
 
 # Server instance with Object Store Backend
-class Server_os < Server
+class Server_S3 < Server
   attr_writer :access_key, :secret_key, :endpoint
 
   # Create an archive, then upload it to somewhere (likely hq)

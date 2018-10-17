@@ -5,9 +5,6 @@ class ServerTest < Minitest::Test
 
   def setup
     @@basedir = '/var/games/minecraft'
-    @@server_jar = 'minecraft_server.1.8.9.jar'
-    @@assets_path = 'assets'
-    @@server_jar_path = File.join(@@assets_path, @@server_jar)
 
     require 'fileutils'
     FileUtils.rm_rf(@@basedir)
@@ -32,7 +29,7 @@ class ServerTest < Minitest::Test
   end
 
   def test_credentials
-    inst = Server_os.new('test')
+    inst = Server_S3.new('test')
     ex = assert_raises(NoMethodError) { inst.access_key }
     ex = assert_raises(NoMethodError) { inst.secret_key }
     ex = assert_raises(NoMethodError) { inst.endpoint }
@@ -59,12 +56,12 @@ class ServerTest < Minitest::Test
   end
 
   def test_exists?
-    inst = Server_os.new('test')
+    inst = Server_S3.new('test')
     assert_equal(false, inst.be_exists?)
   end
 
   def test_create_and_destroy_bucket
-    inst = Server_os.new('test')
+    inst = Server_S3.new('test')
     assert_equal(false, inst.be_exists?)
     inst.be_create_dest!
     assert_equal(true, inst.be_exists?)
@@ -74,14 +71,14 @@ class ServerTest < Minitest::Test
 
   def test_be_list_files
     require 'set'
-    inst = Server_os.new('test')
+    inst = Server_S3.new('test')
     files = inst.be_list_files
     assert_equal(0, files.length)
     assert(files.is_a?(Set))
   end
 
   def test_archive_then_upload
-    inst = Server_os.new('test')
+    inst = Server_S3.new('test')
     inst.create(:conventional_jar)
     fn = inst.archive_then_upload
     files = inst.be_list_files
@@ -93,7 +90,7 @@ class ServerTest < Minitest::Test
   end
 
   def test_destroy_bucket_with_contents
-    inst = Server_os.new('test')
+    inst = Server_S3.new('test')
     inst.create(:conventional_jar)
     fn = inst.archive_then_upload
     inst.be_destroy_dest!
@@ -103,7 +100,7 @@ class ServerTest < Minitest::Test
   end
 
   def test_upload_sp
-    inst = Server_os.new('test')
+    inst = Server_S3.new('test')
     inst.create(:conventional_jar)
     inst.modify_sp('value', 'transmitted!')
     inst.sp!
@@ -116,19 +113,19 @@ class ServerTest < Minitest::Test
   end
 
   def test_bad_upload_file_doesnt_exist
-    inst = Server_os.new('test')
+    inst = Server_S3.new('test')
     ex = assert_raises(RuntimeError) { inst.be_upload_file!(env: :cwd, filename: 'nonexistent.file') }
     assert_equal('requested file does not exist', ex.message)
   end
 
   def test_bad_upload_file_path_exploiting
-    inst = Server_os.new('test')
+    inst = Server_S3.new('test')
     ex = assert_raises(RuntimeError) { inst.be_upload_file!(env: :cwd, filename: '../../../root/.bash_history') }
     assert_equal('parent path traversal not allowed', ex.message)
   end
 
   def test_bad_upload_file_path_env
-    inst = Server_os.new('test')
+    inst = Server_S3.new('test')
     ex = assert_raises(RuntimeError) { inst.be_upload_file!(env: :zing, filename: '.bash_history') }
     assert_equal('invalid path environment requested', ex.message)
   end
