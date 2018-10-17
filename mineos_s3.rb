@@ -73,7 +73,7 @@ class Server_S3 < Server
     when :awd
       obj = r.bucket(@name).object("archive/#{filename}")
     when :cwd
-      obj = r.bucket(@name).object("servers/#{filename}")
+      obj = r.bucket(@name).object("live/#{filename}")
     end
 
     obj.upload_file(fp)
@@ -86,7 +86,7 @@ class Server_S3 < Server
     when :awd
       obj_path = "archive/#{filename}"
     when :cwd
-      obj_path = "servers/#{filename}"
+      obj_path = "live/#{filename}"
     end
 
     dest_path = File.join(@env[env], filename)
