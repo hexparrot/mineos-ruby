@@ -128,5 +128,32 @@ class ServerTest < Minitest::Test
     ex = assert_raises(RuntimeError) { inst.be_upload_file!(env: :zing, filename: '.bash_history') }
     assert_equal('invalid path environment requested', ex.message)
   end
+
+  def test_download_sp
+    inst = Server_S3.new('test')
+    inst.create(:conventional_jar)
+
+    # set initial 25570 value
+    inst.modify_sp('server-port', 25570)
+    assert_equal(25570, inst.sp['server-port'])
+    inst.sp!
+
+    # send 25570 value remotely
+    retval = inst.be_upload_file!(env: :cwd, filename: 'server.properties')
+
+    # change local value to 25580
+    inst.modify_sp('server-port', 25580)
+    inst.sp!
+    inst = Server_S3.new('test')
+    assert_equal(25580, inst.sp['server-port'])
+
+    # retrieve 25570 remote value to overwrite (new inst to force sp reload)
+    retval = inst.be_download_file!(env: :cwd, filename: 'server.properties')
+    assert_equal(inst.env[:sp], retval)
+    inst = Server_S3.new('test')
+    assert_equal(25570, inst.sp['server-port'])
+
+    inst.be_destroy_dest!
+  end
 end
 

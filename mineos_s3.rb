@@ -77,8 +77,21 @@ class Server_S3 < Server
     end
 
     obj.upload_file(fp)
-    obj.key
+    obj.key #return remote objstore name
   end
 
+  def be_download_file!(env:, filename:)
+    c = Aws::S3::Client.new
+    case env
+    when :awd
+      obj_path = "archive/#{filename}"
+    when :cwd
+      obj_path = "servers/#{filename}"
+    end
+
+    dest_path = File.join(@env[env], filename)
+    c.get_object({ bucket:@name, key:obj_path }, target: dest_path)
+    dest_path #return local name
+  end
 end
 
