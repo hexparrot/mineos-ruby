@@ -77,6 +77,7 @@ class Server_S3 < Server
     end
 
     obj.upload_file(fp)
+    obj.key
   end
 
 end

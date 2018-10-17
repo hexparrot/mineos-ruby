@@ -104,11 +104,10 @@ class ServerTest < Minitest::Test
     inst.create(:conventional_jar)
     inst.modify_sp('value', 'transmitted!')
     inst.sp!
-    inst.be_upload_file!(env: :cwd, filename: 'server.properties')
+    retval = inst.be_upload_file!(env: :cwd, filename: 'server.properties')
     files = inst.be_list_files
     assert_equal(1, files.length)
-    fp = "servers/server.properties"
-    assert_equal(fp, files.first)
+    assert_equal(retval, files.first)
     inst.be_destroy_dest!
   end
 
