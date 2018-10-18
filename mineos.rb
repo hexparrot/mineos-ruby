@@ -1,6 +1,6 @@
 require 'bundler/setup'
 Bundler.require
-require './mineos_s3'
+require './s3'
 
 class Server
   include S3
