@@ -443,4 +443,8 @@ class Server
     system("rdiff-backup --restore-as-of #{steps} --force #{@env[:bwd]} #{@env[:cwd]}", {:chdir => @env[:bwd]})
   end
 
+  # Transfer externally-located profile and transfer to live :cwd
+  def receive_profile
+    raise NotImplementedError.new('You must use a derived mineos class to receive_profile')
+  end
 end

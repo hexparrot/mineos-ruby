@@ -971,4 +971,12 @@ class ServerTest < Minitest::Test
     ex = assert_raises(NotImplementedError) { inst.archive_then_upload }
     assert_equal('You must use a derived mineos class to archive_then_upload', ex.message)
   end
+
+  def test_receive_profile
+    inst = Server.new('test')
+    inst.create_paths
+
+    ex = assert_raises(NotImplementedError) { inst.receive_profile }
+    assert_equal('You must use a derived mineos class to receive_profile', ex.message)
+  end
 end

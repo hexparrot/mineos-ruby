@@ -18,3 +18,5 @@ gem 'airborne'
 gem 'async_sinatra'
 # thin client for sinatra
 gem 'thin'
+# s3 sdk
+gem 'aws-sdk-s3'
