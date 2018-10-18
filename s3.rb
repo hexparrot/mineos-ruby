@@ -3,13 +3,6 @@
 module S3
   attr_writer :access_key, :secret_key, :endpoint
 
-  # Create an archive, then upload it to somewhere (likely hq)
-  def archive_then_upload
-    fn = self.archive
-    s3_upload_file!(env: :awd, filename: fn)
-    return fn
-  end
-
   # Check if backend store exists (i.e., bucket)
   def s3_exists?
     r = Aws::S3::Resource.new
@@ -82,13 +75,6 @@ module S3
     dest_path = File.join(@env[env], filename)
     c.get_object({ bucket:@name, key:obj_path }, target: dest_path)
     dest_path #return local name
-  end
-
-  def receive_profile(group:, filename:)
-    c = Aws::S3::Client.new
-    dest_path = File.join(@env[:cwd], filename)
-    src_path = "#{group}/#{filename}"
-    c.get_object({ bucket: 'profiles', key: src_path }, target: dest_path)
   end
 end
 

@@ -1,11 +1,12 @@
+require './s3'
 require 'bundler/setup'
 Bundler.require
-require './s3'
 
 class Server
-  include S3
   attr_reader :name, :env, :server_type, :status, :console_log
   VALID_NAME_REGEX = /^(?!\.)[a-zA-Z0-9_\.]+$/
+
+  include S3
 
   def initialize(name, qsize:256)
     raise RuntimeError if !self.valid_servername(name)
@@ -438,5 +439,23 @@ class Server
   def restore(steps)
     raise RuntimeError.new('cannot restore server while it is running') if self.pid
     system("rdiff-backup --restore-as-of #{steps} --force #{@env[:bwd]} #{@env[:cwd]}", {:chdir => @env[:bwd]})
+  end
+
+  ####################
+  # S3 functionality #
+  ####################
+
+  # Create an archive, then upload it to somewhere (likely hq)
+  def archive_then_upload
+    fn = self.archive
+    s3_upload_file!(env: :awd, filename: fn)
+    return fn
+  end
+
+  def receive_profile(group:, filename:)
+    c = Aws::S3::Client.new
+    dest_path = File.join(@env[:cwd], filename)
+    src_path = "#{group}/#{filename}"
+    c.get_object({ bucket: 'profiles', key: src_path }, target: dest_path)
   end
 end
