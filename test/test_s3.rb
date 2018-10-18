@@ -155,5 +155,16 @@ class ServerTest < Minitest::Test
 
     inst.be_destroy_dest!
   end
+
+  def test_receive_profile
+    inst = Server_S3.new('test')
+    inst.create(:conventional_jar)
+    
+    fp = File.join(inst.env[:cwd], 'minecraft_server.1.8.9.jar')
+    assert(!File.file?(fp))
+
+    inst.receive_profile(group: 'mojang', filename: 'minecraft_server.1.8.9.jar')
+    assert(File.file?(fp))
+  end
 end
 

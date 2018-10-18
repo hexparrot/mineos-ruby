@@ -93,5 +93,12 @@ class Server_S3 < Server
     c.get_object({ bucket:@name, key:obj_path }, target: dest_path)
     dest_path #return local name
   end
+
+  def receive_profile(group:, filename:)
+    c = Aws::S3::Client.new
+    dest_path = File.join(@env[:cwd], filename)
+    src_path = "#{group}/#{filename}"
+    c.get_object({ bucket: 'profiles', key: src_path }, target: dest_path)
+  end
 end
 
