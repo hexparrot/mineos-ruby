@@ -6,24 +6,24 @@ module S3
   # Create an archive, then upload it to somewhere (likely hq)
   def archive_then_upload
     fn = self.archive
-    be_upload_file!(env: :awd, filename: fn)
+    s3_upload_file!(env: :awd, filename: fn)
     return fn
   end
 
   # Check if backend store exists (i.e., bucket)
-  def be_exists?
+  def s3_exists?
     r = Aws::S3::Resource.new
     r.bucket(@name).exists?
   end
 
-  def be_create_dest!
+  def s3_create_dest!
     c = Aws::S3::Client.new
     c.create_bucket(bucket: @name)
   end
 
-  def be_destroy_dest!
+  def s3_destroy_dest!
     r = Aws::S3::Resource.new
-    objs = be_list_files
+    objs = s3_list_files
     objs.each do |obj|
       r.bucket(@name).object(obj).delete
     end
@@ -31,12 +31,12 @@ module S3
     c.delete_bucket(bucket: @name)
   end
 
-  def be_list_files
+  def s3_list_files
     require 'set'
     objs = Set.new
 
     r = Aws::S3::Resource.new
-    if be_exists?
+    if s3_exists?
       r.bucket(@name).objects.each do |obj|
         objs << obj.key
       end
@@ -45,7 +45,7 @@ module S3
     return objs
   end
 
-  def be_upload_file!(env:, filename:)
+  def s3_upload_file!(env:, filename:)
     raise RuntimeError.new('parent path traversal not allowed') if filename.include? '..'
 
     case env
@@ -56,7 +56,7 @@ module S3
       raise RuntimeError.new('invalid path environment requested')
     end
 
-    be_create_dest! if !be_exists?
+    s3_create_dest! if !s3_exists?
 
     r = Aws::S3::Resource.new
     case env
@@ -70,7 +70,7 @@ module S3
     obj.key #return remote objstore name
   end
 
-  def be_download_file!(env:, filename:)
+  def s3_download_file!(env:, filename:)
     c = Aws::S3::Client.new
     case env
     when :awd

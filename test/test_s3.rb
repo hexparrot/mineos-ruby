@@ -57,22 +57,22 @@ class ServerTest < Minitest::Test
 
   def test_exists?
     inst = Server.new('test')
-    assert_equal(false, inst.send(:be_exists?))
+    assert_equal(false, inst.send(:s3_exists?))
   end
 
   def test_create_and_destroy_bucket
     inst = Server.new('test')
-    assert_equal(false, inst.send(:be_exists?))
-    inst.send(:be_create_dest!)
-    assert_equal(true, inst.send(:be_exists?))
-    inst.send(:be_destroy_dest!)
-    assert_equal(false, inst.send(:be_exists?))
+    assert_equal(false, inst.send(:s3_exists?))
+    inst.send(:s3_create_dest!)
+    assert_equal(true, inst.send(:s3_exists?))
+    inst.send(:s3_destroy_dest!)
+    assert_equal(false, inst.send(:s3_exists?))
   end
 
-  def test_be_list_files
+  def test_s3_list_files
     require 'set'
     inst = Server.new('test')
-    files = inst.send(:be_list_files)
+    files = inst.send(:s3_list_files)
     assert_equal(0, files.length)
     assert(files.is_a?(Set))
   end
@@ -81,21 +81,21 @@ class ServerTest < Minitest::Test
     inst = Server.new('test')
     inst.create(:conventional_jar)
     fn = inst.archive_then_upload
-    files = inst.send(:be_list_files)
+    files = inst.send(:s3_list_files)
     assert_equal(1, files.length)
     fp = "archive/#{fn}"
     assert_equal(fp, files.first)
     assert(files.is_a?(Set))
-    inst.send(:be_destroy_dest!)
+    inst.send(:s3_destroy_dest!)
   end
 
   def test_destroy_bucket_with_contents
     inst = Server.new('test')
     inst.create(:conventional_jar)
     fn = inst.archive_then_upload
-    inst.send(:be_destroy_dest!)
-    assert_equal(false, inst.send(:be_exists?))
-    files = inst.send(:be_list_files)
+    inst.send(:s3_destroy_dest!)
+    assert_equal(false, inst.send(:s3_exists?))
+    files = inst.send(:s3_list_files)
     assert_equal(0, files.length)
   end
 
@@ -104,17 +104,17 @@ class ServerTest < Minitest::Test
     inst.create(:conventional_jar)
     inst.modify_sp('value', 'transmitted!')
     inst.sp!
-    retval = inst.send(:be_upload_file!, {env: :cwd, filename: 'server.properties'})
-    files = inst.send(:be_list_files)
+    retval = inst.send(:s3_upload_file!, {env: :cwd, filename: 'server.properties'})
+    files = inst.send(:s3_list_files)
     assert_equal(1, files.length)
     assert_equal(retval, files.first)
-    inst.send(:be_destroy_dest!)
+    inst.send(:s3_destroy_dest!)
   end
 
   def test_bad_upload_file_doesnt_exist
     inst = Server.new('test')
     ex = assert_raises(RuntimeError) {
-      inst.send(:be_upload_file!, {env: :cwd, filename: 'nonexistent.file'})
+      inst.send(:s3_upload_file!, {env: :cwd, filename: 'nonexistent.file'})
     }
     assert_equal('requested file does not exist', ex.message)
   end
@@ -122,7 +122,7 @@ class ServerTest < Minitest::Test
   def test_bad_upload_file_path_exploiting
     inst = Server.new('test')
     ex = assert_raises(RuntimeError) {
-      inst.send(:be_upload_file!, {env: :cwd, filename: '../../../root/.bash_history'})
+      inst.send(:s3_upload_file!, {env: :cwd, filename: '../../../root/.bash_history'})
     }
     assert_equal('parent path traversal not allowed', ex.message)
   end
@@ -130,7 +130,7 @@ class ServerTest < Minitest::Test
   def test_bad_upload_file_path_env
     inst = Server.new('test')
     ex = assert_raises(RuntimeError) {
-      inst.send(:be_upload_file!, {env: :zing, filename: '.bash_history'})
+      inst.send(:s3_upload_file!, {env: :zing, filename: '.bash_history'})
     }
     assert_equal('invalid path environment requested', ex.message)
   end
@@ -145,7 +145,7 @@ class ServerTest < Minitest::Test
     inst.sp!
 
     # send 25570 value remotely
-    retval = inst.send(:be_upload_file!, {env: :cwd, filename: 'server.properties'})
+    retval = inst.send(:s3_upload_file!, {env: :cwd, filename: 'server.properties'})
 
     # change local value to 25580
     inst.modify_sp('server-port', 25580)
@@ -154,12 +154,12 @@ class ServerTest < Minitest::Test
     assert_equal(25580, inst.sp['server-port'])
 
     # retrieve 25570 remote value to overwrite (new inst to force sp reload)
-    retval = inst.send(:be_download_file!, {env: :cwd, filename: 'server.properties'})
+    retval = inst.send(:s3_download_file!, {env: :cwd, filename: 'server.properties'})
     assert_equal(inst.env[:sp], retval)
     inst = Server.new('test')
     assert_equal(25570, inst.sp['server-port'])
 
-    inst.send(:be_destroy_dest!)
+    inst.send(:s3_destroy_dest!)
   end
 
   def test_receive_profile
