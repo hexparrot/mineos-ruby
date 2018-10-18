@@ -7,24 +7,24 @@ class Server_S3 < Server
   # Create an archive, then upload it to somewhere (likely hq)
   def archive_then_upload
     fn = self.archive
-    self.be_upload_file!(env: :awd, filename: fn)
+    be_upload_file!(env: :awd, filename: fn)
     return fn
   end
 
   # Check if backend store exists (i.e., bucket)
-  def be_exists?
+  private def be_exists?
     r = Aws::S3::Resource.new
     r.bucket(@name).exists?
   end
 
-  def be_create_dest!
+  private def be_create_dest!
     c = Aws::S3::Client.new
     c.create_bucket(bucket: @name)
   end
 
-  def be_destroy_dest!
+  private def be_destroy_dest!
     c = Aws::S3::Client.new
-    objs = self.be_list_files
+    objs = be_list_files
     objs.each do |obj|
       c.delete_objects(
         bucket: @name,
@@ -41,12 +41,12 @@ class Server_S3 < Server
     c.delete_bucket(bucket: @name)
   end
 
-  def be_list_files
+  private def be_list_files
     require 'set'
     objs = Set.new
 
     r = Aws::S3::Resource.new
-    if self.be_exists?
+    if be_exists?
       r.bucket(@name).objects.each do |obj|
         objs << obj.key
       end
@@ -55,7 +55,7 @@ class Server_S3 < Server
     return objs
   end
 
-  def be_upload_file!(env:, filename:)
+  private def be_upload_file!(env:, filename:)
     raise RuntimeError.new('parent path traversal not allowed') if filename.include? '..'
 
     case env
@@ -66,7 +66,7 @@ class Server_S3 < Server
       raise RuntimeError.new('invalid path environment requested')
     end
 
-    self.be_create_dest! if !self.be_exists?
+    be_create_dest! if !be_exists?
 
     r = Aws::S3::Resource.new
     case env
@@ -80,7 +80,7 @@ class Server_S3 < Server
     obj.key #return remote objstore name
   end
 
-  def be_download_file!(env:, filename:)
+  private def be_download_file!(env:, filename:)
     c = Aws::S3::Client.new
     case env
     when :awd
