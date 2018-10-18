@@ -81,5 +81,14 @@ module S3
     c.get_object({ bucket:@name, key:obj_path }, target: dest_path)
     dest_path #return local name
   end
+
+  # Download profile from internet, save in object store
+  def get_external_profile(url:, group:, version:, dest_filename:)
+    download = open(url)
+
+    r = Aws::S3::Resource.new
+    obj = r.bucket('profiles').object("#{group}/#{version}/#{dest_filename}")
+    obj.upload_file(download)
+  end
 end
 

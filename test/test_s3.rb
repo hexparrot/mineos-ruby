@@ -172,5 +172,34 @@ class ServerTest < Minitest::Test
     inst.receive_profile(group: 'mojang', filename: 'minecraft_server.1.8.9.jar')
     assert(File.file?(fp))
   end
+
+  def test_upload_profile
+    require 'open-uri'
+
+    #url for minecraft_server.1.8.9.jar
+    url = 'https://launcher.mojang.com/v1/objects/b58b2ceb36e01bcd8dbf49c8fb66c55a9f0676cd/server.jar'
+
+    inst = Object.new #not the Server object
+    inst.extend(S3)
+
+    inst.get_external_profile(
+      url: url,
+      group: 'mojang',
+      version: '1.8.9',
+      dest_filename: 'minecraft_server.1.8.9.jar'
+    )
+
+    # now test it is in the bucket
+
+    c = Aws::S3::Client.new
+    src_path = "mojang/1.8.9/minecraft_server.1.8.9.jar"
+    begin
+      resp = c.get_object({ bucket: 'profiles', key: src_path })
+    rescue Aws::S3::Errors::NoSuchKey => e
+      assert(false)
+    else
+      assert(resp)
+    end
+  end
 end
 
