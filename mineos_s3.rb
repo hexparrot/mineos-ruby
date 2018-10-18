@@ -1,7 +1,6 @@
-require './mineos'
 
-# Server instance with Object Store Backend
-class Server_S3 < Server
+# module with S3 object store backend functionality
+module S3
   attr_writer :access_key, :secret_key, :endpoint
 
   # Create an archive, then upload it to somewhere (likely hq)
@@ -12,17 +11,17 @@ class Server_S3 < Server
   end
 
   # Check if backend store exists (i.e., bucket)
-  private def be_exists?
+  def be_exists?
     r = Aws::S3::Resource.new
     r.bucket(@name).exists?
   end
 
-  private def be_create_dest!
+  def be_create_dest!
     c = Aws::S3::Client.new
     c.create_bucket(bucket: @name)
   end
 
-  private def be_destroy_dest!
+  def be_destroy_dest!
     r = Aws::S3::Resource.new
     objs = be_list_files
     objs.each do |obj|
@@ -32,7 +31,7 @@ class Server_S3 < Server
     c.delete_bucket(bucket: @name)
   end
 
-  private def be_list_files
+  def be_list_files
     require 'set'
     objs = Set.new
 
@@ -46,7 +45,7 @@ class Server_S3 < Server
     return objs
   end
 
-  private def be_upload_file!(env:, filename:)
+  def be_upload_file!(env:, filename:)
     raise RuntimeError.new('parent path traversal not allowed') if filename.include? '..'
 
     case env
@@ -71,7 +70,7 @@ class Server_S3 < Server
     obj.key #return remote objstore name
   end
 
-  private def be_download_file!(env:, filename:)
+  def be_download_file!(env:, filename:)
     c = Aws::S3::Client.new
     case env
     when :awd

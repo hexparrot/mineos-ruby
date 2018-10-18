@@ -1,7 +1,9 @@
 require 'bundler/setup'
 Bundler.require
+require './mineos_s3'
 
 class Server
+  include S3
   attr_reader :name, :env, :server_type, :status, :console_log
   VALID_NAME_REGEX = /^(?!\.)[a-zA-Z0-9_\.]+$/
 
@@ -291,7 +293,7 @@ class Server
   # or if known-failure (predictable) events occur, it can raise errors
   # which can be handled and presented more thoroughly
   def start_catch_errors(timeout = 25)
-    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Fixnum)
+    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Integer)
     sleep_delay = 0.2
     self.start
 
@@ -359,7 +361,7 @@ class Server
   # A non-busywait method to halt execution until a given state triggers
   # Each condition must be pre-programmed.
   def sleep_until(state, timeout = 60)
-    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Fixnum)
+    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Integer)
     sleep_delay = 0.2
 
     case state
@@ -425,11 +427,6 @@ class Server
     system("#{find_executable0 'tar'} --force-local -xf #{filepath}", {:chdir => @env[:cwd]})
   end
 
-  # Create an archive, then upload it to somewhere (likely hq)
-  def archive_then_upload
-    raise NotImplementedError.new('You must use a derived mineos class to archive_then_upload')
-  end
-
   # Create an rdiff-backup of the main server directory
   def backup
     require 'mkmf'
@@ -441,10 +438,5 @@ class Server
   def restore(steps)
     raise RuntimeError.new('cannot restore server while it is running') if self.pid
     system("rdiff-backup --restore-as-of #{steps} --force #{@env[:bwd]} #{@env[:cwd]}", {:chdir => @env[:bwd]})
-  end
-
-  # Transfer externally-located profile and transfer to live :cwd
-  def receive_profile
-    raise NotImplementedError.new('You must use a derived mineos class to receive_profile')
   end
 end

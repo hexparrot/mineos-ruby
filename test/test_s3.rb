@@ -1,5 +1,5 @@
 require 'minitest/autorun'
-require './mineos_s3'
+require './mineos'
 
 class ServerTest < Minitest::Test
 
@@ -29,7 +29,7 @@ class ServerTest < Minitest::Test
   end
 
   def test_credentials
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     ex = assert_raises(NoMethodError) { inst.access_key }
     ex = assert_raises(NoMethodError) { inst.secret_key }
     ex = assert_raises(NoMethodError) { inst.endpoint }
@@ -56,12 +56,12 @@ class ServerTest < Minitest::Test
   end
 
   def test_exists?
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     assert_equal(false, inst.send(:be_exists?))
   end
 
   def test_create_and_destroy_bucket
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     assert_equal(false, inst.send(:be_exists?))
     inst.send(:be_create_dest!)
     assert_equal(true, inst.send(:be_exists?))
@@ -71,14 +71,14 @@ class ServerTest < Minitest::Test
 
   def test_be_list_files
     require 'set'
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     files = inst.send(:be_list_files)
     assert_equal(0, files.length)
     assert(files.is_a?(Set))
   end
 
   def test_archive_then_upload
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     inst.create(:conventional_jar)
     fn = inst.archive_then_upload
     files = inst.send(:be_list_files)
@@ -90,7 +90,7 @@ class ServerTest < Minitest::Test
   end
 
   def test_destroy_bucket_with_contents
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     inst.create(:conventional_jar)
     fn = inst.archive_then_upload
     inst.send(:be_destroy_dest!)
@@ -100,7 +100,7 @@ class ServerTest < Minitest::Test
   end
 
   def test_upload_sp
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     inst.create(:conventional_jar)
     inst.modify_sp('value', 'transmitted!')
     inst.sp!
@@ -112,7 +112,7 @@ class ServerTest < Minitest::Test
   end
 
   def test_bad_upload_file_doesnt_exist
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     ex = assert_raises(RuntimeError) {
       inst.send(:be_upload_file!, {env: :cwd, filename: 'nonexistent.file'})
     }
@@ -120,7 +120,7 @@ class ServerTest < Minitest::Test
   end
 
   def test_bad_upload_file_path_exploiting
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     ex = assert_raises(RuntimeError) {
       inst.send(:be_upload_file!, {env: :cwd, filename: '../../../root/.bash_history'})
     }
@@ -128,7 +128,7 @@ class ServerTest < Minitest::Test
   end
 
   def test_bad_upload_file_path_env
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     ex = assert_raises(RuntimeError) {
       inst.send(:be_upload_file!, {env: :zing, filename: '.bash_history'})
     }
@@ -136,7 +136,7 @@ class ServerTest < Minitest::Test
   end
 
   def test_download_sp
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     inst.create(:conventional_jar)
 
     # set initial 25570 value
@@ -150,20 +150,20 @@ class ServerTest < Minitest::Test
     # change local value to 25580
     inst.modify_sp('server-port', 25580)
     inst.sp!
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     assert_equal(25580, inst.sp['server-port'])
 
     # retrieve 25570 remote value to overwrite (new inst to force sp reload)
     retval = inst.send(:be_download_file!, {env: :cwd, filename: 'server.properties'})
     assert_equal(inst.env[:sp], retval)
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     assert_equal(25570, inst.sp['server-port'])
 
     inst.send(:be_destroy_dest!)
   end
 
   def test_receive_profile
-    inst = Server_S3.new('test')
+    inst = Server.new('test')
     inst.create(:conventional_jar)
     
     fp = File.join(inst.env[:cwd], 'minecraft_server.1.8.9.jar')
