@@ -1,9 +1,12 @@
+require './s3'
 require 'bundler/setup'
 Bundler.require
 
 class Server
   attr_reader :name, :env, :server_type, :status, :console_log
   VALID_NAME_REGEX = /^(?!\.)[a-zA-Z0-9_\.]+$/
+
+  include S3
 
   def initialize(name, qsize:256)
     raise RuntimeError if !self.valid_servername(name)
@@ -291,7 +294,7 @@ class Server
   # or if known-failure (predictable) events occur, it can raise errors
   # which can be handled and presented more thoroughly
   def start_catch_errors(timeout = 25)
-    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Fixnum)
+    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Integer)
     sleep_delay = 0.2
     self.start
 
@@ -359,7 +362,7 @@ class Server
   # A non-busywait method to halt execution until a given state triggers
   # Each condition must be pre-programmed.
   def sleep_until(state, timeout = 60)
-    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Fixnum)
+    raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Integer)
     sleep_delay = 0.2
 
     case state
@@ -425,11 +428,6 @@ class Server
     system("#{find_executable0 'tar'} --force-local -xf #{filepath}", {:chdir => @env[:cwd]})
   end
 
-  # Create an archive, then upload it to somewhere (likely hq)
-  def archive_then_upload
-    raise NotImplementedError.new('You must use a derived mineos class to archive_then_upload')
-  end
-
   # Create an rdiff-backup of the main server directory
   def backup
     require 'mkmf'
@@ -443,8 +441,21 @@ class Server
     system("rdiff-backup --restore-as-of #{steps} --force #{@env[:bwd]} #{@env[:cwd]}", {:chdir => @env[:bwd]})
   end
 
-  # Transfer externally-located profile and transfer to live :cwd
-  def receive_profile
-    raise NotImplementedError.new('You must use a derived mineos class to receive_profile')
+  ####################
+  # S3 functionality #
+  ####################
+
+  # Create an archive, then upload it to somewhere (likely hq)
+  def archive_then_upload
+    fn = self.archive
+    s3_upload_file!(env: :awd, filename: fn)
+    return fn
+  end
+
+  def receive_profile(group:, filename:)
+    c = Aws::S3::Client.new
+    dest_path = File.join(@env[:cwd], filename)
+    src_path = "#{group}/#{filename}"
+    c.get_object({ bucket: 'profiles', key: src_path }, target: dest_path)
   end
 end

@@ -495,8 +495,8 @@ class ServerTest < Minitest::Test
     pid = inst.start
 
     assert_equal(pid, inst.pid)
-    assert_instance_of(Fixnum, pid)
-    assert_instance_of(Fixnum, inst.pid)
+    assert_instance_of(Integer, pid)
+    assert_instance_of(Integer, inst.pid)
 
     nil until !inst.pid
   end
@@ -962,21 +962,5 @@ class ServerTest < Minitest::Test
     inst.start
     inst.sleep_until(:down)
     assert_equal(5, inst.console_log.length)
-  end
-
-  def test_archive_then_upload
-    inst = Server.new('test')
-    inst.create_paths
-
-    ex = assert_raises(NotImplementedError) { inst.archive_then_upload }
-    assert_equal('You must use a derived mineos class to archive_then_upload', ex.message)
-  end
-
-  def test_receive_profile
-    inst = Server.new('test')
-    inst.create_paths
-
-    ex = assert_raises(NotImplementedError) { inst.receive_profile }
-    assert_equal('You must use a derived mineos class to receive_profile', ex.message)
   end
 end

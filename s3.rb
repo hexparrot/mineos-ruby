@@ -1,30 +1,22 @@
-require './mineos'
 
-# Server instance with Object Store Backend
-class Server_S3 < Server
+# module with S3 object store backend functionality
+module S3
   attr_writer :access_key, :secret_key, :endpoint
 
-  # Create an archive, then upload it to somewhere (likely hq)
-  def archive_then_upload
-    fn = self.archive
-    be_upload_file!(env: :awd, filename: fn)
-    return fn
-  end
-
   # Check if backend store exists (i.e., bucket)
-  private def be_exists?
+  def s3_exists?
     r = Aws::S3::Resource.new
     r.bucket(@name).exists?
   end
 
-  private def be_create_dest!
+  def s3_create_dest!
     c = Aws::S3::Client.new
     c.create_bucket(bucket: @name)
   end
 
-  private def be_destroy_dest!
+  def s3_destroy_dest!
     r = Aws::S3::Resource.new
-    objs = be_list_files
+    objs = s3_list_files
     objs.each do |obj|
       r.bucket(@name).object(obj).delete
     end
@@ -32,12 +24,12 @@ class Server_S3 < Server
     c.delete_bucket(bucket: @name)
   end
 
-  private def be_list_files
+  def s3_list_files
     require 'set'
     objs = Set.new
 
     r = Aws::S3::Resource.new
-    if be_exists?
+    if s3_exists?
       r.bucket(@name).objects.each do |obj|
         objs << obj.key
       end
@@ -46,7 +38,7 @@ class Server_S3 < Server
     return objs
   end
 
-  private def be_upload_file!(env:, filename:)
+  def s3_upload_file!(env:, filename:)
     raise RuntimeError.new('parent path traversal not allowed') if filename.include? '..'
 
     case env
@@ -57,7 +49,7 @@ class Server_S3 < Server
       raise RuntimeError.new('invalid path environment requested')
     end
 
-    be_create_dest! if !be_exists?
+    s3_create_dest! if !s3_exists?
 
     r = Aws::S3::Resource.new
     case env
@@ -71,7 +63,7 @@ class Server_S3 < Server
     obj.key #return remote objstore name
   end
 
-  private def be_download_file!(env:, filename:)
+  def s3_download_file!(env:, filename:)
     c = Aws::S3::Client.new
     case env
     when :awd
@@ -83,13 +75,6 @@ class Server_S3 < Server
     dest_path = File.join(@env[env], filename)
     c.get_object({ bucket:@name, key:obj_path }, target: dest_path)
     dest_path #return local name
-  end
-
-  def receive_profile(group:, filename:)
-    c = Aws::S3::Client.new
-    dest_path = File.join(@env[:cwd], filename)
-    src_path = "#{group}/#{filename}"
-    c.get_object({ bucket: 'profiles', key: src_path }, target: dest_path)
   end
 end
 
