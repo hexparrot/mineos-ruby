@@ -23,21 +23,12 @@ class Server_S3 < Server
   end
 
   private def be_destroy_dest!
-    c = Aws::S3::Client.new
+    r = Aws::S3::Resource.new
     objs = be_list_files
     objs.each do |obj|
-      c.delete_objects(
-        bucket: @name,
-        delete: {
-          objects: [
-            {
-              key: obj
-            }
-          ]
-        }
-    )
-
+      r.bucket(@name).object(obj).delete
     end
+    c = Aws::S3::Client.new
     c.delete_bucket(bucket: @name)
   end
 
