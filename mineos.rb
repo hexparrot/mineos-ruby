@@ -449,12 +449,11 @@ class Server
   def archive_then_upload
     fn = self.archive
     s3_upload_file!(env: :awd, filename: fn)
-    return fn
+
+    fn
   end
 
   def receive_profile(group:, version:)
-    require 'fileutils'
-
     files = s3_list_profile_objects(group: group, version: version)
     files.each do |src_path|
       dest_path = File.join(@env[:cwd], src_path)
