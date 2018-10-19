@@ -21,7 +21,6 @@ class ServerTest < Minitest::Test
       access_key_id: config['object_store']['access_key'],
       secret_access_key: config['object_store']['secret_key'],
       force_path_style: true,
-      http_open_timeout: 2,
       http_read_timeout: 2,
       region: 'us-west-1'
     )
@@ -190,10 +189,10 @@ class ServerTest < Minitest::Test
     else
       assert(resp)
     end
-    inst.s3_destroy_dest!(name: 'test')
+    inst.s3_destroy_dest!(name: 'profiles')
   end
 
-  def treceive_profile
+  def test_receive_profile
     require 'open-uri'
 
     url = 'https://www.w3.org/TR/PNG/iso_8859-1.txt'
@@ -214,9 +213,10 @@ class ServerTest < Minitest::Test
     fp = File.join(inst2.env[:cwd], 'iso_8859-1.txt')
     assert(!File.file?(fp))
 
-    inst2.receive_profile(group: 'mojang', version: '1.8.9')
+    files_transferred = inst2.receive_profile(group: 'mojang', version: '1.8.9')
+    assert_equal(1, files_transferred.length)
     assert(File.file?(fp))
-    inst.send(:s3_destroy_dest!)
+    inst2.s3_destroy_dest!(name: 'profiles')
   end
 
   def test_s3_list_profile_objects

@@ -93,9 +93,15 @@ module S3
     uri = URI.parse(url)
     file = Tempfile.new
     file.binmode
-    open(uri) { |data| file.write data.read(4096) }
+    open(uri) { |data| file.write data.read }
     obj = r.bucket('profiles').object("#{group}/#{version}/#{dest_filename}")
     obj.upload_file(file)
+  end
+
+  # Download an object from a profile group/version
+  def s3_download_profile_object(src:, dest:)
+    c = Aws::S3::Client.new
+    c.get_object({ bucket: 'profiles', key: src }, target: dest)
   end
 
   # Return list of files in a profile bucket

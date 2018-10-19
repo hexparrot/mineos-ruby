@@ -453,9 +453,11 @@ class Server
   end
 
   def receive_profile(group:, version:)
-    c = Aws::S3::Client.new
-    dest_path = File.join(@env[:cwd], filename)
-    src_path = "#{group}/#{version}/#{filename}"
-    c.get_object({ bucket: 'profiles', key: src_path }, target: dest_path)
+    files = s3_list_profile_objects(group: group, version: version)
+    files.each do |src_path|
+      dest_path = File.join(@env[:cwd], File.basename(src_path))
+      s3_download_profile_object(src: src_path, dest: dest_path)
+    end
+    files
   end
 end
