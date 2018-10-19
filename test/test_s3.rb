@@ -242,8 +242,7 @@ class ServerTest < Minitest::Test
 
     url = 'https://www.w3.org/TR/PNG/iso_8859-1.txt'
 
-    inst = Object.new #not the Server object
-    inst.extend(S3)
+    inst = Server.new('test')
 
     inst.get_external_profile(
       url: url,
@@ -254,8 +253,10 @@ class ServerTest < Minitest::Test
 
     files = inst.s3_list_profile_objects(group: 'mojang', version: '1.8.9')
     files.each do |src_path|
-      dest_path = File.join('/tmp', File.basename(src_path))
+      dest_path = File.join(inst.env[:cwd], src_path)
+      #/var/games/minecraft/servers/test/iso_8859-1.txt
       prefix_added = "mojang/1.8.9/#{src_path}"
+      #mojang/1.8.9/iso_8859-1.txt
       inst.s3_download_profile_object(src: prefix_added, dest: dest_path)
       assert(File.file?(dest_path))
     end
