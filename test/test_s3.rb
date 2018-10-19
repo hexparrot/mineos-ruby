@@ -234,12 +234,33 @@ class ServerTest < Minitest::Test
       dest_filename: 'iso_8859-1.txt'
     )
 
-    inst = Object.new #not the Server object
-    inst.extend(S3)
-
     files = inst.s3_list_profile_objects(group: 'mojang', version: '1.8.9')
     assert_equal(1, files.length)
     assert_equal('mojang/1.8.9/iso_8859-1.txt', files.first)
+    inst.s3_destroy_dest!(name: 'profiles')
+  end
+
+  def test_s3_download_profile_object
+    require 'open-uri'
+
+    url = 'https://www.w3.org/TR/PNG/iso_8859-1.txt'
+
+    inst = Object.new #not the Server object
+    inst.extend(S3)
+
+    inst.get_external_profile(
+      url: url,
+      group: 'mojang',
+      version: '1.8.9',
+      dest_filename: 'iso_8859-1.txt'
+    )
+
+    files = inst.s3_list_profile_objects(group: 'mojang', version: '1.8.9')
+    files.each do |src_path|
+      dest_path = File.join('/tmp', File.basename(src_path))
+      inst.s3_download_profile_object(src: src_path, dest: dest_path)
+      assert(File.file?(dest_path))
+    end
     inst.s3_destroy_dest!(name: 'profiles')
   end
 end
