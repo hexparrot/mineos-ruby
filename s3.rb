@@ -2,6 +2,8 @@
 
 module S3
   attr_writer :access_key, :secret_key, :endpoint
+  VALID_BUCKET_REGEX = /(?=^.{3,63}$)(?!^(\d+\.)+\d+$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)/
+  # s3 bucket naming rules: https://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html
 
   # Check if backend store exists (i.e., bucket)
   def s3_exists?(name:)
@@ -11,6 +13,7 @@ module S3
 
   # Create bucket if does not exist
   def s3_create_dest!(name:)
+    raise RuntimeError.new('servername format/characters not valid') if !name.match(VALID_BUCKET_REGEX)
     c = Aws::S3::Client.new
     c.create_bucket(bucket: name)
   end

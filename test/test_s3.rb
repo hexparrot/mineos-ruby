@@ -1,6 +1,9 @@
 require 'minitest/autorun'
 require './mineos'
 
+ACCEPTED_NAMES = ['test', 'asdf1234', 'vanilla-1.8.9']
+REJECTED_NAMES = ['.test', '#test', '?test', '!test', 'server\'s', 'test^again', 'feed me', 'hello_is_it_me', 'Vanilla-1.8.9', '1.7.10', 'UPPERCASE']
+
 class ServerTest < Minitest::Test
 
   def setup
@@ -58,6 +61,18 @@ class ServerTest < Minitest::Test
   def test_exists?
     inst = Server.new('test')
     assert_equal(false, inst.s3_exists?(name: 'test'))
+  end
+
+  def test_create_rejects_bad_input
+    inst = Server.new('test')
+    ACCEPTED_NAMES.each do |name|
+      inst.s3_create_dest!(name: name) #does not throw
+      inst.s3_destroy_dest!(name: name)
+    end
+    REJECTED_NAMES.each do |name|
+      ex = assert_raises(RuntimeError) { inst.s3_create_dest!(name: name) }
+      assert_equal('servername format/characters not valid', ex.message)
+    end
   end
 
   def test_create_and_destroy_bucket
