@@ -452,7 +452,7 @@ class Server
     return fn
   end
 
-  def receive_profile(group:, version:, filename:)
+  def receive_profile(group:, version:)
     c = Aws::S3::Client.new
     dest_path = File.join(@env[:cwd], filename)
     src_path = "#{group}/#{version}/#{filename}"

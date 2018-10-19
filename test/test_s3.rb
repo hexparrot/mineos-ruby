@@ -198,8 +198,17 @@ class ServerTest < Minitest::Test
     fp = File.join(inst2.env[:cwd], 'minecraft_server.1.8.9.jar')
     assert(!File.file?(fp))
 
-    inst2.receive_profile(group: 'mojang', version: '1.8.9', filename: 'minecraft_server.1.8.9.jar')
+    inst2.receive_profile(group: 'mojang', version: '1.8.9')
     assert(File.file?(fp))
+  end
+
+  def test_s3_list_profile_objects
+    inst = Object.new #not the Server object
+    inst.extend(S3)
+
+    files = inst.s3_list_profile_objects(group: 'mojang', version: '1.8.9')
+    assert_equal(1, files.length)
+    assert_equal('mojang/1.8.9/minecraft_server.1.8.9.jar', files.first)
   end
 end
 

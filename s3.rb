@@ -4,9 +4,9 @@ module S3
   attr_writer :access_key, :secret_key, :endpoint
 
   # Check if backend store exists (i.e., bucket)
-  def s3_exists?
+  def s3_exists?(name:)
     r = Aws::S3::Resource.new
-    r.bucket(@name).exists?
+    r.bucket(name).exists?
   end
 
   # Create bucket if does not exist
@@ -96,6 +96,21 @@ module S3
     open(uri) { |data| file.write data.read }
     obj = r.bucket('profiles').object("#{group}/#{version}/#{dest_filename}")
     obj.upload_file(file)
+  end
+
+  # Return list of files in a profile bucket
+  def s3_list_profile_objects(group:, version:)
+    require 'set'
+    objs = Set.new
+
+    r = Aws::S3::Resource.new
+    if s3_exists?(name: 'profiles')
+      r.bucket('profiles').objects(prefix: "#{group}/#{version}").each do |obj|
+        objs << obj.key
+      end
+    end
+
+    return objs
   end
 end
 
