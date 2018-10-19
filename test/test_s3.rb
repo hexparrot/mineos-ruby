@@ -233,7 +233,7 @@ class ServerTest < Minitest::Test
 
     files = inst.s3_list_profile_objects(group: 'mojang', version: '1.8.9')
     assert_equal(1, files.length)
-    assert_equal('mojang/1.8.9/iso_8859-1.txt', files.first)
+    assert_equal('iso_8859-1.txt', files.first)
     inst.s3_destroy_dest!(name: 'profiles')
   end
 
@@ -255,7 +255,8 @@ class ServerTest < Minitest::Test
     files = inst.s3_list_profile_objects(group: 'mojang', version: '1.8.9')
     files.each do |src_path|
       dest_path = File.join('/tmp', File.basename(src_path))
-      inst.s3_download_profile_object(src: src_path, dest: dest_path)
+      prefix_added = "mojang/1.8.9/#{src_path}"
+      inst.s3_download_profile_object(src: prefix_added, dest: dest_path)
       assert(File.file?(dest_path))
     end
     inst.s3_destroy_dest!(name: 'profiles')

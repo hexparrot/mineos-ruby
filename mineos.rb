@@ -458,13 +458,13 @@ class Server
 
     files = s3_list_profile_objects(group: group, version: version)
     files.each do |src_path|
-      new_src = Pathname.new(src_path.sub("#{group}/#{version}", ""))
       begin
-        FileUtils.mkdir_p File.join(@env[:cwd], File.dirname(new_src))
+        FileUtils.mkdir_p File.join(@env[:cwd], File.dirname(src_path))
       rescue Errno::EEXIST
       end
-      dest_path = File.join(@env[:cwd], new_src)
-      s3_download_profile_object(src: src_path, dest: dest_path)
+      dest_path = File.join(@env[:cwd], src_path)
+      prefix_added = "#{group}/#{version}/#{src_path}"
+      s3_download_profile_object(src: prefix_added, dest: dest_path)
     end
 
     files

@@ -123,7 +123,8 @@ module S3
     r = Aws::S3::Resource.new
     if s3_exists?(name: 'profiles')
       r.bucket('profiles').objects(prefix: "#{group}/#{version}").each do |obj|
-        objs << obj.key
+        stripped = obj.key.sub("#{group}/#{version}/", '')
+        objs << stripped
       end
     end
 
