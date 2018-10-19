@@ -260,5 +260,23 @@ class ServerTest < Minitest::Test
     end
     inst.s3_destroy_dest!(name: 'profiles')
   end
+
+  def test_nested_profile_download
+    inst = Server.new('test')
+
+    inst.s3_create_dest!(name: 'profiles') if !inst.s3_exists?(name: 'profiles')
+
+    r = Aws::S3::Resource.new
+    obj = r.bucket('profiles').object('mojang/1.8.9/top_level')
+    obj.put(body: 'Hello World!')
+    obj = r.bucket('profiles').object('mojang/1.8.9/dir/sec_level')
+    obj.put(body: 'Hello World!!')
+
+    inst.receive_profile(group: 'mojang', version: '1.8.9')
+
+    assert(File.file?(File.join(inst.env[:cwd], 'top_level')))
+    assert(File.file?(File.join(inst.env[:cwd], 'dir', 'sec_level')))
+    inst.s3_destroy_dest!(name: 'profiles')
+  end
 end
 
