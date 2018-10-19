@@ -162,18 +162,7 @@ class ServerTest < Minitest::Test
     inst.send(:s3_destroy_dest!)
   end
 
-  def test_receive_profile
-    inst = Server.new('test')
-    inst.create(:conventional_jar)
-    
-    fp = File.join(inst.env[:cwd], 'minecraft_server.1.8.9.jar')
-    assert(!File.file?(fp))
-
-    inst.receive_profile(group: 'mojang', filename: 'minecraft_server.1.8.9.jar')
-    assert(File.file?(fp))
-  end
-
-  def test_upload_profile
+  def test_upload_profile_and_receive
     require 'open-uri'
 
     #url for minecraft_server.1.8.9.jar
@@ -200,6 +189,17 @@ class ServerTest < Minitest::Test
     else
       assert(resp)
     end
+
+    # piggyback this unit test to try to send it to a worker
+
+    inst2 = Server.new('test')
+    inst2.create(:conventional_jar)
+    
+    fp = File.join(inst2.env[:cwd], 'minecraft_server.1.8.9.jar')
+    assert(!File.file?(fp))
+
+    inst2.receive_profile(group: 'mojang', version: '1.8.9', filename: 'minecraft_server.1.8.9.jar')
+    assert(File.file?(fp))
   end
 end
 
