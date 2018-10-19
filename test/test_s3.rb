@@ -21,7 +21,6 @@ class ServerTest < Minitest::Test
       access_key_id: config['object_store']['access_key'],
       secret_access_key: config['object_store']['secret_key'],
       force_path_style: true,
-      http_read_timeout: 2,
       region: 'us-west-1'
     )
   end
@@ -166,7 +165,7 @@ class ServerTest < Minitest::Test
   def test_get_external_profile
     require 'open-uri'
 
-    url = 'https://www.w3.org/TR/PNG/iso_8859-1.txt'
+    url = 'https://launcher.mojang.com/v1/objects/b58b2ceb36e01bcd8dbf49c8fb66c55a9f0676cd/server.jar'
 
     inst = Object.new #not the Server object
     inst.extend(S3)
@@ -174,14 +173,12 @@ class ServerTest < Minitest::Test
     inst.get_external_profile(
       url: url,
       group: 'mojang',
-      version: '1.8.9',
-      dest_filename: 'iso_8859-1.txt'
+      version: '1.2.1',
+      dest_filename: 'server.jar'
     )
 
-    # now test it is in the bucket
-
     c = Aws::S3::Client.new
-    src_path = "mojang/1.8.9/iso_8859-1.txt"
+    src_path = "mojang/1.2.1/server.jar"
     begin
       resp = c.get_object({ bucket: 'profiles', key: src_path })
     rescue Aws::S3::Errors::NoSuchKey => e
