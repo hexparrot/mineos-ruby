@@ -29,12 +29,15 @@ class ServerTest < Minitest::Test
   end
 
   def test_server_name_is_valid
-    ['test', 'asdf1234', 'hello_is_it_me', '1.7.10'].each do |name|
+    ['test', 'asdf1234', 'hello_is_it_me', '1.7.10', 'Vanilla-1.8.9'].each do |name|
       inst = Server.new(name)
       assert_equal(name, inst.name)
     end
-    ['.test', '#test', '?test', '!test', 'server\'s', 'test^again', 'Vanilla-1.8.9', 'feed me'].each do |name|
-      assert_raises(RuntimeError) { inst = Server.new(name) }
+    ['.test', '#test', '?test', '!test', 'server\'s', 'test^again', 'feed me', '_s'].each do |name|
+      ex = assert_raises(RuntimeError) {
+        inst = Server.new(name)
+      }
+      assert_equal('servername format/characters not valid', ex.message)
     end
   end
 

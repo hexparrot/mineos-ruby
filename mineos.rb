@@ -4,12 +4,12 @@ Bundler.require
 
 class Server
   attr_reader :name, :env, :server_type, :status, :console_log
-  VALID_NAME_REGEX = /^(?!\.)[a-zA-Z0-9_\.]+$/
+  VALID_NAME_REGEX = /^(?!\.)[a-zA-Z0-9][a-zA-Z0-9_\-\.]*$/
 
   include S3
 
   def initialize(name, qsize:256)
-    raise RuntimeError if !self.valid_servername(name)
+    raise RuntimeError.new('servername format/characters not valid') if !self.valid_servername(name)
     raise RuntimeError.new('queue size must be a positive integer > 0') if !qsize.is_a?(Integer)
     raise RuntimeError.new('queue size must be a positive integer > 0') if qsize <= 0
 
