@@ -10,30 +10,30 @@ module S3
   end
 
   # Create bucket if does not exist
-  def s3_create_dest!
+  def s3_create_dest!(name:)
     c = Aws::S3::Client.new
-    c.create_bucket(bucket: @name)
+    c.create_bucket(bucket: name)
   end
 
   # Destroy bucket after emptying contents
-  def s3_destroy_dest!
+  def s3_destroy_dest!(name:)
     r = Aws::S3::Resource.new
-    objs = s3_list_files
+    objs = s3_list_files(name: name)
     objs.each do |obj|
-      r.bucket(@name).object(obj).delete
+      r.bucket(name).object(obj).delete
     end
     c = Aws::S3::Client.new
-    c.delete_bucket(bucket: @name)
+    c.delete_bucket(bucket: name)
   end
 
   # List all files in the bucket
-  def s3_list_files
+  def s3_list_files(name:)
     require 'set'
     objs = Set.new
 
     r = Aws::S3::Resource.new
-    if s3_exists?
-      r.bucket(@name).objects.each do |obj|
+    if s3_exists?(name: name)
+      r.bucket(name).objects.each do |obj|
         objs << obj.key
       end
     end
@@ -53,7 +53,7 @@ module S3
       raise RuntimeError.new('invalid path environment requested')
     end
 
-    s3_create_dest! if !s3_exists?
+    s3_create_dest!(name: @name) if !s3_exists?(name: @name)
 
     r = Aws::S3::Resource.new
     case env
@@ -78,7 +78,7 @@ module S3
     end
 
     dest_path = File.join(@env[env], filename)
-    c.get_object({ bucket:@name, key:obj_path }, target: dest_path)
+    c.get_object({ bucket: @name, key:obj_path }, target: dest_path)
     dest_path #return local name
   end
 
@@ -93,7 +93,7 @@ module S3
     uri = URI.parse(url)
     file = Tempfile.new
     file.binmode
-    open(uri) { |data| file.write data.read }
+    open(uri) { |data| file.write data.read(4096) }
     obj = r.bucket('profiles').object("#{group}/#{version}/#{dest_filename}")
     obj.upload_file(file)
   end
