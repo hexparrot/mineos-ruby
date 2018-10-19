@@ -453,15 +453,10 @@ class Server
   end
 
   def receive_profile(group:, version:)
-    require 'pathname'
     require 'fileutils'
 
     files = s3_list_profile_objects(group: group, version: version)
     files.each do |src_path|
-      begin
-        FileUtils.mkdir_p File.join(@env[:cwd], File.dirname(src_path))
-      rescue Errno::EEXIST
-      end
       dest_path = File.join(@env[:cwd], src_path)
       prefix_added = "#{group}/#{version}/#{src_path}"
       s3_download_profile_object(src: prefix_added, dest: dest_path)

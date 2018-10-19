@@ -111,6 +111,12 @@ module S3
 
   # Download an object from a profile group/version
   def s3_download_profile_object(src:, dest:)
+    require 'fileutils'
+    begin
+      FileUtils.mkdir_p File.dirname(dest)
+    rescue Errno::EEXIST
+    end
+
     c = Aws::S3::Client.new
     c.get_object({ bucket: 'profiles', key: src }, target: dest)
   end
