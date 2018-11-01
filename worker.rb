@@ -2,6 +2,18 @@ require 'json'
 require 'eventmachine'
 require 'securerandom'
 require './mineos'
+
+require 'yaml'
+config = YAML::load_file('config/objstore.yml')
+
+require 'aws-sdk-s3'
+Aws.config.update(
+  endpoint: config['object_store']['host'],
+  access_key_id: config['object_store']['access_key'],
+  secret_access_key: config['object_store']['secret_key'],
+  force_path_style: true,
+  region: 'us-west-1'
+)
  
 EM.run do
   servers = {}
