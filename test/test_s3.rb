@@ -185,12 +185,7 @@ class ServerTest < Minitest::Test
     inst = Object.new #not the Server object
     inst.extend(S3)
 
-    inst.get_external_profile(
-      url: url,
-      group: 'mojang',
-      version: '1.2.1',
-      dest_filename: 'server.jar'
-    )
+    inst.get_external_profile(url, 'mojang', '1.2.1', 'server.jar')
 
     c = Aws::S3::Client.new
     src_path = "mojang/1.2.1/server.jar"
@@ -212,12 +207,7 @@ class ServerTest < Minitest::Test
     inst = Object.new #not the Server object
     inst.extend(S3)
 
-    inst.get_external_profile(
-      url: url,
-      group: 'mojang',
-      version: '1.8.9',
-      dest_filename: 'iso_8859-1.txt'
-    )
+    inst.get_external_profile(url, 'mojang', '1.8.9', 'iso_8859-1.txt')
 
     inst2 = Server.new('test')
     inst2.create(:conventional_jar)
@@ -225,7 +215,7 @@ class ServerTest < Minitest::Test
     fp = File.join(inst2.env[:cwd], 'iso_8859-1.txt')
     assert(!File.file?(fp))
 
-    files_transferred = inst2.receive_profile(group: 'mojang', version: '1.8.9')
+    files_transferred = inst2.receive_profile('mojang', '1.8.9')
     assert_equal(1, files_transferred.length)
     assert(File.file?(fp))
     inst2.s3_destroy_dest!(name: 'profiles')
@@ -239,12 +229,7 @@ class ServerTest < Minitest::Test
     inst = Object.new #not the Server object
     inst.extend(S3)
 
-    inst.get_external_profile(
-      url: url,
-      group: 'mojang',
-      version: '1.8.9',
-      dest_filename: 'iso_8859-1.txt'
-    )
+    inst.get_external_profile(url, 'mojang', '1.8.9', 'iso_8859-1.txt')
 
     files = inst.s3_list_profile_objects(group: 'mojang', version: '1.8.9')
     assert_equal(1, files.length)
@@ -259,12 +244,7 @@ class ServerTest < Minitest::Test
 
     inst = Server.new('test')
 
-    inst.get_external_profile(
-      url: url,
-      group: 'mojang',
-      version: '1.8.9',
-      dest_filename: 'iso_8859-1.txt'
-    )
+    inst.get_external_profile(url, 'mojang', '1.8.9', 'iso_8859-1.txt')
 
     files = inst.s3_list_profile_objects(group: 'mojang', version: '1.8.9')
     files.each do |src_path|
@@ -289,7 +269,7 @@ class ServerTest < Minitest::Test
     obj = r.bucket('profiles').object('mojang/1.8.9/dir/sec_level')
     obj.put(body: 'Hello World!!')
 
-    inst.receive_profile(group: 'mojang', version: '1.8.9')
+    inst.receive_profile('mojang', '1.8.9')
 
     assert(File.file?(File.join(inst.env[:cwd], 'top_level')))
     assert(File.file?(File.join(inst.env[:cwd], 'dir', 'sec_level')))

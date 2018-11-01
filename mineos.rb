@@ -440,27 +440,4 @@ class Server
     raise RuntimeError.new('cannot restore server while it is running') if self.pid
     system("rdiff-backup --restore-as-of #{steps} --force #{@env[:bwd]} #{@env[:cwd]}", {:chdir => @env[:bwd]})
   end
-
-  ####################
-  # S3 functionality #
-  ####################
-
-  # Create an archive, then upload it to somewhere (likely hq)
-  def archive_then_upload
-    fn = self.archive
-    s3_upload_file!(env: :awd, filename: fn)
-
-    fn
-  end
-
-  def receive_profile(group:, version:)
-    files = s3_list_profile_objects(group: group, version: version)
-    files.each do |src_path|
-      dest_path = File.join(@env[:cwd], src_path)
-      prefix_added = "#{group}/#{version}/#{src_path}"
-      s3_download_profile_object(src: prefix_added, dest: dest_path)
-    end
-
-    files
-  end
 end

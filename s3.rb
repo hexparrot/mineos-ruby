@@ -5,6 +5,58 @@ module S3
   VALID_BUCKET_REGEX = /(?=^.{3,63}$)(?!^(\d+\.)+\d+$)(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)/
   # s3 bucket naming rules: https://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html
 
+  # Create an archive, then upload it to somewhere (likely hq)
+  def archive_then_upload
+    fn = self.archive
+    s3_upload_file!(env: :awd, filename: fn)
+
+    fn
+  end
+
+  # Locate a profile in the object store and copy to the live directory
+  def receive_profile(group, version)
+    files = s3_list_profile_objects(group: group, version: version)
+    files.each do |src_path|
+      dest_path = File.join(@env[:cwd], src_path)
+      prefix_added = "#{group}/#{version}/#{src_path}"
+      s3_download_profile_object(src: prefix_added, dest: dest_path)
+    end
+
+    files
+  end
+
+  # Download profile from internet, save in object store
+  def get_external_profile(url, group, version, dest_filename)
+    require 'open-uri'
+    require "net/http"
+
+    c = Aws::S3::Client.new
+    r = Aws::S3::Resource.new
+    c.create_bucket(bucket: 'profiles') if !r.bucket('profiles').exists?
+
+    url = URI.encode(URI.decode(url))
+    uri = URI(url)
+
+    options = {}
+    options["User-Agent"] = "wget/1.2.3"
+
+    downloaded_file = uri.open(options)
+
+    if downloaded_file.is_a?(StringIO)
+      tempfile = Tempfile.new("open-uri", binmode: true)
+      IO.copy_stream(downloaded_file, tempfile.path)
+      downloaded_file = tempfile
+    end
+
+    obj = r.bucket('profiles').object("#{group}/#{version}/#{dest_filename}")
+    obj.upload_file(downloaded_file)
+  end
+
+  ########################################################
+  # All s3_ prefixed methods require keyword args,       #
+  # making them inaccessible to the worker.rb dispatcher #
+  ########################################################
+
   # Check if backend store exists (i.e., bucket)
   def s3_exists?(name:)
     r = Aws::S3::Resource.new
@@ -83,33 +135,6 @@ module S3
     dest_path = File.join(@env[env], filename)
     c.get_object({ bucket: @name, key:obj_path }, target: dest_path)
     dest_path #return local name
-  end
-
-  # Download profile from internet, save in object store
-  def get_external_profile(url:, group:, version:, dest_filename:)
-    require 'open-uri'
-    require "net/http"
-
-    c = Aws::S3::Client.new
-    r = Aws::S3::Resource.new
-    c.create_bucket(bucket: 'profiles') if !r.bucket('profiles').exists?
-
-    url = URI.encode(URI.decode(url))
-    uri = URI(url)
-
-    options = {}
-    options["User-Agent"] = "wget/1.2.3"
-
-    downloaded_file = uri.open(options)
-
-    if downloaded_file.is_a?(StringIO)
-      tempfile = Tempfile.new("open-uri", binmode: true)
-      IO.copy_stream(downloaded_file, tempfile.path)
-      downloaded_file = tempfile
-    end
-
-    obj = r.bucket('profiles').object("#{group}/#{version}/#{dest_filename}")
-    obj.upload_file(downloaded_file)
   end
 
   # Download an object from a profile group/version
