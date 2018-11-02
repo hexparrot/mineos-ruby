@@ -159,7 +159,7 @@ EM.run do
 
       to_call = Proc.new do
         begin
-          inst.public_send(cmd, *reordered)
+          retval = inst.public_send(cmd, *reordered)
           if cmd == 'delete' then
             servers.delete_if { |key,value| key == server_name  }
           end
@@ -191,6 +191,7 @@ EM.run do
                            :message_id => SecureRandom.uuid)
 
         end
+        retval #necessary because inst.public_send used to implicitly ret value
       end #to_call
 
       cb = Proc.new { |retval|
