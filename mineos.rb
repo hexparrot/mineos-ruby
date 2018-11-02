@@ -19,6 +19,16 @@ class Server
     self.set_env
   end
 
+  # Comparison operator: same if @name matches
+  def eql?(obj)
+    @name == obj.name
+  end
+
+  # Comparison operator: same if @name && @pid match
+  def equal?(obj)
+    self.eql?(obj) && (@pid == obj.pid)
+  end
+
   # Checks a name is directory-safe and follows
   # a few other historical MineOS conventions
   def valid_servername(name)

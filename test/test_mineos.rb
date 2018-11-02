@@ -966,4 +966,22 @@ class ServerTest < Minitest::Test
     inst.sleep_until(:down)
     assert_equal(5, inst.console_log.length)
   end
+
+  def test_eql_operator
+    inst_a = Server.new('test')
+    inst_b = Server.new('blamo')
+    assert !inst_a.eql?(inst_b)
+
+    inst_c = Server.new('test')
+    assert inst_a.eql? inst_c
+  end
+
+  def test_equal_operator
+    inst_a = Server.new('test')
+    inst_b = Server.new('blamo')
+    assert !inst_a.equal?(inst_b)
+
+    inst_c = Server.new('test')
+    assert inst_a.equal? inst_c #pid is nil on each
+  end
 end
