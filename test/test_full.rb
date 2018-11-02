@@ -64,7 +64,7 @@ describe 'full startup sequence' do
     expect_json(success: true)
     expect_json_types(success: :boolean)
 
-    sleep(10)
+    sleep(5)
     post "/#{WORKER_HOSTNAME}/test", {cmd: 'stop'}
     expect_status 200
     expect_json(server_name: 'test')

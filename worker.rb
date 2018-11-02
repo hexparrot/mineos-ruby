@@ -107,7 +107,13 @@ EM.run do
     parsed = JSON.parse payload
     server_name = parsed.delete("server_name")
     cmd = parsed.delete("cmd")
-    inst = servers[server_name] ? servers[server_name] : Server.new(server_name)
+
+    if servers[server_name].is_a?(Server) then
+      inst = servers[server_name]
+    else
+      inst = Server.new(server_name)
+      servers[server_name.to_sym] = inst
+    end
 
     return_object = {server_name: server_name, cmd: cmd, success: false, retval: nil}
 
@@ -127,11 +133,14 @@ EM.run do
           #break out if first argument opt or not is absent
           break
         end
-      end
+      end #map
 
       to_call = Proc.new do
         begin
           inst.public_send(cmd, *reordered)
+          if cmd == 'delete' then
+            servers.delete_if { |key,value| key == server_name  }
+          end
         rescue IOError
           puts "IOERROR CAUGHT"
         rescue ArgumentError => e
@@ -145,7 +154,7 @@ EM.run do
                                                     detail: e.to_s }},
                            :message_id => SecureRandom.uuid)
         end
-      end
+      end #to_call
 
       cb = Proc.new { |retval|
         return_object[:retval] = retval
@@ -173,7 +182,7 @@ EM.run do
                          :message_id => SecureRandom.uuid)
       }
       EM.defer cb
-    end
+    end #inst.respond_to
 
   }
 
