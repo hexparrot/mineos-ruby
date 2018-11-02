@@ -13,19 +13,23 @@ end
 describe 'full startup sequence' do
   it 'should create a server, populate parameters, and start java' do
     post "/#{WORKER_HOSTNAME}/test", {cmd: 'create'}
+    expect_status 201
     expect_json(success: true)
     expect_json_types(success: :boolean)
 
     post "/#{WORKER_HOSTNAME}/test", {cmd: 'modify_sc', section: 'java', attr: 'java_xmx', value: 512}
+    expect_status 200
     expect_json(success: true)
     expect_json_types(success: :boolean)
 
     post "/#{WORKER_HOSTNAME}/test", {cmd: 'modify_sc', section: 'java', attr: 'java_xms', value: 512}
+    expect_status 200
     expect_json(server_name: 'test')
     expect_json(success: true)
     expect_json_types(success: :boolean)
 
     post "/#{WORKER_HOSTNAME}/test", {cmd: 'modify_sc', section: 'java', attr: 'jarfile', value: 'minecraft_server.1.8.9.jar'}
+    expect_status 200
     expect_json(server_name: 'test')
     expect_json(success: true)
     expect_json_types(success: :boolean)
@@ -37,16 +41,19 @@ describe 'full startup sequence' do
       dest_filename: 'minecraft_server.1.8.9.jar'
     }
 
+    expect_status 200
     expect_json(server_name: 'test')
     expect_json(success: true)
     expect_json_types(success: :boolean)
 
     post "/#{WORKER_HOSTNAME}/test", {cmd: 'accept_eula'}
+    expect_status 200
     expect_json(server_name: 'test')
     expect_json(success: true)
     expect_json_types(success: :boolean)
 
     post "/#{WORKER_HOSTNAME}/test", {cmd: 'receive_profile', group: 'mojang', version: '1.8.9'}
+    expect_status 200
     expect_json(server_name: 'test')
     expect_json(success: true)
     expect_json_types(success: :boolean)
@@ -58,7 +65,11 @@ describe 'full startup sequence' do
     expect_json_types(success: :boolean)
 
     sleep(10)
-    # missing test here.  Why is it dying prior to delete?
+    post "/#{WORKER_HOSTNAME}/test", {cmd: 'stop'}
+    expect_status 200
+    expect_json(server_name: 'test')
+    expect_json(success: true)
+    expect_json_types(success: :boolean)
 
     post "/#{WORKER_HOSTNAME}/test", {cmd: 'delete'}
     expect_status 200

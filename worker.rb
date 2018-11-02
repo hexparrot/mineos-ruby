@@ -107,7 +107,7 @@ EM.run do
     parsed = JSON.parse payload
     server_name = parsed.delete("server_name")
     cmd = parsed.delete("cmd")
-    inst = Server.new(server_name)
+    inst = servers[server_name] ? servers[server_name] : Server.new(server_name)
 
     return_object = {server_name: server_name, cmd: cmd, success: false, retval: nil}
 
