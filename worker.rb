@@ -122,7 +122,7 @@ EM.run do
     else
       logger.debug("creating new instance for #{server_name}")
       inst = Server.new(server_name)
-      servers[server_name.to_sym] = inst
+      servers[server_name] = inst
     end
 
     return_object = {server_name: server_name, cmd: cmd, success: false, retval: nil}
