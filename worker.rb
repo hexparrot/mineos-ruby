@@ -22,6 +22,7 @@ Aws.config.update(
  
 EM.run do
   servers = {}
+  server_loggers = {}
   hostname = Socket.gethostname
 
   server_dirs = Enumerator.new do |enum|
@@ -123,6 +124,16 @@ EM.run do
       logger.debug("creating new instance for #{server_name}")
       inst = Server.new(server_name)
       servers[server_name] = inst
+
+      #Thread.new do
+      #  server_loggers[server_name] = Logger.new(STDOUT)
+      #  server_loggers[server_name].datetime_format = "%H:%M:%S [#{server_name}]"
+      #  server_loggers[server_name].level = Logger::INFO
+      #  loop do
+      #    server_loggers[server_name].info(inst.console_log.pop.strip)
+      #  end
+      #end
+
     end
 
     return_object = {server_name: server_name, cmd: cmd, success: false, retval: nil}
@@ -238,6 +249,5 @@ EM.run do
                     :headers => {hostname: hostname,
                                  directive: 'IDENT'},
                     :message_id => SecureRandom.uuid)
-
 
 end #EM::Run
