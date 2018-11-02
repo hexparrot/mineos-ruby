@@ -3,6 +3,11 @@ require 'eventmachine'
 require 'securerandom'
 require './mineos'
 
+require 'logger'
+logger = Logger.new(STDOUT)
+logger.datetime_format = '%Y-%m-%d %H:%M:%S'
+logger.level = Logger::DEBUG
+
 require 'yaml'
 config = YAML::load_file('config/objstore.yml')
 
@@ -108,9 +113,14 @@ EM.run do
     server_name = parsed.delete("server_name")
     cmd = parsed.delete("cmd")
 
+    logger.info("Received #{cmd} for server `#{server_name}")
+    logger.info(parsed)
+
     if servers[server_name].is_a?(Server) then
+      logger.debug("using existing instance for #{server_name}")
       inst = servers[server_name]
     else
+      logger.debug("creating new instance for #{server_name}")
       inst = Server.new(server_name)
       servers[server_name.to_sym] = inst
     end
@@ -128,6 +138,7 @@ EM.run do
             reordered << parsed[name.to_s]
           end
         rescue NoMethodError => e
+          #logger.debug(e)
           #occurs if optional arguments are not provided (non-fatal)
           #invalid arguments will break at inst.public_send below
           #break out if first argument opt or not is absent
@@ -142,8 +153,9 @@ EM.run do
             servers.delete_if { |key,value| key == server_name  }
           end
         rescue IOError
-          puts "IOERROR CAUGHT"
+          logger.error("IOError caught!")
         rescue ArgumentError => e
+          logger.error("ArgumentError caught!")
           exchange.publish(return_object.to_json,
                            :routing_key => "to_hq",
                            :timestamp => Time.now.to_i,
@@ -153,6 +165,20 @@ EM.run do
                                         exception: {name: 'ArgumentError',
                                                     detail: e.to_s }},
                            :message_id => SecureRandom.uuid)
+        rescue RuntimeError => e
+          logger.error("RuntimeError caught!")
+          logger.info(e)
+          logger.debug(return_object)
+          exchange.publish(return_object.to_json,
+                           :routing_key => "to_hq",
+                           :timestamp => Time.now.to_i,
+                           :type => 'receipt.command',
+                           :correlation_id => metadata[:message_id],
+                           :headers => {hostname: hostname,
+                                        exception: {name: 'ArgumentError',
+                                                    detail: e.to_s }},
+                           :message_id => SecureRandom.uuid)
+
         end
       end #to_call
 
@@ -190,9 +216,9 @@ EM.run do
   .queue('')
   .bind(exchange, :routing_key => 'to_workers.#')
   .subscribe do |delivery_info, metadata, payload|
-    #puts delivery_info
-    #puts metadata
-    #puts payload
+    #logger.debug(delivery_info)
+    #logger.debug(metadata)
+    #logger.debug(payload)
     if delivery_info.routing_key.split('.')[1] == hostname ||
        delivery_info.routing_key == 'to_workers' then
       case metadata.type
