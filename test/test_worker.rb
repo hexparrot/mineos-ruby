@@ -9,9 +9,9 @@ require 'socket'
 class ServerTest < Minitest::Test
 
   def setup
+    # this test assumes a worker instance is up, as a separate process
     @@basedir = '/var/games/minecraft'
     @@hostname = Socket.gethostname
-    @@amqp = 'amqp://localhost'
 
     require 'yaml'
     mineos_config = YAML::load_file('../config/secrets.yml')
@@ -32,24 +32,10 @@ class ServerTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@@basedir, 'servers'))
     FileUtils.mkdir_p(File.join(@@basedir, 'backup'))
     FileUtils.mkdir_p(File.join(@@basedir, 'archive'))
-
-    @spawn_worker = true
-    if @spawn_worker then
-      @pid = fork do
-        STDOUT.reopen('/dev/null', 'w')
-        STDERR.reopen('/dev/null', 'w')
-        exec "ruby worker.rb"
-      end
-      Process.detach(@pid)
-    end
-
   end
 
   def teardown
-    if @spawn_worker then
-      Process.kill 9, @pid 
-    end
-    sleep(0.1)
+    sleep(0.3)
   end
 
   def test_ident
