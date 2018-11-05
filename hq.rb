@@ -14,6 +14,7 @@ class HQ < Sinatra::Base
 
   require 'yaml'
   mineos_config = YAML::load_file('config/secrets.yml')
+  s3_config = YAML::load_file('config/objstore.yml')
 
   require 'bunny'
   conn = Bunny.new(:host => mineos_config['rabbitmq']['host'],
@@ -39,6 +40,19 @@ class HQ < Sinatra::Base
       case metadata[:headers]['directive']
       when 'IDENT'
         available_workers.add(parsed['host'])
+
+        # on receipt of IDENT, send object store creds
+        exchange.publish({AWSCREDS: {
+                           endpoint: s3_config['object_store']['host'],
+                           access_key_id: s3_config['object_store']['access_key'],
+                           secret_access_key: s3_config['object_store']['secret_key'],
+                           region: 'us-west-1'
+                           }
+                         }.to_json,
+			 :routing_key => "to_workers.#{parsed['host']}",
+                         :type => "directive",
+                         :message_id => SecureRandom.uuid,
+                         :timestamp => Time.now.to_i)
       when 'LIST'
         yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
         promise_retvals[metadata.correlation_id][:hosts].each do |obj|
