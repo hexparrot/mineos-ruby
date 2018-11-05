@@ -50,6 +50,7 @@ EM.run do
                        :headers => {hostname: hostname,
                                     directive: 'IDENT'},
                        :message_id => SecureRandom.uuid)
+      logger.info("Received IDENT directive from HQ.")
     when "LIST"
       exchange.publish({servers: server_dirs.to_a}.to_json,
                        :routing_key => "to_hq",
@@ -59,6 +60,8 @@ EM.run do
                        :headers => {hostname: hostname,
                                     directive: 'LIST'},
                        :message_id => SecureRandom.uuid)
+      logger.info("Received LIST directive from HQ.")
+      logger.debug({servers: server_dirs.to_a})
     when "USAGE"
       require 'usagewatch'
 
@@ -79,6 +82,8 @@ EM.run do
                          :headers => {hostname: hostname,
                                       directive: 'USAGE'},
                          :message_id => SecureRandom.uuid)
+        logger.info("Received USAGE directive from HQ.")
+        logger.debug({usage: retval})
       end
     when /(uw_\w+)/
       require 'usagewatch'
@@ -93,6 +98,8 @@ EM.run do
                          :headers => {hostname: hostname,
                                       directive: 'REQUEST_USAGE'},
                          :message_id => SecureRandom.uuid)
+        logger.info("Received USAGE directive from HQ.")
+        logger.debug({usage: {$1 =>  usw.public_send($1)}})
       end
     else
       json_in = JSON.parse payload
@@ -108,6 +115,8 @@ EM.run do
           region: parsed['region']
         })
   
+        logger.info("Received AWSCREDS directive from HQ.")
+
         begin
           c = Aws::S3::Client.new
         rescue ArgumentError => e
@@ -118,8 +127,12 @@ EM.run do
             force_path_style: true,
             region: nil
           } 
+          logger.error("Endpoint invalid and Aws::S3::Client.new failed. Returning:")
+          logger.debug(retval)
         else
           retval = Aws.config
+          logger.info("Endpoint valid and Aws::S3::Client.new returned no error")
+          logger.debug(retval)
         end
   
         exchange.publish(retval.to_json,
@@ -130,8 +143,8 @@ EM.run do
                          :headers => {hostname: hostname,
                                       directive: 'AWSCREDS'},
                          :message_id => SecureRandom.uuid)
-      else
-        exchange.publish(retval.to_json,
+      else #if unknown directive
+        exchange.publish({}.to_json,
                          :routing_key => "to_hq",
                          :timestamp => Time.now.to_i,
                          :type => 'receipt.directive',
@@ -139,6 +152,9 @@ EM.run do
                          :headers => {hostname: hostname,
                                       directive: 'BOGUS'}, #changing directive
                          :message_id => SecureRandom.uuid)
+        logger.warn("Received bogus directive from HQ. Received:")
+        logger.warn(payload)
+        logger.warn("Ignored as BOGUS. Returned: {}")
 
       end # json_in.key
     end
