@@ -103,11 +103,25 @@ EM.run do
         endpoint: parsed['endpoint'],
         access_key_id: parsed['access_key_id'],
         secret_access_key: parsed['secret_access_key'],
-        force_path_style: parsed['force_path_style'],
+        force_path_style: true,
         region: parsed['region']
       })
 
-      exchange.publish(Aws.config.to_json,
+      begin
+        c = Aws::S3::Client.new
+      rescue ArgumentError => e
+        retval = {
+          endpoint: nil,
+          access_key_id: nil,
+          secret_access_key: nil,
+          force_path_style: true,
+          region: nil
+        } 
+      else
+        retval = Aws.config
+      end
+
+      exchange.publish(retval.to_json,
                        :routing_key => "to_hq",
                        :timestamp => Time.now.to_i,
                        :type => 'receipt.directive',

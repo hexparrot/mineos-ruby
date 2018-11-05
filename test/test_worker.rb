@@ -448,7 +448,49 @@ class ServerTest < Minitest::Test
                           endpoint: config['object_store']['host'],
                           access_key_id: config['object_store']['access_key'],
                           secret_access_key: config['object_store']['secret_key'],
-                          force_path_style: true,
+                          region: 'us-west-1'
+                          }
+                        }.to_json,
+                        :routing_key => "to_workers",
+                        :type => "directive",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
+    end
+    assert_equal(1, step)
+  end
+
+  def test_get_aws_creds_when_invalid_endpoint
+    guid = SecureRandom.uuid
+    step = 0
+
+    require 'yaml'
+    config = YAML::load_file('../config/objstore.yml')
+
+    EM.run do
+      @ch
+      .queue('')
+      .bind(@exchange, :routing_key => "to_hq")
+      .subscribe(:exclusive => true) do |delivery_info, metadata, payload|
+        parsed = JSON.parse payload
+        assert_equal(guid, metadata.correlation_id)
+        assert_equal('receipt.directive', metadata.type)
+        assert_equal('AWSCREDS', metadata[:headers]['directive'])
+        assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_nil(parsed['endpoint'])
+        assert_nil(parsed['access_key_id'])
+        assert_nil(parsed['secret_access_key'])
+        assert_equal(true, parsed['force_path_style'])
+        assert_nil(parsed['region'])
+        assert(metadata.timestamp)
+        assert(metadata.message_id)
+        step += 1
+        EM.stop
+      end
+
+      @exchange.publish({AWSCREDS: {
+                          endpoint: 'fakeendpoint',
+                          access_key_id: config['object_store']['access_key'],
+                          secret_access_key: config['object_store']['secret_key'],
                           region: 'us-west-1'
                           }
                         }.to_json,
