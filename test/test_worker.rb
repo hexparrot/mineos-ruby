@@ -501,5 +501,35 @@ class ServerTest < Minitest::Test
     end
     assert_equal(1, step)
   end
+
+  def test_worker_bogus_directive
+    guid = SecureRandom.uuid
+    step = 0
+
+    EM.run do
+      @ch
+      .queue('')
+      .bind(@exchange, :routing_key => "to_hq")
+      .subscribe(:exclusive => true) do |delivery_info, metadata, payload|
+        parsed = JSON.parse payload
+        assert_equal(guid, metadata.correlation_id)
+        assert_equal('receipt.directive', metadata.type)
+        assert_equal('BOGUS', metadata[:headers]['directive'])
+        assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert(metadata.timestamp)
+        assert(metadata.message_id)
+        step += 1
+        EM.stop
+      end
+
+      @exchange.publish({THISISFAKE: {} }.to_json,
+                        :routing_key => "to_workers",
+                        :type => "directive",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
+    end
+    assert_equal(1, step)
+
+  end
 end
 

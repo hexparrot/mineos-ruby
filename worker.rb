@@ -96,40 +96,51 @@ EM.run do
       end
     else
       json_in = JSON.parse payload
-      parsed = json_in['AWSCREDS']
-
-      require 'aws-sdk-s3'
-      Aws.config.update({
-        endpoint: parsed['endpoint'],
-        access_key_id: parsed['access_key_id'],
-        secret_access_key: parsed['secret_access_key'],
-        force_path_style: true,
-        region: parsed['region']
-      })
-
-      begin
-        c = Aws::S3::Client.new
-      rescue ArgumentError => e
-        retval = {
-          endpoint: nil,
-          access_key_id: nil,
-          secret_access_key: nil,
+      if json_in.key?('AWSCREDS') then
+        parsed = json_in['AWSCREDS']
+  
+        require 'aws-sdk-s3'
+        Aws.config.update({
+          endpoint: parsed['endpoint'],
+          access_key_id: parsed['access_key_id'],
+          secret_access_key: parsed['secret_access_key'],
           force_path_style: true,
-          region: nil
-        } 
+          region: parsed['region']
+        })
+  
+        begin
+          c = Aws::S3::Client.new
+        rescue ArgumentError => e
+          retval = {
+            endpoint: nil,
+            access_key_id: nil,
+            secret_access_key: nil,
+            force_path_style: true,
+            region: nil
+          } 
+        else
+          retval = Aws.config
+        end
+  
+        exchange.publish(retval.to_json,
+                         :routing_key => "to_hq",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt.directive',
+                         :correlation_id => metadata[:message_id],
+                         :headers => {hostname: hostname,
+                                      directive: 'AWSCREDS'},
+                         :message_id => SecureRandom.uuid)
       else
-        retval = Aws.config
-      end
+        exchange.publish(retval.to_json,
+                         :routing_key => "to_hq",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt.directive',
+                         :correlation_id => metadata[:message_id],
+                         :headers => {hostname: hostname,
+                                      directive: 'BOGUS'}, #changing directive
+                         :message_id => SecureRandom.uuid)
 
-      exchange.publish(retval.to_json,
-                       :routing_key => "to_hq",
-                       :timestamp => Time.now.to_i,
-                       :type => 'receipt.directive',
-                       :correlation_id => metadata[:message_id],
-                       :headers => {hostname: hostname,
-                                    directive: 'AWSCREDS'},
-                       :message_id => SecureRandom.uuid)
-
+      end # json_in.key
     end
   }
 
