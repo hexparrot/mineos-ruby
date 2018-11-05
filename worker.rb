@@ -7,18 +7,6 @@ require 'logger'
 logger = Logger.new(STDOUT)
 logger.datetime_format = '%Y-%m-%d %H:%M:%S'
 logger.level = Logger::DEBUG
-
-require 'yaml'
-config = YAML::load_file('config/objstore.yml')
-
-require 'aws-sdk-s3'
-Aws.config.update(
-  endpoint: config['object_store']['host'],
-  access_key_id: config['object_store']['access_key'],
-  secret_access_key: config['object_store']['secret_key'],
-  force_path_style: true,
-  region: 'us-west-1'
-)
  
 EM.run do
   servers = {}
@@ -106,6 +94,28 @@ EM.run do
                                       directive: 'REQUEST_USAGE'},
                          :message_id => SecureRandom.uuid)
       end
+    else
+      json_in = JSON.parse payload
+      parsed = json_in['AWSCREDS']
+
+      require 'aws-sdk-s3'
+      Aws.config.update({
+        endpoint: parsed['endpoint'],
+        access_key_id: parsed['access_key_id'],
+        secret_access_key: parsed['secret_access_key'],
+        force_path_style: parsed['force_path_style'],
+        region: parsed['region']
+      })
+
+      exchange.publish(Aws.config.to_json,
+                       :routing_key => "to_hq",
+                       :timestamp => Time.now.to_i,
+                       :type => 'receipt.directive',
+                       :correlation_id => metadata[:message_id],
+                       :headers => {hostname: hostname,
+                                    directive: 'AWSCREDS'},
+                       :message_id => SecureRandom.uuid)
+
     end
   }
 
