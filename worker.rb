@@ -12,6 +12,7 @@ EM.run do
   servers = {}
   server_loggers = {}
   hostname = Socket.gethostname
+  logger.info("Starting up worker node: `#{hostname}`")
 
   server_dirs = Enumerator.new do |enum|
     Dir['/var/games/minecraft/servers/*'].each { |d| 
@@ -23,10 +24,12 @@ EM.run do
   server_dirs.each do |sn|
     #register existing servers upon startup
     servers[sn] = Server.new(sn)
+    logger.info("Finished setting up server instance: `#{sn}`")
   end
 
   require 'yaml'
   mineos_config = YAML::load_file('config/secrets.yml')
+  logger.info("Finished loading mineos secrets.")
 
   require 'bunny'
   conn = Bunny.new(:host => mineos_config['rabbitmq']['host'],
@@ -35,6 +38,7 @@ EM.run do
                    :pass => mineos_config['rabbitmq']['pass'],
                    :vhost => mineos_config['rabbitmq']['vhost'])
   conn.start
+  logger.info("Finished creating AMQP connection.")
 
   ch = conn.create_channel
   exchange = ch.topic("backend")
@@ -301,5 +305,7 @@ EM.run do
                     :headers => {hostname: hostname,
                                  directive: 'IDENT'},
                     :message_id => SecureRandom.uuid)
+  logger.info("Sent IDENT message.")
+  logger.info("Worker node set up and listening.")
 
 end #EM::Run
