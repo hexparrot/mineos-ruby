@@ -20,3 +20,5 @@ gem 'async_sinatra'
 gem 'thin'
 # s3 sdk
 gem 'aws-sdk-s3'
+# sinatra websockets
+gem 'sinatra-websocket'

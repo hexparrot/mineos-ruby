@@ -1,10 +1,12 @@
 require 'sinatra/async'
+require 'sinatra-websocket'
 require 'eventmachine'
 require 'json'
 require 'securerandom'
 
 class HQ < Sinatra::Base
   set :server, :thin
+  set :sockets, []
   set :bind, '0.0.0.0'
   register Sinatra::Async
   enable :show_exceptions
@@ -87,6 +89,44 @@ class HQ < Sinatra::Base
                    :timestamp => Time.now.to_i)
 
 ## route handlers
+
+  get '/' do
+    if !request.websocket?
+      send_file File.join('public', 'index.html')
+    else
+      request.websocket do |ws|
+        ws.onopen do
+          settings.sockets << ws
+        end
+        ws.onmessage do |msg|
+	  worker = 'ruby-worker' #fixme!
+          uuid = SecureRandom.uuid
+
+	  body_parameters = JSON.parse msg
+	  body_parameters['server_name'] = 'test'
+
+          promises[uuid] = Proc.new { |status_code, retval|
+            ws.send(retval)
+          }
+
+	  puts body_parameters.to_json
+          if !available_workers.include?(worker)
+            halt 404, {server_name: servername, success: false}.to_json
+          else
+            exchange.publish(body_parameters.to_json,
+                             :routing_key => "to_workers.#{worker}",
+                             :type => "command",
+			     :message_id => uuid,
+                             :timestamp => Time.now.to_i)
+          end
+        end
+        ws.onclose do
+          warn("websocket closed")
+          settings.sockets.delete(ws)
+        end
+      end
+    end
+  end
 
   get '/workerlist' do
     {:hosts => available_workers.to_a}.to_json
