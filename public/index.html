@@ -2,6 +2,10 @@
   <body>
      <h1>Create a simple test server</h1>
      <form id="form">
+       <input type="text" id="worker" value="ruby-worker" />
+       <br>
+       <input type="text" id="servername" value="test" />
+       <br>
        <button type="button" data-string='{"cmd": "create"}'>create</button>
        <button type="button" data-string='{"cmd": "modify_sc", "section": "java", "attr": "java_xmx", "value": 512}'>xmx</button> 
        <button type="button" data-string='{"cmd": "modify_sc", "section": "java", "attr": "java_xms", "value": 512}'>xms</button> 
@@ -25,16 +29,19 @@
       (function(){
 
         var ws       = new WebSocket('ws://' + window.location.host + window.location.pathname);
-        ws.onopen    = function()  { show('websocket opened'); };
-        ws.onclose   = function()  { show('websocket closed'); }
-        ws.onmessage = function(m) { show('IN: ' +  m.data); };
+        ws.onopen    = function()  { console.log('websocket opened'); };
+        ws.onclose   = function()  { console.log('websocket closed'); }
+        ws.onmessage = function(m) { console.log("IN: %o", m.data); };
 
-	var btns = document.querySelectorAll('button');
+        var btns = document.querySelectorAll('button');
         for (var i = 0; i < btns.length; i++) {
-         	btns[i].addEventListener('click', function (event) {
-		  console.log(this.getAttribute('data-string'));
-                  ws.send(this.getAttribute('data-string'));
-        	}, false);
+		btns[i].addEventListener('click', function (event) {
+		  var payload = JSON.parse(this.getAttribute('data-string'));
+		  payload['worker'] = document.getElementById('worker').value
+		  payload['server_name'] = document.getElementById('servername').value
+		  console.log(payload);
+                  ws.send(JSON.stringify(payload));
+		}, false);
         }
 
       })();

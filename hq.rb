@@ -51,7 +51,7 @@ class HQ < Sinatra::Base
                            region: 'us-west-1'
                            }
                          }.to_json,
-			 :routing_key => "to_workers.#{parsed['host']}",
+       :routing_key => "to_workers.#{parsed['host']}",
                          :type => "directive",
                          :message_id => SecureRandom.uuid,
                          :timestamp => Time.now.to_i)
@@ -97,36 +97,40 @@ class HQ < Sinatra::Base
       request.websocket do |ws|
         ws.onopen do
           settings.sockets << ws
-        end
+        end #end ws.onopen
+
         ws.onmessage do |msg|
-	  worker = 'ruby-worker' #fixme!
           uuid = SecureRandom.uuid
 
-	  body_parameters = JSON.parse msg
-	  body_parameters['server_name'] = 'test'
+          body_parameters = JSON.parse msg
+          worker = body_parameters.delete('worker')
+          servername = body_parameters['server_name']
 
           promises[uuid] = Proc.new { |status_code, retval|
             ws.send(retval)
           }
 
-	  puts body_parameters.to_json
           if !available_workers.include?(worker)
-            halt 404, {server_name: servername, success: false}.to_json
+            puts "worker `#{worker}` not found."
+            #worker not found?  ignore.  todo: log me somewhere!
           else
+            puts "sending worker:server `#{worker}:#{servername}` command:"
+            puts body_parameters
             exchange.publish(body_parameters.to_json,
                              :routing_key => "to_workers.#{worker}",
                              :type => "command",
-			     :message_id => uuid,
+                             :message_id => uuid,
                              :timestamp => Time.now.to_i)
           end
-        end
+        end # end ws.onmessage
+
         ws.onclose do
           warn("websocket closed")
           settings.sockets.delete(ws)
         end
-      end
-    end
-  end
+      end #end request.websocket
+    end #end if/else
+  end #end get
 
   get '/workerlist' do
     {:hosts => available_workers.to_a}.to_json
