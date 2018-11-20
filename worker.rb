@@ -1,7 +1,7 @@
 require 'json'
 require 'eventmachine'
 require 'securerandom'
-require './mineos'
+require_relative 'mineos'
 
 require 'logger'
 logger = Logger.new(STDOUT)
