@@ -1,10 +1,12 @@
 require 'sinatra/async'
+require 'sinatra-websocket'
 require 'eventmachine'
 require 'json'
 require 'securerandom'
 
 class HQ < Sinatra::Base
   set :server, :thin
+  set :sockets, []
   set :bind, '0.0.0.0'
   register Sinatra::Async
   enable :show_exceptions
@@ -26,6 +28,14 @@ class HQ < Sinatra::Base
   
   ch = conn.create_channel
   exchange = ch.topic('backend')
+  exchange_stdout = ch.direct('stdout')
+
+  ch
+  .queue('')
+  .bind(exchange_stdout, :routing_key => "to_hq")
+  .subscribe do |delivery_info, metadata, payload|
+    settings.sockets.each { |ws| ws.send(payload) }
+  end
 
   promises = {}
   promise_retvals = {}
@@ -49,7 +59,7 @@ class HQ < Sinatra::Base
                            region: 'us-west-1'
                            }
                          }.to_json,
-			 :routing_key => "to_workers.#{parsed['host']}",
+       :routing_key => "to_workers.#{parsed['host']}",
                          :type => "directive",
                          :message_id => SecureRandom.uuid,
                          :timestamp => Time.now.to_i)
@@ -87,6 +97,48 @@ class HQ < Sinatra::Base
                    :timestamp => Time.now.to_i)
 
 ## route handlers
+
+  get '/' do
+    if !request.websocket?
+      send_file File.join('public', 'index.html')
+    else
+      request.websocket do |ws|
+        ws.onopen do
+          settings.sockets << ws
+        end #end ws.onopen
+
+        ws.onmessage do |msg|
+          uuid = SecureRandom.uuid
+
+          body_parameters = JSON.parse msg
+          worker = body_parameters.delete('worker')
+          servername = body_parameters['server_name']
+
+          promises[uuid] = Proc.new { |status_code, retval|
+            ws.send(retval)
+          }
+
+          if !available_workers.include?(worker)
+            puts "worker `#{worker}` not found."
+            #worker not found?  ignore.  todo: log me somewhere!
+          else
+            puts "sending worker:server `#{worker}:#{servername}` command:"
+            puts body_parameters
+            exchange.publish(body_parameters.to_json,
+                             :routing_key => "to_workers.#{worker}",
+                             :type => "command",
+                             :message_id => uuid,
+                             :timestamp => Time.now.to_i)
+          end
+        end # end ws.onmessage
+
+        ws.onclose do
+          warn("websocket closed")
+          settings.sockets.delete(ws)
+        end
+      end #end request.websocket
+    end #end if/else
+  end #end get
 
   get '/workerlist' do
     {:hosts => available_workers.to_a}.to_json
