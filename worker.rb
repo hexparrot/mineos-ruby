@@ -42,7 +42,7 @@ EM.run do
 
   ch = conn.create_channel
   exchange = ch.topic("backend")
-  exchange_stdout = ch.topic("stdout")
+  exchange_stdout = ch.direct("stdout")
 
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
