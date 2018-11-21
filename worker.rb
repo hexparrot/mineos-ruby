@@ -42,6 +42,7 @@ EM.run do
 
   ch = conn.create_channel
   exchange = ch.topic("backend")
+  exchange_stdout = ch.topic("stdout")
 
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
@@ -179,17 +180,35 @@ EM.run do
       logger.debug("creating new instance for #{server_name}")
       inst = Server.new(server_name)
       servers[server_name] = inst
-
-      #Thread.new do
-      #  server_loggers[server_name] = Logger.new(STDOUT)
-      #  server_loggers[server_name].datetime_format = "%H:%M:%S [#{server_name}]"
-      #  server_loggers[server_name].level = Logger::INFO
-      #  loop do
-      #    server_loggers[server_name].info(inst.console_log.pop.strip)
-      #  end
-      #end
-
     end
+
+    Thread.new do
+    #  server_loggers[server_name] = Logger.new(STDOUT)
+    #  server_loggers[server_name].datetime_format = "%H:%M:%S [#{server_name}]"
+    #  server_loggers[server_name].level = Logger::INFO
+      loop do
+        #server_loggers[server_name].info(inst.console_log.pop.strip)
+        line = inst.console_log.shift.strip
+        puts line
+        exchange_stdout.publish({ msg: line,
+                                  server_name: server_name }.to_json,
+                                :routing_key => "to_hq",
+                                :timestamp => Time.now.to_i,
+                                :type => 'stdout',
+                                :correlation_id => metadata[:message_id],
+                                :headers => {hostname: hostname},
+                                :message_id => SecureRandom.uuid)
+      end
+    end
+
+    #  Thread.new do
+    #    server_loggers[server_name] = Logger.new(STDOUT)
+    #    server_loggers[server_name].datetime_format = "%H:%M:%S [#{server_name}]"
+    #    server_loggers[server_name].level = Logger::INFO
+    #    loop do
+    #      server_loggers[server_name].info(inst.console_log.pop.strip)
+    #    end
+    #  end
 
     return_object = {server_name: server_name, cmd: cmd, success: false, retval: nil}
 

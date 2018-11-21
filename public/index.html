@@ -31,17 +31,24 @@
         var ws       = new WebSocket('ws://' + window.location.host + window.location.pathname);
         ws.onopen    = function()  { console.log('websocket opened'); };
         ws.onclose   = function()  { console.log('websocket closed'); }
-        ws.onmessage = function(m) { console.log("IN: %o", m.data); };
+        ws.onmessage = function(m) { 
+          payload = JSON.parse(m.data)
+          if (payload['msg'] && payload['server_name']) {
+            var div = document.getElementById('msgs');
+            div.innerHTML += "[" + payload['server_name'] + "]-" + payload['msg'] + "<br>";
+          }
+          console.log("IN: %o", payload); 
+        };
 
         var btns = document.querySelectorAll('button');
         for (var i = 0; i < btns.length; i++) {
-		btns[i].addEventListener('click', function (event) {
-		  var payload = JSON.parse(this.getAttribute('data-string'));
-		  payload['worker'] = document.getElementById('worker').value
-		  payload['server_name'] = document.getElementById('servername').value
-		  console.log(payload);
-                  ws.send(JSON.stringify(payload));
-		}, false);
+          btns[i].addEventListener('click', function (event) {
+            var payload = JSON.parse(this.getAttribute('data-string'));
+            payload['worker'] = document.getElementById('worker').value
+            payload['server_name'] = document.getElementById('servername').value
+            console.log(payload);
+            ws.send(JSON.stringify(payload));
+          }, false);
         }
 
       })();

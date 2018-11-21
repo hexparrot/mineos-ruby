@@ -28,6 +28,17 @@ class HQ < Sinatra::Base
   
   ch = conn.create_channel
   exchange = ch.topic('backend')
+  exchange_stdout = ch.topic('stdout')
+
+  ch
+  .queue('')
+  .bind(exchange_stdout, :routing_key => "to_hq")
+  .subscribe do |delivery_info, metadata, payload|
+    parsed = JSON.parse payload
+    settings.sockets.each { |ws|
+      ws.send(payload)
+    }
+  end
 
   promises = {}
   promise_retvals = {}
