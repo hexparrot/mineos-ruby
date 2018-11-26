@@ -2,8 +2,24 @@ Login = Struct.new("Login", :authtype, :id)
 
 class Auth
   def login_plain(username, password)
-    if (username == 'mc' and password == 'password') then
-      Struct::Login.new(:plain, username)
+    require 'bcrypt'
+    require 'yaml'
+    
+    users = YAML::load_file('config/users.yml')
+
+    # https://gist.github.com/tomdalling/b873e731e5c6c56431807d40a904f6cf
+    def hash_password(password)
+      BCrypt::Password.create(password).to_s
+    end
+
+    match = users['users'].find { |u| u['name'] == username }
+
+    begin
+      if (match['name'] == username and match['password'] == password) then
+        return Struct::Login.new(:plain, username)
+      end
+    rescue
+      nil
     else
       nil
     end

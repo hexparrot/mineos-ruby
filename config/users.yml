@@ -1,0 +1,6 @@
+users:
+  - name: mc
+    password: password
+  - name: will
+    password: something
+
