@@ -1,11 +1,16 @@
+Login = Struct.new("Login", :authtype, :id)
+
 class Auth
-  def login(username, password)
-    return (username == 'mc' and password == 'password')
+  def login_plain(username, password)
+    if (username == 'mc' and password == 'password') then
+      Struct::Login.new(:plain, username)
+    else
+      nil
+    end
   end
 
   def login_mojang(username, password)
     require 'httparty'
-    require 'json'
 
     begin
       uri = URI('https://authserver.mojang.com/authenticate')
@@ -19,9 +24,10 @@ class Auth
                agent: { name: 'Minecraft', version: 1 }
              }.to_json
       res = HTTParty.post(uri, body: body, headers: headers).parsed_response
-      res['user']['username']
+      Struct::Login.new(:mojang, res['user']['username'])
     rescue => e
       nil
     end
   end
 end
+
