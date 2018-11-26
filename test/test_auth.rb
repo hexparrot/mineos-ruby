@@ -17,6 +17,8 @@ class AuthTest < Minitest::Test
 
     retval = @inst.login_plain('will', 'something')
     assert_equal('will', retval[:id])
+
+    assert_nil(@inst.login_plain('nonexistent', 'notthepassword'))
   end
 
   #def test_mojang_authserver
