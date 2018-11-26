@@ -1,6 +1,6 @@
 users:
   - name: mc
-    password: password
+    password_hash: $2a$10$Gv8huOBreMUF9BAOX3kCDORDx9hzMhptrX7j2JYuIJlSk/hIx0zBC
   - name: will
-    password: something
+    password_hash: $2a$10$DX7ZVMvMWaJjCjlToybRyOm0JMho5s31QeUpZPq2XxSwYGmZ5EBZq
 
