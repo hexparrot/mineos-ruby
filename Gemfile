@@ -22,3 +22,5 @@ gem 'thin'
 gem 'aws-sdk-s3'
 # sinatra websockets
 gem 'sinatra-websocket'
+# password hashing
+gem 'bcrypt'
