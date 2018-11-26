@@ -24,3 +24,5 @@ gem 'aws-sdk-s3'
 gem 'sinatra-websocket'
 # password hashing
 gem 'bcrypt'
+# for mojang auth with POST
+gem 'httparty'
