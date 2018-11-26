@@ -26,3 +26,5 @@ gem 'sinatra-websocket'
 gem 'bcrypt'
 # for mojang auth with POST
 gem 'httparty'
+# for pam auth (may require pam-devel system package)
+gem 'rpam2'

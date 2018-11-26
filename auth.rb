@@ -29,5 +29,15 @@ class Auth
       nil
     end
   end
+
+  def login_pam(username, password)
+    require 'rpam2'
+
+    if Rpam2.auth("mineos", username, password)
+      Struct::Login.new(:pam, username)
+    else
+      nil
+    end
+  end
 end
 

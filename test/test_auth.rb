@@ -15,12 +15,20 @@ class AuthTest < Minitest::Test
     assert_nil(@inst.login_plain('mc', 'notthepassword'))
   end
 
-  def test_mojang_authserver
-    retval = @inst.login_mojang('hexparrot@me.com', 'REALPASSWORDGOESHERE')
+  #def test_mojang_authserver
+  #  retval = @inst.login_mojang('hexparrot@me.com', 'REALPASSWORDGOESHERE')
+  #  assert_instance_of(Login, retval)
+  #  assert_equal(:mojang, retval[:authtype])
+  #  assert_equal('hexparrot@me.com', retval[:id])
+  #  assert_nil(@inst.login_mojang('hexparrot@me.com', 'fakepassword'))
+  #end
+
+  def test_pam
+    retval = @inst.login_pam('mc', 'password')
     assert_instance_of(Login, retval)
-    assert_equal(:mojang, retval[:authtype])
-    assert_equal('hexparrot@me.com', retval[:id])
-    assert_nil(@inst.login_mojang('hexparrot@me.com', 'fakepassword'))
+    assert_equal(:pam, retval[:authtype])
+    assert_equal('mc', retval[:id])
+    assert_nil(@inst.login_mojang('mc', 'fakepassword'))
   end
 
 end
