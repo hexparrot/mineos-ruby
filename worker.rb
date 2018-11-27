@@ -222,7 +222,8 @@ EM.run do
         begin
           retval = inst.public_send(cmd, *reordered)
           if cmd == 'delete' then
-            servers.delete_if { |key,value| key == server_name  }
+            servers.delete(server_name)
+            server_loggers.delete(server_name)
           end
           return_object[:retval] = retval
         rescue IOError => e
