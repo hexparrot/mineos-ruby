@@ -173,42 +173,29 @@ EM.run do
     logger.info("Received #{cmd} for server `#{server_name}")
     logger.info(parsed)
 
-    if servers[server_name].is_a?(Server) then
-      logger.debug("using existing instance for #{server_name}")
+    if servers[server_name].is_a? Server then
       inst = servers[server_name]
     else
-      logger.debug("creating new instance for #{server_name}")
       inst = Server.new(server_name)
       servers[server_name] = inst
     end
 
-    Thread.new do
-    #  server_loggers[server_name] = Logger.new(STDOUT)
-    #  server_loggers[server_name].datetime_format = "%H:%M:%S [#{server_name}]"
-    #  server_loggers[server_name].level = Logger::INFO
-      loop do
-        #server_loggers[server_name].info(inst.console_log.pop.strip)
-        line = inst.console_log.shift.strip
-        puts line
-        exchange_stdout.publish({ msg: line,
-                                  server_name: server_name }.to_json,
-                                :routing_key => "to_hq",
-                                :timestamp => Time.now.to_i,
-                                :type => 'stdout',
-                                :correlation_id => metadata[:message_id],
-                                :headers => {hostname: hostname},
-                                :message_id => SecureRandom.uuid)
-      end
+    if !server_loggers[server_name] then
+      server_loggers[server_name] = Thread.new do
+        loop do
+          line = inst.console_log.shift.strip
+          puts line
+          exchange_stdout.publish({ msg: line,
+                                    server_name: server_name }.to_json,
+                                  :routing_key => "to_hq",
+                                  :timestamp => Time.now.to_i,
+                                  :type => 'stdout',
+                                  :correlation_id => metadata[:message_id],
+                                  :headers => {hostname: hostname},
+                                  :message_id => SecureRandom.uuid)
+        end # loop
+      end # Thread.new
     end
-
-    #  Thread.new do
-    #    server_loggers[server_name] = Logger.new(STDOUT)
-    #    server_loggers[server_name].datetime_format = "%H:%M:%S [#{server_name}]"
-    #    server_loggers[server_name].level = Logger::INFO
-    #    loop do
-    #      server_loggers[server_name].info(inst.console_log.pop.strip)
-    #    end
-    #  end
 
     return_object = {server_name: server_name, cmd: cmd, success: false, retval: nil}
 
