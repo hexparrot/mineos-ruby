@@ -52,7 +52,7 @@ class HQ < Sinatra::Base
     when 'receipt.directive'
       case metadata[:headers]['directive']
       when 'IDENT'
-        available_workers.add(parsed['host'])
+        available_workers.add(parsed['workername'])
 
         # on receipt of IDENT, send object store creds
         exchange.publish({AWSCREDS: {
@@ -62,14 +62,14 @@ class HQ < Sinatra::Base
                            region: 'us-west-1'
                            }
                          }.to_json,
-       :routing_key => "to_workers.#{parsed['host']}",
+       :routing_key => "to_workers.#{parsed['workername']}",
                          :type => "directive",
                          :message_id => SecureRandom.uuid,
                          :timestamp => Time.now.to_i)
       when 'LIST'
         yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
         promise_retvals[metadata.correlation_id][:hosts].each do |obj|
-          if obj[:hostname] == metadata[:headers]['hostname'] then
+          if obj[:workername] == metadata[:headers]['workername'] then
             obj[:servers] = parsed['servers']
             obj[:timestamp] = metadata[:timestamp]
             yet_to_respond -= 1
