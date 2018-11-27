@@ -1,4 +1,5 @@
-Login = Struct.new("Login", :authtype, :id)
+require 'securerandom'
+Login = Struct.new("Login", :authtype, :id, :uuid)
 User = Struct.new("User", :username, :password_hash)
 
 class Auth
@@ -15,7 +16,7 @@ class Auth
     begin
       match = users.find { |u| u.username == username }
       if match.password_hash == password
-        return Struct::Login.new(:plain, match.username)
+        return Struct::Login.new(:plain, match.username, SecureRandom.uuid)
       end
     rescue
       nil
@@ -39,7 +40,7 @@ class Auth
                agent: { name: 'Minecraft', version: 1 }
              }.to_json
       res = HTTParty.post(uri, body: body, headers: headers).parsed_response
-      Struct::Login.new(:mojang, res['user']['username'])
+      Struct::Login.new(:mojang, res['user']['username'], SecureRandom.uuid)
     rescue => e
       nil
     end
@@ -49,7 +50,7 @@ class Auth
     require 'rpam2'
 
     if Rpam2.auth("mineos", username, password)
-      Struct::Login.new(:pam, username)
+      Struct::Login.new(:pam, username, SecureRandom.uuid)
     else
       nil
     end

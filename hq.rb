@@ -3,21 +3,8 @@ require 'sinatra-websocket'
 require 'eventmachine'
 require 'json'
 require 'securerandom'
-require 'bcrypt'
 
-def hash_password(password)
-  BCrypt::Password.create(password).to_s
-end
-
-def test_password(password, hash)
-  BCrypt::Password.new(hash) == password
-end
- 
-# https://gist.github.com/tomdalling/b873e731e5c6c56431807d40a904f6cf
-User = Struct.new(:id, :username, :password_hash)
-USER_LOGINS = [
-  User.new(1, 'mc', hash_password('password'))
-]
+USERS = []
 
 class HQ < Sinatra::Base
   set :server, :thin
@@ -161,10 +148,14 @@ class HQ < Sinatra::Base
   end # get
 
   post '/sign_in' do
-    user = USER_LOGINS.find { |u| u.username == params[:username] }
-    if user && test_password(params[:password], user.password_hash)
+    require './auth'
+    #currently assumes :plain TODO: accept separate methods in webui
+    auth_inst = Auth.new
+    login_token = auth_inst.login_plain(params[:username], params[:password])
+    if login_token
+      USERS << login_token
       session.clear
-      session[:user_id] = user.id
+      session[:user_id] = login_token[:uuid]
     end
     redirect '/'
   end
@@ -223,7 +214,7 @@ class HQ < Sinatra::Base
   helpers do
     def current_user
       if session[:user_id]
-        USER_LOGINS.find { |u| u.id == session[:user_id] }
+        USERS.find { |u| u[:uuid] == session[:user_id] }
       else
         nil
       end
