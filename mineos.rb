@@ -305,6 +305,7 @@ class Server
   # which can be handled and presented more thoroughly
   def start_catch_errors(timeout = 25)
     raise RuntimeError.new('timeout must be a positive integer > 0') if !timeout.is_a?(Integer)
+    raise RuntimeError.new('timeout must be a positive integer > 0') if timeout <= 0
     sleep_delay = 0.2
     self.start
 

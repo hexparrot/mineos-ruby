@@ -838,6 +838,10 @@ class ServerTest < Minitest::Test
     assert_equal('timeout must be a positive integer > 0', ex.message)
     ex = assert_raises(RuntimeError) { inst.start_catch_errors({}) }
     assert_equal('timeout must be a positive integer > 0', ex.message)
+    ex = assert_raises(RuntimeError) { inst.start_catch_errors(-2) }
+    assert_equal('timeout must be a positive integer > 0', ex.message)
+    ex = assert_raises(RuntimeError) { inst.start_catch_errors(0) }
+    assert_equal('timeout must be a positive integer > 0', ex.message)
   end
 
   def test_kill
