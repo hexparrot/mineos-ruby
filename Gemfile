@@ -22,3 +22,9 @@ gem 'thin'
 gem 'aws-sdk-s3'
 # sinatra websockets
 gem 'sinatra-websocket'
+# password hashing
+gem 'bcrypt'
+# for mojang auth with POST
+gem 'httparty'
+# for pam auth (may require pam-devel system package)
+gem 'rpam2'

@@ -4,12 +4,15 @@ require 'eventmachine'
 require 'json'
 require 'securerandom'
 
+USERS = []
+
 class HQ < Sinatra::Base
   set :server, :thin
   set :sockets, []
   set :bind, '0.0.0.0'
   register Sinatra::Async
   enable :show_exceptions
+  enable :sessions
 
   require 'set'
   available_workers = Set.new
@@ -99,46 +102,63 @@ class HQ < Sinatra::Base
 ## route handlers
 
   get '/' do
-    if !request.websocket?
-      send_file File.join('public', 'index.html')
-    else
-      request.websocket do |ws|
-        ws.onopen do
-          settings.sockets << ws
-        end #end ws.onopen
+    if !current_user
+      send_file File.join('public', 'login.html')
+    else # auth successful
+      if !request.websocket?
+        send_file File.join('public', 'index.html')
+      else
+        request.websocket do |ws|
+          ws.onopen do
+            settings.sockets << ws
+          end #end ws.onopen
 
-        ws.onmessage do |msg|
-          uuid = SecureRandom.uuid
+          ws.onmessage do |msg|
+            uuid = SecureRandom.uuid
 
-          body_parameters = JSON.parse msg
-          worker = body_parameters.delete('worker')
-          servername = body_parameters['server_name']
+            body_parameters = JSON.parse msg
+            worker = body_parameters.delete('worker')
+            servername = body_parameters['server_name']
 
-          promises[uuid] = Proc.new { |status_code, retval|
-            ws.send(retval)
-          }
+            promises[uuid] = Proc.new { |status_code, retval|
+              ws.send(retval)
+            }
 
-          if !available_workers.include?(worker)
-            puts "worker `#{worker}` not found."
-            #worker not found?  ignore.  todo: log me somewhere!
-          else
-            puts "sending worker:server `#{worker}:#{servername}` command:"
-            puts body_parameters
-            exchange.publish(body_parameters.to_json,
-                             :routing_key => "to_workers.#{worker}",
-                             :type => "command",
-                             :message_id => uuid,
-                             :timestamp => Time.now.to_i)
+            if !available_workers.include?(worker)
+              puts "worker `#{worker}` not found."
+              #worker not found?  ignore.  todo: log me somewhere!
+            else
+              puts "sending worker:server `#{worker}:#{servername}` command:"
+              puts body_parameters
+              exchange.publish(body_parameters.to_json,
+                               :routing_key => "to_workers.#{worker}",
+                               :type => "command",
+                               :message_id => uuid,
+                               :timestamp => Time.now.to_i)
+            end
+          end # ws.onmessage
+
+          ws.onclose do
+            warn("websocket closed")
+            settings.sockets.delete(ws)
           end
-        end # end ws.onmessage
+        end # request.websocket
+      end # if/else
+    end # current user
+  end # get
 
-        ws.onclose do
-          warn("websocket closed")
-          settings.sockets.delete(ws)
-        end
-      end #end request.websocket
-    end #end if/else
-  end #end get
+  post '/sign_in' do
+    require './auth'
+    #currently assumes :plain TODO: accept separate methods in webui
+    auth_inst = Auth.new
+    login_token = auth_inst.login_plain(params[:username], params[:password])
+    if login_token
+      USERS << login_token
+      session.clear
+      session[:user_id] = login_token[:uuid]
+    end
+    redirect '/'
+  end
 
   get '/workerlist' do
     {:hosts => available_workers.to_a}.to_json
@@ -188,6 +208,16 @@ class HQ < Sinatra::Base
                        :type => "command",
                        :message_id => uuid,
                        :timestamp => Time.now.to_i)
+    end
+  end
+
+  helpers do
+    def current_user
+      if session[:user_id]
+        USERS.find { |u| u[:uuid] == session[:user_id] }
+      else
+        nil
+      end
     end
   end
 
