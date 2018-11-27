@@ -12,7 +12,8 @@ EM.run do
   servers = {}
   server_loggers = {}
   hostname = Socket.gethostname
-  logger.info("Starting up worker node: `#{hostname}`")
+  workername = "#{Socket.gethostname}-#{ENV['USER']}"
+  logger.info("Starting up worker node: `#{workername}`")
 
   server_dirs = Enumerator.new do |enum|
     Dir['/var/games/minecraft/servers/*'].each { |d| 
@@ -47,12 +48,14 @@ EM.run do
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
     when "IDENT"
-      exchange.publish({host: hostname}.to_json,
+      exchange.publish({host: hostname,
+                        workername: workername}.to_json,
                        :routing_key => "to_hq",
                        :timestamp => Time.now.to_i,
                        :type => 'receipt.directive',
                        :correlation_id => metadata[:message_id],
                        :headers => {hostname: hostname,
+                                    workername: workername,
                                     directive: 'IDENT'},
                        :message_id => SecureRandom.uuid)
       logger.info("Received IDENT directive from HQ.")
@@ -63,6 +66,7 @@ EM.run do
                        :type => 'receipt.directive',
                        :correlation_id => metadata[:message_id],
                        :headers => {hostname: hostname,
+                                    workername: workername,
                                     directive: 'LIST'},
                        :message_id => SecureRandom.uuid)
       logger.info("Received LIST directive from HQ.")
@@ -85,6 +89,7 @@ EM.run do
                          :type => 'receipt.directive',
                          :correlation_id => metadata[:message_id],
                          :headers => {hostname: hostname,
+                                      workername: workername,
                                       directive: 'USAGE'},
                          :message_id => SecureRandom.uuid)
         logger.info("Received USAGE directive from HQ.")
@@ -101,6 +106,7 @@ EM.run do
                          :type => 'receipt.directive',
                          :correlation_id => metadata[:message_id],
                          :headers => {hostname: hostname,
+                                      workername: workername,
                                       directive: 'REQUEST_USAGE'},
                          :message_id => SecureRandom.uuid)
         logger.info("Received USAGE directive from HQ.")
@@ -146,6 +152,7 @@ EM.run do
                          :type => 'receipt.directive',
                          :correlation_id => metadata[:message_id],
                          :headers => {hostname: hostname,
+                                      workername: workername,
                                       directive: 'AWSCREDS'},
                          :message_id => SecureRandom.uuid)
       else #if unknown directive
@@ -155,6 +162,7 @@ EM.run do
                          :type => 'receipt.directive',
                          :correlation_id => metadata[:message_id],
                          :headers => {hostname: hostname,
+                                      workername: workername,
                                       directive: 'BOGUS'}, #changing directive
                          :message_id => SecureRandom.uuid)
         logger.warn("Received bogus directive from HQ. Received:")
@@ -235,6 +243,7 @@ EM.run do
                            :type => 'receipt.command',
                            :correlation_id => metadata[:message_id],
                            :headers => {hostname: hostname,
+                                        workername: workername,
                                         exception: {name: 'IOError',
                                                     detail: e.to_s }},
                            :message_id => SecureRandom.uuid)
@@ -246,6 +255,7 @@ EM.run do
                            :type => 'receipt.command',
                            :correlation_id => metadata[:message_id],
                            :headers => {hostname: hostname,
+                                        workername: workername,
                                         exception: {name: 'ArgumentError',
                                                     detail: e.to_s }},
                            :message_id => SecureRandom.uuid)
@@ -259,6 +269,7 @@ EM.run do
                            :type => 'receipt.command',
                            :correlation_id => metadata[:message_id],
                            :headers => {hostname: hostname,
+                                        workername: workername,
                                         exception: {name: 'ArgumentError',
                                                     detail: e.to_s }},
                            :message_id => SecureRandom.uuid)
@@ -271,6 +282,7 @@ EM.run do
                            :type => 'receipt.command',
                            :correlation_id => metadata[:message_id],
                            :headers => {hostname: hostname,
+                                        workername: workername,
                                         exception: false},
                            :message_id => SecureRandom.uuid)
         end
@@ -285,6 +297,7 @@ EM.run do
                          :type => 'receipt.command',
                          :correlation_id => metadata[:message_id],
                          :headers => {hostname: hostname,
+                                      workername: workername,
                                       exception: {name: 'NameError',
                                                   detail: "undefined method `#{cmd}' for class `Server'" }},
                          :message_id => SecureRandom.uuid)
@@ -301,7 +314,7 @@ EM.run do
     #logger.debug(delivery_info)
     #logger.debug(metadata)
     #logger.debug(payload)
-    if delivery_info.routing_key.split('.')[1] == hostname ||
+    if delivery_info.routing_key.split('.')[1] == workername ||
        delivery_info.routing_key == 'to_workers' then
       case metadata.type
       when 'directive'
@@ -318,6 +331,7 @@ EM.run do
                     :type => 'receipt.directive',
                     :correlation_id => nil,
                     :headers => {hostname: hostname,
+                                 workername: workername,
                                  directive: 'IDENT'},
                     :message_id => SecureRandom.uuid)
   logger.info("Sent IDENT message.")
