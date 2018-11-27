@@ -436,7 +436,7 @@ class ServerTest < Minitest::Test
     nil until !inst.pid
   end
 
-  def test_send_test_to_server_console
+  def test_send_text_to_server_console
     inst = Server.new('test')
     inst.create_paths
 
@@ -450,8 +450,10 @@ class ServerTest < Minitest::Test
     pid = inst.start
 
     nil until inst.status[:done]
+    assert(inst.instance_variable_get(:@stdout_parser).alive?)
     inst.console('stop')
     nil until !inst.pid
+    assert_equal(false, inst.instance_variable_get(:@stdout_parser).status)
   end
 
   def test_send_text_to_downed_server
