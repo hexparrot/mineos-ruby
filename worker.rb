@@ -325,7 +325,8 @@ EM.run do
     end
   end
 
-  exchange.publish({host: hostname}.to_json,
+  exchange.publish({host: hostname,
+                    workername: workername}.to_json,
                     :routing_key => "to_hq",
                     :timestamp => Time.now.to_i,
                     :type => 'receipt.directive',
