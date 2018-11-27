@@ -857,22 +857,30 @@ class ServerTest < Minitest::Test
 
     inst.start
     nil until inst.status[:done]
+    assert(inst.instance_variable_get(:@stdout_parser).alive?)
     inst.kill #sigterm
+    assert_equal(false, inst.instance_variable_get(:@stdout_parser).status)
     assert(inst.pid.nil?)
 
     inst.start
     nil until inst.status[:done]
+    assert(inst.instance_variable_get(:@stdout_parser).alive?)
     inst.kill(:sigterm)
+    assert_equal(false, inst.instance_variable_get(:@stdout_parser).status)
     assert(inst.pid.nil?)
 
     inst.start
     nil until inst.status[:done]
+    assert(inst.instance_variable_get(:@stdout_parser).alive?)
     inst.kill(:sigkill)
+    assert_equal(false, inst.instance_variable_get(:@stdout_parser).status)
     assert(inst.pid.nil?)
 
     inst.start
     nil until inst.status[:done]
+    assert(inst.instance_variable_get(:@stdout_parser).alive?)
     inst.kill(:sigint)
+    assert_equal(false, inst.instance_variable_get(:@stdout_parser).status)
     assert(inst.pid.nil?)
   end
 
