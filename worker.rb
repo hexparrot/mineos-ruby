@@ -12,7 +12,7 @@ EM.run do
   servers = {}
   server_loggers = {}
   hostname = Socket.gethostname
-  workername = "#{Socket.gethostname}-#{ENV['USER']}"
+  workername = ENV['USER']
   logger.info("Starting up worker node: `#{workername}`")
 
   server_dirs = Enumerator.new do |enum|
@@ -308,17 +308,31 @@ EM.run do
   }
 
   ch
-  .queue('')
-  .bind(exchange, :routing_key => 'to_workers.#')
+  .queue('directive')
+  .bind(exchange, :routing_key => 'to_workers')
   .subscribe do |delivery_info, metadata, payload|
     #logger.debug(delivery_info)
     #logger.debug(metadata)
     #logger.debug(payload)
-    if delivery_info.routing_key.split('.')[1] == workername ||
-       delivery_info.routing_key == 'to_workers' then
+    if delivery_info.routing_key == 'to_workers' then
       case metadata.type
       when 'directive'
         directive_handler.call delivery_info, metadata, payload
+      when 'command'
+        #no op
+      end
+    end
+  end
+
+  ch
+  .queue('command')
+  .bind(exchange, :routing_key => "to_workers.#{hostname}.#{workername}")
+  .subscribe do |delivery_info, metadata, payload|
+    dest = delivery_info.routing_key.split('.')
+    if dest[1] == hostname and dest[2] == workername then
+      case metadata.type
+      when 'directive'
+        #no op
       when 'command'
         command_handler.call delivery_info, metadata, payload
       end
