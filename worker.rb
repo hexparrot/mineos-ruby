@@ -311,16 +311,12 @@ EM.run do
   .queue('directive')
   .bind(exchange, :routing_key => 'to_workers')
   .subscribe do |delivery_info, metadata, payload|
-    #logger.debug(delivery_info)
-    #logger.debug(metadata)
-    #logger.debug(payload)
     if delivery_info.routing_key == 'to_workers' then
-      case metadata.type
-      when 'directive'
-        directive_handler.call delivery_info, metadata, payload
-      when 'command'
-        #no op
-      end
+      directive_handler.call delivery_info, metadata, payload
+    else
+      #logger.debug(delivery_info)
+      #logger.debug(metadata)
+      #logger.debug(payload)
     end
   end
 
@@ -330,12 +326,11 @@ EM.run do
   .subscribe do |delivery_info, metadata, payload|
     dest = delivery_info.routing_key.split('.')
     if dest[1] == hostname and dest[2] == workername then
-      case metadata.type
-      when 'directive'
-        #no op
-      when 'command'
-        command_handler.call delivery_info, metadata, payload
-      end
+      command_handler.call delivery_info, metadata, payload
+    else
+      #logger.debug(delivery_info)
+      #logger.debug(metadata)
+      #logger.debug(payload)
     end
   end
 
