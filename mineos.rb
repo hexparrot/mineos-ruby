@@ -249,6 +249,16 @@ class Server
         else
           raise RuntimeError.new('no runnable pharfile selected')
         end
+      when :executable
+        if self.sc['nonjava']['executable'].to_s.length > 0
+          args[:executable] = self.sc['nonjava']['executable']
+          retval << args[:executable]
+        elsif self.sc['java']['jarfile'].to_s.length > 0
+          args[:executable] = self.sc['java']['jarfile']
+          retval << args[:executable]
+        else
+          raise RuntimeError.new('no runnable executable selected')
+        end
       else
         raise NotImplementedError.new("unrecognized get_start_args argument: #{type.to_s}")
     end

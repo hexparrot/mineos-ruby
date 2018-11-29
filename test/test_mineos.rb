@@ -998,4 +998,21 @@ class ServerTest < Minitest::Test
     inst_c = Server.new('test')
     assert inst_a.equal? inst_c #pid is nil on each
   end
+
+  def test_generic_binary_start_args
+    inst = Server.new('test') 
+    inst.create_paths
+
+    #missing executable
+    ex = assert_raises(RuntimeError) { inst.get_start_args(:executable) }
+    assert_equal('no runnable executable selected', ex.message)
+
+    #fallback for backward compat with previous webuis
+    inst.modify_sc('jarfile', './bedrock_server', 'java')
+    assert_equal(['./bedrock_server'], inst.get_start_args(:executable))
+
+    #existence of [nonjava][executable] will override
+    inst.modify_sc('executable', './bedrock_server', 'nonjava')
+    assert_equal(['./bedrock_server'], inst.get_start_args(:executable))
+  end
 end
