@@ -12,6 +12,7 @@ class ServerTest < Minitest::Test
     # this test assumes a worker instance is up, as a separate process
     @@basedir = '/var/games/minecraft'
     @@hostname = Socket.gethostname
+    @@workername = ENV['USER']
 
     require 'yaml'
     mineos_config = YAML::load_file('../config/secrets.yml')
@@ -46,13 +47,15 @@ class ServerTest < Minitest::Test
       @ch
       .queue('')
       .bind(@exchange, :routing_key => "to_hq")
-      .subscribe(:exclusive => true) do |delivery_info, metadata, payload|
+      .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal(@@hostname, parsed['host'])
+        assert_equal(@@workername, parsed['workername'])
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.directive', metadata.type)
         assert_equal('IDENT', metadata[:headers]['directive'])
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal(@@workername, metadata[:headers]['workername'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
         step += 1
@@ -74,7 +77,7 @@ class ServerTest < Minitest::Test
 
     EM.run do
       @ch
-      .queue('', :exclusive => true)
+      .queue('')
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         case step
@@ -84,6 +87,7 @@ class ServerTest < Minitest::Test
                             :type => "directive",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
+          step += 1
         when 1
           parsed = JSON.parse payload
           servers = parsed['servers']
@@ -93,16 +97,17 @@ class ServerTest < Minitest::Test
           assert_equal('receipt.directive', metadata.type)
           assert_equal('LIST', metadata[:headers]['directive'])
           assert_equal(@@hostname, metadata[:headers]['hostname'])
+          assert_equal(@@workername, metadata[:headers]['workername'])
           assert(metadata.timestamp)
           assert(metadata.message_id)
           EM.stop
+          step += 1
         end
-        step += 1
       end
 
       @exchange.publish({cmd: 'create',
                          server_name: 'test'}.to_json,
-                        :routing_key => "to_workers.#{@@hostname}",
+                        :routing_key => "to_workers.#{@@hostname}.#{@@workername}",
                         :type => "command",
                         :message_id => SecureRandom.uuid,
                         :timestamp => Time.now.to_i)
@@ -116,7 +121,7 @@ class ServerTest < Minitest::Test
 
     EM.run do
       @ch
-      .queue('', :exclusive => true)
+      .queue('')
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
@@ -127,6 +132,7 @@ class ServerTest < Minitest::Test
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal(@@workername, metadata[:headers]['workername'])
         assert_equal(false, metadata[:headers]['exception'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
@@ -138,7 +144,7 @@ class ServerTest < Minitest::Test
       @exchange.publish({cmd: 'create',
                          server_name: 'test',
                          server_type: ':conventional_jar'}.to_json,
-                        :routing_key => "to_workers.#{@@hostname}",
+                        :routing_key => "to_workers.#{@@hostname}.#{@@workername}",
                         :type => "command",
                         :message_id => guid,
                         :timestamp => Time.now.to_i)
@@ -152,7 +158,7 @@ class ServerTest < Minitest::Test
 
     EM.run do
       @ch
-      .queue('', :exclusive => true)
+      .queue('')
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
@@ -163,6 +169,7 @@ class ServerTest < Minitest::Test
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal(@@workername, metadata[:headers]['workername'])
         assert_equal(false, metadata[:headers]['exception'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
@@ -173,7 +180,7 @@ class ServerTest < Minitest::Test
 
       @exchange.publish({cmd: 'create',
                          server_name: 'test'}.to_json,
-                        :routing_key => "to_workers.#{@@hostname}",
+                        :routing_key => "to_workers.#{@@hostname}.#{@@workername}",
                         :type => "command",
                         :message_id => guid,
                         :timestamp => Time.now.to_i)
@@ -186,7 +193,7 @@ class ServerTest < Minitest::Test
     step = 0
     EM.run do
       @ch
-      .queue('', :exclusive => true)
+      .queue('')
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
@@ -194,27 +201,27 @@ class ServerTest < Minitest::Test
         when 0
           @exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'jarfile',
                              value: 'minecraft_server.1.8.9.jar', section: 'java'}.to_json,
-                            :routing_key => "to_workers.#{@@hostname}",
+                            :routing_key => "to_workers.#{@@hostname}.#{@@workername}",
                             :timestamp => Time.now.to_i,
                             :type => 'command',
                             :message_id => SecureRandom.uuid)
         when 1
           @exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'java_xmx',
                              value: 384, section: 'java'}.to_json,
-                            :routing_key => "to_workers.#{@@hostname}",
+                            :routing_key => "to_workers.#{@@hostname}.#{@@workername}",
                             :timestamp => Time.now.to_i,
                             :type => 'command',
                             :message_id => SecureRandom.uuid)
         when 2
           @exchange.publish({cmd: 'modify_sc', server_name: 'test', attr: 'java_xms',
                              value: 384, section: 'java'}.to_json,
-                            :routing_key => "to_workers.#{@@hostname}",
+                            :routing_key => "to_workers.#{@@hostname}.#{@@workername}",
                             :timestamp => Time.now.to_i,
                             :type => 'command',
                             :message_id => SecureRandom.uuid)
         when 3
           @exchange.publish({cmd: 'get_start_args', server_name: 'test', type: ':conventional_jar'}.to_json,
-                            :routing_key => "to_workers.#{@@hostname}",
+                            :routing_key => "to_workers.#{@@hostname}.#{@@workername}",
                             :timestamp => Time.now.to_i,
                             :type => 'command',
                             :message_id => SecureRandom.uuid)
@@ -240,7 +247,7 @@ class ServerTest < Minitest::Test
       end
  
       @exchange.publish({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}.to_json,
-                        :routing_key => "to_workers.#{@@hostname}",
+                        :routing_key => "to_workers.#{@@hostname}.#{@@workername}",
                         :timestamp => Time.now.to_i,
                         :type => 'command',
                         :message_id => SecureRandom.uuid)
@@ -254,7 +261,7 @@ class ServerTest < Minitest::Test
 
     EM.run do
       @ch
-      .queue('', :exclusive => true)
+      .queue('')
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
@@ -268,6 +275,7 @@ class ServerTest < Minitest::Test
         assert_equal('receipt.directive', metadata.type)
         assert_equal('USAGE', metadata[:headers]['directive'])
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal(@@workername, metadata[:headers]['workername'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
 
@@ -290,7 +298,7 @@ class ServerTest < Minitest::Test
 
     EM.run do
       @ch
-      .queue('', :exclusive => true)
+      .queue('')
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
@@ -300,6 +308,7 @@ class ServerTest < Minitest::Test
         assert_equal('receipt.directive', metadata.type)
         assert_equal('REQUEST_USAGE', metadata[:headers]['directive'])
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal(@@workername, metadata[:headers]['workername'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
 
@@ -322,7 +331,7 @@ class ServerTest < Minitest::Test
 
     EM.run do
       @ch
-      .queue('', :exclusive => true)
+      .queue('')
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
@@ -333,6 +342,7 @@ class ServerTest < Minitest::Test
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal(@@workername, metadata[:headers]['workername'])
         assert_equal('NameError', metadata[:headers]['exception']['name'])
         assert_equal("undefined method `fakeo' for class `Server'", metadata[:headers]['exception']['detail'])
         assert(metadata.timestamp)
@@ -343,7 +353,7 @@ class ServerTest < Minitest::Test
       end
  
       @exchange.publish({cmd: 'fakeo', server_name: 'test'}.to_json,
-                        :routing_key => "to_workers.#{@@hostname}",
+                        :routing_key => "to_workers.#{@@hostname}.#{@@workername}",
                         :type => "command",
                         :message_id => guid,
                         :timestamp => Time.now.to_i)
@@ -357,7 +367,7 @@ class ServerTest < Minitest::Test
 
     EM.run do
       @ch
-      .queue('', :exclusive => true)
+      .queue('')
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
@@ -368,6 +378,7 @@ class ServerTest < Minitest::Test
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.command', metadata.type)
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal(@@workername, metadata[:headers]['workername'])
         assert_equal('ArgumentError', metadata[:headers]['exception']['name'])
         assert_equal('wrong number of arguments (given 0, expected 2)', metadata[:headers]['exception']['detail'])
         assert(metadata.timestamp)
@@ -378,7 +389,7 @@ class ServerTest < Minitest::Test
       end
  
       @exchange.publish({cmd: 'modify_sp', server_name: 'test'}.to_json,
-                        :routing_key => "to_workers.#{@@hostname}",
+                        :routing_key => "to_workers.#{@@hostname}.#{@@workername}",
                         :type => "command",
                         :message_id => guid,
                         :timestamp => Time.now.to_i)
@@ -392,7 +403,7 @@ class ServerTest < Minitest::Test
 
     EM.run do
       @ch
-      .queue('', :exclusive => true)
+      .queue('')
       .bind(@exchange, :routing_key => "to_hq")
       .subscribe do |delivery_info, metadata, payload|
         step += 1
@@ -401,7 +412,7 @@ class ServerTest < Minitest::Test
       end
  
       @exchange.publish({cmd: 'create', server_name: 'test', server_type: ':conventional_jar'}.to_json,
-                        :routing_key => "to_workers.someawesomeserver",
+                        :routing_key => "to_workers.#{@@hostname}.someawesomeserver",
                         :timestamp => Time.now.to_i,
                         :type => 'command',
                         :message_id => SecureRandom.uuid)
@@ -427,12 +438,13 @@ class ServerTest < Minitest::Test
       @ch
       .queue('')
       .bind(@exchange, :routing_key => "to_hq")
-      .subscribe(:exclusive => true) do |delivery_info, metadata, payload|
+      .subscribe() do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.directive', metadata.type)
         assert_equal('AWSCREDS', metadata[:headers]['directive'])
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal(@@workername, metadata[:headers]['workername'])
         assert_equal(config['object_store']['host'], parsed['endpoint'])
         assert_equal(config['object_store']['access_key'], parsed['access_key_id'])
         assert_equal(config['object_store']['secret_key'], parsed['secret_access_key'])
@@ -470,12 +482,13 @@ class ServerTest < Minitest::Test
       @ch
       .queue('')
       .bind(@exchange, :routing_key => "to_hq")
-      .subscribe(:exclusive => true) do |delivery_info, metadata, payload|
+      .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.directive', metadata.type)
         assert_equal('AWSCREDS', metadata[:headers]['directive'])
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal(@@workername, metadata[:headers]['workername'])
         assert_nil(parsed['endpoint'])
         assert_nil(parsed['access_key_id'])
         assert_nil(parsed['secret_access_key'])
@@ -510,12 +523,13 @@ class ServerTest < Minitest::Test
       @ch
       .queue('')
       .bind(@exchange, :routing_key => "to_hq")
-      .subscribe(:exclusive => true) do |delivery_info, metadata, payload|
+      .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal(guid, metadata.correlation_id)
         assert_equal('receipt.directive', metadata.type)
         assert_equal('BOGUS', metadata[:headers]['directive'])
         assert_equal(@@hostname, metadata[:headers]['hostname'])
+        assert_equal(@@workername, metadata[:headers]['workername'])
         assert(metadata.timestamp)
         assert(metadata.message_id)
         step += 1
