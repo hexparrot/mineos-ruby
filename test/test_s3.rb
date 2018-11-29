@@ -275,5 +275,25 @@ class ServerTest < Minitest::Test
     assert(File.file?(File.join(inst.env[:cwd], 'dir', 'sec_level')))
     inst.s3_destroy_dest!(name: 'profiles')
   end
+
+  def test_get_external_profile_archive
+    require 'open-uri'
+
+    url = 'https://minecraft.azureedge.net/bin-linux/bedrock-server-1.7.0.13.zip'
+
+    inst = Server.new('test') #not the Server object
+    inst.extend(S3)
+
+    inst.get_external_profile_archive(url, 'mcbe', '1.7.0.13')
+    inst.receive_profile('mcbe', '1.7.0.13')
+    assert(File.file?(File.join(inst.env[:cwd], 'bedrock_server')))
+    assert(File.file?(File.join(inst.env[:cwd], 'libCrypto.so')))
+    assert(File.file?(File.join(inst.env[:cwd], 'resource_packs', 'vanilla', 'blocks.json')))
+
+    files = inst.s3_list_profile_objects(group: 'mcbe', version: '1.7.0.13')
+    assert_equal(1117, files.length)
+    inst.s3_destroy_dest!(name: 'profiles')
+  end
+
 end
 

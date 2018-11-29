@@ -28,3 +28,5 @@ gem 'bcrypt'
 gem 'httparty'
 # for pam auth (may require pam-devel system package)
 gem 'rpam2'
+# for unzipping archives
+gem 'rubyzip'
