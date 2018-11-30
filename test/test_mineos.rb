@@ -1023,6 +1023,7 @@ class ServerTest < Minitest::Test
     FileUtils.cp_r("assets/mcbe/.", inst.env[:cwd])
 
     inst.modify_sc('executable', './bedrock_server', 'nonjava')
+    inst.modify_sc('LD_LIBRARY_PATH', '.', 'nonjava')
     pid = inst.start
     nil until inst.status[:done]
     assert(pid)

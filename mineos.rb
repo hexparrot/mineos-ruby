@@ -278,7 +278,15 @@ class Server
     @start_args = self.get_start_args(@server_type)
     case @server_type
     when :executable
-      @stdin, stdout, stderr, wait_thr = Open3.popen3({"LD_LIBRARY_PATH" => "."}, *@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+      # for mcbe
+      ld_var = self.sc['nonjava']['LD_LIBRARY_PATH'].strip
+      if ld_var then
+        @stdin, stdout, stderr, wait_thr = Open3.popen3({"LD_LIBRARY_PATH" => ld_var}, *@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+      # for executable, without this dumb env var
+      else
+        @stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+      end
+    # for all other server types
     else
       @stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
     end
