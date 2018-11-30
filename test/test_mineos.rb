@@ -401,7 +401,7 @@ class ServerTest < Minitest::Test
 
   def test_server_start
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -1014,5 +1014,20 @@ class ServerTest < Minitest::Test
     #existence of [nonjava][executable] will override
     inst.modify_sc('executable', './bedrock_server', 'nonjava')
     assert_equal(['./bedrock_server'], inst.get_start_args(:executable))
+  end
+
+  def test_server_start_mcbe
+    inst = Server.new('test')
+    inst.create(:executable)
+
+    FileUtils.cp_r("assets/mcbe/.", inst.env[:cwd])
+
+    inst.modify_sc('executable', './bedrock_server', 'nonjava')
+    pid = inst.start
+    nil until inst.status[:done]
+    assert(pid)
+    inst.stop
+
+    nil until !inst.pid
   end
 end

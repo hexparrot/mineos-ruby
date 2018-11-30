@@ -55,11 +55,11 @@ class Server
       self.create_paths
       self.sc!
       self.sp!
-    when :unconventional_jar, :phar
+    when :unconventional_jar, :phar, :executable
       self.create_paths
       self.sc!
     else
-      raise RuntimeError.new("unrecognized server type: #{server_type.to_s}")
+      raise RuntimeError.new("unrecognized server type: #{@server_type.to_s}")
     end
   end
 
@@ -275,8 +275,13 @@ class Server
     require('open3')
 
     @status = {}
-    @start_args = self.get_start_args(:conventional_jar)
-    @stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+    @start_args = self.get_start_args(@server_type)
+    case @server_type
+    when :executable
+      @stdin, stdout, stderr, wait_thr = Open3.popen3({"LD_LIBRARY_PATH" => "."}, *@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+    else
+      @stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+    end
 
     @stdout_parser = Thread.new {
       while line=stdout.gets do
@@ -291,6 +296,8 @@ class Server
         when /\[Server thread\/INFO\]: Preparing level/
           @status[:level] = line
         when /\[Server thread\/INFO\]: Done/
+          @status[:done] = line
+        when /INFO\] Server started\./
           @status[:done] = line
         when /\[Server thread\/INFO\]: Stopping server/
           @status[:stopping] = line
