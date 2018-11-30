@@ -55,11 +55,11 @@ class Server
       self.create_paths
       self.sc!
       self.sp!
-    when :unconventional_jar, :phar
+    when :unconventional_jar, :phar, :executable
       self.create_paths
       self.sc!
     else
-      raise RuntimeError.new("unrecognized server type: #{server_type.to_s}")
+      raise RuntimeError.new("unrecognized server type: #{@server_type.to_s}")
     end
   end
 
@@ -249,6 +249,16 @@ class Server
         else
           raise RuntimeError.new('no runnable pharfile selected')
         end
+      when :executable
+        if self.sc['nonjava']['executable'].to_s.length > 0
+          args[:executable] = self.sc['nonjava']['executable']
+          retval << args[:executable]
+        elsif self.sc['java']['jarfile'].to_s.length > 0
+          args[:executable] = self.sc['java']['jarfile']
+          retval << args[:executable]
+        else
+          raise RuntimeError.new('no runnable executable selected')
+        end
       else
         raise NotImplementedError.new("unrecognized get_start_args argument: #{type.to_s}")
     end
@@ -265,13 +275,27 @@ class Server
     require('open3')
 
     @status = {}
-    @start_args = self.get_start_args(:conventional_jar)
-    @stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+    @start_args = self.get_start_args(@server_type)
+    case @server_type
+    when :executable
+      # for mcbe
+      ld_var = self.sc['nonjava']['LD_LIBRARY_PATH'].strip
+      if ld_var then
+        @stdin, stdout, stderr, wait_thr = Open3.popen3({"LD_LIBRARY_PATH" => ld_var}, *@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+      # for executable, without this dumb env var
+      else
+        @stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+      end
+    # for all other server types
+    else
+      @stdin, stdout, stderr, wait_thr = Open3.popen3(*@start_args, {:chdir => @env[:cwd], :umask => 0o002})
+    end
 
     @stdout_parser = Thread.new {
       while line=stdout.gets do
         @console_log << line
         case line
+        ## for java version
         when /\[Server thread\/INFO\]: Starting minecraft server version/
           @status[:version] = line
         when /\[Server thread\/INFO\]: Default game type: SURVIVAL/
@@ -290,6 +314,15 @@ class Server
           @status[:bind] = line
         when /A fatal error has been detected by the Java Runtime Environment/
           @status[:fatal_error] = line
+        ## added for mcbe
+        when /INFO\] Version /
+          @status[:version] = line
+        when /INFO\] Game mode /
+          @status[:type] = line
+        when /INFO\] Level Name: /
+          @status[:level] = line
+        when /INFO\] Server started\./
+          @status[:done] = line
         end
       end
     }

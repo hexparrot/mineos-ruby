@@ -52,6 +52,44 @@ module S3
     obj.upload_file(downloaded_file)
   end
 
+  # Download single archive profile from internet, save in object store
+  def get_external_profile_archive(url, group, version)
+    require 'open-uri'
+    require "net/http"
+
+    c = Aws::S3::Client.new
+    r = Aws::S3::Resource.new
+    c.create_bucket(bucket: 'profiles') if !r.bucket('profiles').exists?
+
+    url = URI.encode(URI.decode(url))
+    uri = URI(url)
+
+    options = {}
+    options["User-Agent"] = "wget/1.2.3"
+
+    downloaded_file = uri.open(options)
+
+    if downloaded_file.is_a?(StringIO)
+      tempfile = Tempfile.new("open-uri", binmode: true)
+      IO.copy_stream(downloaded_file, tempfile.path)
+      downloaded_file = tempfile
+    end
+
+    require 'zip'
+
+    Zip::File.open(downloaded_file) do |zip_file|
+      zip_file.each do |entry|
+        if !entry.name.end_with?("/") then
+          obj = r.bucket('profiles').object("#{group}/#{version}/#{entry.name}")
+          obj.upload_stream do |write_stream|
+            IO.copy_stream(entry.get_input_stream, write_stream)
+          end
+        end
+      end
+    end
+
+  end
+
   ########################################################
   # All s3_ prefixed methods require keyword args,       #
   # making them inaccessible to the worker.rb dispatcher #
