@@ -287,6 +287,7 @@ class Server
       while line=stdout.gets do
         @console_log << line
         case line
+        ## for java version
         when /\[Server thread\/INFO\]: Starting minecraft server version/
           @status[:version] = line
         when /\[Server thread\/INFO\]: Default game type: SURVIVAL/
@@ -297,8 +298,6 @@ class Server
           @status[:level] = line
         when /\[Server thread\/INFO\]: Done/
           @status[:done] = line
-        when /INFO\] Server started\./
-          @status[:done] = line
         when /\[Server thread\/INFO\]: Stopping server/
           @status[:stopping] = line
         when /\[Server thread\/WARN\]: Failed to load eula.txt/
@@ -307,6 +306,15 @@ class Server
           @status[:bind] = line
         when /A fatal error has been detected by the Java Runtime Environment/
           @status[:fatal_error] = line
+        ## added for mcbe
+        when /INFO\] Version /
+          @status[:version] = line
+        when /INFO\] Game mode /
+          @status[:type] = line
+        when /INFO\] Level Name: /
+          @status[:level] = line
+        when /INFO\] Server started\./
+          @status[:done] = line
         end
       end
     }
