@@ -1016,6 +1016,21 @@ class ServerTest < Minitest::Test
     assert_equal(['./bedrock_server'], inst.get_start_args(:executable))
   end
 
+  def test_server_start_mcbe_without_ld
+    # should fail to start
+    inst = Server.new('test')
+    inst.create(:executable)
+
+    FileUtils.cp_r("assets/mcbe/.", inst.env[:cwd])
+
+    inst.modify_sc('executable', './bedrock_server', 'nonjava')
+    #inst.modify_sc('LD_LIBRARY_PATH', '.', 'nonjava')
+    pid = inst.start
+    assert(pid)
+
+    nil until !inst.pid
+  end
+
   def test_server_start_mcbe
     inst = Server.new('test')
     inst.create(:executable)
