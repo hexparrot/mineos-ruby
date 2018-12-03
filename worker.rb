@@ -7,16 +7,30 @@ require 'logger'
 logger = Logger.new(STDOUT)
 logger.datetime_format = '%Y-%m-%d %H:%M:%S'
 logger.level = Logger::DEBUG
- 
+
+require 'optparse'
+options = {}
+OptionParser.new do |opt|
+  opt.on('--basedir PATH') { |o| options[:basedir] = o }
+  opt.on('--workername NAME') { |o| options[:workername] = o }
+end.parse!
+
+if options[:basedir] then
+  BASEDIR = Pathname.new(options[:basedir]).cleanpath
+else
+  BASEDIR = '/var/games/minecraft'
+end
+
 EM.run do
   servers = {}
   server_loggers = {}
   hostname = Socket.gethostname
-  workername = ENV['USER']
+  workername = options[:workername] || ENV['USER']
   logger.info("Starting up worker node: `#{workername}`")
 
+  logger.info("Scanning servers from BASEDIR: #{BASEDIR}")
   server_dirs = Enumerator.new do |enum|
-    Dir['/var/games/minecraft/servers/*'].each { |d| 
+    Dir["#{BASEDIR}/servers/*"].each { |d|
       server_name = d[0..-1].match(/.*\/(.*)/)[1]
       enum.yield server_name
     }
@@ -24,7 +38,7 @@ EM.run do
 
   server_dirs.each do |sn|
     #register existing servers upon startup
-    servers[sn] = Server.new(sn)
+    servers[sn] = Server.new(sn, basedir:BASEDIR)
     logger.info("Finished setting up server instance: `#{sn}`")
   end
 
@@ -184,7 +198,7 @@ EM.run do
     if servers[server_name].is_a? Server then
       inst = servers[server_name]
     else
-      inst = Server.new(server_name)
+      inst = Server.new(server_name, basedir:BASEDIR)
       servers[server_name] = inst
     end
 

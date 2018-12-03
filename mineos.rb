@@ -17,7 +17,7 @@ class Server
     @status = {}
     @console_log = SizedQueue.new(qsize)
 
-    raise RuntimeError.new('provided basedir is not a valid directory') if File.exist?(basedir)
+    raise RuntimeError.new('provided basedir is not a valid directory') if File.file?(basedir)
 
     @env = {:cwd => File.join(basedir, 'servers', self.name),
             :bwd => File.join(basedir, 'backup', self.name),
