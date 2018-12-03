@@ -8,7 +8,7 @@ class Server
 
   include S3
 
-  def initialize(name, qsize:256)
+  def initialize(name, basedir:'/var/games/minecraft', qsize:256)
     raise RuntimeError.new('servername format/characters not valid') if !self.valid_servername(name)
     raise RuntimeError.new('queue size must be a positive integer > 0') if !qsize.is_a?(Integer)
     raise RuntimeError.new('queue size must be a positive integer > 0') if qsize <= 0
@@ -16,7 +16,15 @@ class Server
     @name = name
     @status = {}
     @console_log = SizedQueue.new(qsize)
-    self.set_env
+
+    raise RuntimeError.new('provided basedir is not a valid directory') if File.exist?(basedir)
+
+    @env = {:cwd => File.join(basedir, 'servers', self.name),
+            :bwd => File.join(basedir, 'backup', self.name),
+            :awd => File.join(basedir, 'archive', self.name),
+            :sp  => File.join(basedir, 'servers', self.name, 'server.properties'),
+            :sc  => File.join(basedir, 'servers', self.name, 'server.config'),
+            :eula => File.join(basedir, 'servers', self.name, 'eula.txt')}
   end
 
   # Comparison operator: same if @name matches
@@ -33,18 +41,6 @@ class Server
   # a few other historical MineOS conventions
   def valid_servername(name)
     return name.match(VALID_NAME_REGEX)
-  end
-
-  # Establish an easy reference @env for common paths
-  def set_env
-    @@basedir = '/var/games/minecraft'
-
-    @env = {:cwd => File.join(@@basedir, 'servers', self.name),
-            :bwd => File.join(@@basedir, 'backup', self.name),
-            :awd => File.join(@@basedir, 'archive', self.name),
-            :sp  => File.join(@@basedir, 'servers', self.name, 'server.properties'),
-            :sc  => File.join(@@basedir, 'servers', self.name, 'server.config'),
-            :eula => File.join(@@basedir, 'servers', self.name, 'eula.txt')}
   end
 
   # Create directory paths and establish server.config (convenience)

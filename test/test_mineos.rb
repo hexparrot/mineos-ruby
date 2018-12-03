@@ -79,6 +79,36 @@ class ServerTest < Minitest::Test
     assert Dir.exist?(inst.env[:awd])
   end
 
+  def test_alternate_basedir
+    alt_basedir = File.join(ENV['HOME'], 'minecraft')
+    inst = Server.new('test', basedir:alt_basedir)
+    assert_equal(File.join(alt_basedir, 'servers/test'), inst.env[:cwd])
+    assert_equal(File.join(alt_basedir, 'backup/test'), inst.env[:bwd])
+    assert_equal(File.join(alt_basedir, 'archive/test'), inst.env[:awd])
+  end
+
+  def test_alternate_basedir_valid_dir
+    #valid meaning not a file (uncreated dir ok)
+    require 'fileutils'
+
+    alt_basedir = '/tmp/dummy'
+    assert !Dir.exist?(alt_basedir)
+    FileUtils.touch(alt_basedir)
+    assert File.exist?(alt_basedir)
+
+    ex = assert_raises(RuntimeError) { Server.new('test', basedir:alt_basedir) }
+    assert_equal('provided basedir is not a valid directory', ex.message)
+
+    alt_basedir = '/tmp/dummydir'
+    assert !File.exist?(alt_basedir)
+    assert !Dir.exist?(alt_basedir)
+
+    inst = Server.new('test', basedir:alt_basedir)
+    assert_equal(File.join(alt_basedir, 'servers/test'), inst.env[:cwd])
+    assert_equal(File.join(alt_basedir, 'backup/test'), inst.env[:bwd])
+    assert_equal(File.join(alt_basedir, 'archive/test'), inst.env[:awd])
+  end
+
   def test_delete_server
     inst = Server.new('test')
     inst.create(:conventional_jar)
