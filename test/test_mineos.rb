@@ -418,7 +418,7 @@ class ServerTest < Minitest::Test
 
   def test_start_server_when_already_running
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -438,7 +438,7 @@ class ServerTest < Minitest::Test
 
   def test_send_text_to_server_console
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -464,7 +464,7 @@ class ServerTest < Minitest::Test
 
   def test_memory_checks
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -487,7 +487,7 @@ class ServerTest < Minitest::Test
 
   def test_pid
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -678,7 +678,7 @@ class ServerTest < Minitest::Test
 
   def test_parse_stdout
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -703,7 +703,7 @@ class ServerTest < Minitest::Test
 
   def test_stop
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -725,7 +725,7 @@ class ServerTest < Minitest::Test
 
   def test_catch_eula_failure
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -743,7 +743,7 @@ class ServerTest < Minitest::Test
 
   def test_catch_bind_issue
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -763,7 +763,7 @@ class ServerTest < Minitest::Test
     nil until inst.status[:done]
 
     second_inst = Server.new('test')
-    second_inst.create_paths
+    second_inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, second_inst.env[:cwd])
@@ -785,7 +785,7 @@ class ServerTest < Minitest::Test
 
   def test_catch_normal_execution
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -800,7 +800,7 @@ class ServerTest < Minitest::Test
     inst.stop
 
     second_inst = Server.new('test_two')
-    second_inst.create_paths
+    second_inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, second_inst.env[:cwd])
@@ -818,7 +818,7 @@ class ServerTest < Minitest::Test
 
   def test_catch_bogus_timeout
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -846,7 +846,7 @@ class ServerTest < Minitest::Test
 
   def test_kill
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -890,7 +890,7 @@ class ServerTest < Minitest::Test
 
   def test_sleep_until
     inst = Server.new('test')
-    inst.create_paths
+    inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, inst.env[:cwd])
@@ -921,7 +921,7 @@ class ServerTest < Minitest::Test
     assert_equal('timeout must be a positive integer > 0', ex.message)
 
     second_inst = Server.new('test_two')
-    second_inst.create_paths
+    second_inst.create
 
     jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
     FileUtils.cp(jar_path, second_inst.env[:cwd])
@@ -1001,7 +1001,7 @@ class ServerTest < Minitest::Test
 
   def test_generic_binary_start_args
     inst = Server.new('test') 
-    inst.create_paths
+    inst.create
 
     #missing executable
     ex = assert_raises(RuntimeError) { inst.get_start_args(:executable) }
