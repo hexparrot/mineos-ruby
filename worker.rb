@@ -248,6 +248,19 @@ EM.run do
             server_loggers.delete(server_name)
           end
           return_object[:retval] = retval
+        rescue Seahorse::Client::NetworkingError => e
+          logger.error("Networking error caught with s3 client!")
+          logger.debug(e)
+          exchange.publish(return_object.to_json,
+                           :routing_key => "to_hq",
+                           :timestamp => Time.now.to_i,
+                           :type => 'receipt.command',
+                           :correlation_id => metadata[:message_id],
+                           :headers => {hostname: hostname,
+                                        workername: workername,
+                                        exception: {name: 'Seahorse::Client::NetworkingError',
+                                                    detail: e.to_s }},
+                           :message_id => SecureRandom.uuid)
         rescue IOError => e
           logger.error("IOError caught!")
           logger.error("Worker process may no longer be attached to child process?")
