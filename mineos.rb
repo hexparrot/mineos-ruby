@@ -181,6 +181,27 @@ class Server
     return self.sp!
   end
 
+  # Determine from sc what the most likely server_type is for get_start_args
+  def guess_type
+    return @server_type if @server_type
+
+    self.sc
+
+    begin
+      return :phar if @config_sc.to_h['java']['jarfile'].end_with?('.phar')
+    rescue NoMethodError
+    end
+
+    begin
+      return :phar if @config_sc.to_h['nonjava']['executable'].end_with?('.phar')
+    rescue NoMethodError
+    else
+      return :executable
+    end
+
+    return :conventional_jar
+  end
+
   # Returns tokenized arguments for starting server in array
   # Has different starting requirements based on server-type
   def get_start_args(type)

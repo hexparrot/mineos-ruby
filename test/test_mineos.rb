@@ -1076,4 +1076,52 @@ class ServerTest < Minitest::Test
 
     nil until !inst.pid
   end
+
+  def test_determine_likely_server_type
+    # determine :conv from non-explicit create on load/reload
+    inst = Server.new('test')
+    inst.create()
+    assert_equal(:conventional_jar, inst.guess_type)
+    inst.modify_sc('jarfile', @@server_jar, 'java')
+    assert_equal(:conventional_jar, inst.guess_type)
+
+    inst = Server.new('test')
+    assert_equal(:conventional_jar, inst.guess_type)
+
+    # determine :conf from explicit
+    inst = Server.new('test2')
+    inst.create(:conventional_jar)
+    inst.modify_sc('jarfile', @@server_jar, 'java')
+
+    inst = Server.new('test2')
+    assert_equal(:conventional_jar, inst.guess_type)
+
+    # determine :phar from explicit create, backward compat jarfile
+    inst = Server.new('test3') 
+    inst.create(:phar)
+    assert_equal(:phar, inst.guess_type)
+    inst.modify_sc('jarfile', 'pocket.phar', 'java')
+    assert_equal(:phar, inst.guess_type)
+
+    inst = Server.new('test3') 
+    assert_equal(:phar, inst.guess_type)
+
+    # determine :phar from explicit create, new style
+    inst = Server.new('test4') 
+    inst.create(:phar)
+    inst.modify_sc('executable', 'pocketmine.phar', 'nonjava')
+    assert_equal(:phar, inst.guess_type)
+
+    inst = Server.new('test4') 
+    assert_equal(:phar, inst.guess_type)
+
+    # determine :executable from explicit create
+    inst = Server.new('test5') 
+    inst.create(:executable)
+    inst.modify_sc('executable', './bedrock_server', 'nonjava')
+    assert_equal(:executable, inst.guess_type)
+
+    inst = Server.new('test5') 
+    assert_equal(:executable, inst.guess_type)
+  end
 end
