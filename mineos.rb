@@ -209,6 +209,8 @@ class Server
     args = {}
     retval = []
 
+    type = self.guess_type if !type
+
     case type
       when :conventional_jar
         raise RuntimeError.new('no runnable jarfile selected') if self.sc['java']['jarfile'].nil?

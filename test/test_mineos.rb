@@ -466,6 +466,21 @@ class ServerTest < Minitest::Test
     nil until !inst.pid
   end
 
+  def test_start_without_server_type
+    inst = Server.new('test')
+    inst.create
+
+    jar_path = File.expand_path(@@server_jar_path, Dir.pwd)
+    FileUtils.cp(jar_path, inst.env[:cwd])
+
+    inst.modify_sc('jarfile', @@server_jar, 'java')
+    inst.modify_sc('java_xmx', 384, 'java')
+    inst.modify_sc('java_xms', 256, 'java')
+
+    inst = Server.new('test')
+    inst.start
+  end
+
   def test_send_text_to_server_console
     inst = Server.new('test')
     inst.create
