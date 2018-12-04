@@ -26,7 +26,7 @@ class Server
             :sc  => File.join(basedir, 'servers', self.name, 'server.config'),
             :eula => File.join(basedir, 'servers', self.name, 'eula.txt')}
 
-    self.guess_type
+    @server_type = self.guess_type
   end
 
   # Comparison operator: same if @name matches
@@ -191,7 +191,6 @@ class Server
 
     begin
       if @config_sc.to_h['java']['jarfile'].end_with?('.phar') then
-        @server_type = :phar
         return :phar
       end
     rescue NoMethodError
@@ -199,16 +198,13 @@ class Server
 
     begin
       if @config_sc.to_h['nonjava']['executable'].end_with?('.phar') then
-        @server_type = :phar
         return :phar
       end
     rescue NoMethodError
     else
-      @server_type = :executable
       return :executable
     end
 
-    @server_type = :conventional_jar
     return :conventional_jar
   end
 
@@ -219,7 +215,10 @@ class Server
     args = {}
     retval = []
 
-    type = self.guess_type if !type
+    if !type then
+      type = self.guess_type
+      @server_type = type
+    end
 
     case type
       when :conventional_jar
