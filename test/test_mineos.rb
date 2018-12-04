@@ -1139,4 +1139,20 @@ class ServerTest < Minitest::Test
     inst = Server.new('test5') 
     assert_equal(:executable, inst.guess_type)
   end
+
+  def test_set_server_type_if_unset
+    inst = Server.new('test')
+    inst.create()
+    inst.modify_sc('jarfile', @@server_jar, 'java')
+
+    inst = Server.new('test')
+    assert_equal(:conventional_jar, inst.server_type)
+
+    inst = Server.new('test2') 
+    inst.create(:executable)
+    inst.modify_sc('executable', './bedrock_server', 'nonjava')
+
+    inst = Server.new('test2') 
+    assert_equal(:executable, inst.server_type)
+  end
 end
