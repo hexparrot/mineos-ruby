@@ -1,6 +1,4 @@
-require './s3'
-require 'bundler/setup'
-Bundler.require
+require_relative 's3'
 
 class Server
   attr_reader :name, :env, :server_type, :status, :console_log
@@ -94,6 +92,8 @@ class Server
   # This will "create" one if absent, but will not commit it to disk.
   # See sc! for committing server.config to the filesystem.
   def sc
+    require 'inifile'
+
     if !@config_sc
       if File.exist?(@env[:sc])
         @config_sc = IniFile.load(@env[:sc])
@@ -125,6 +125,8 @@ class Server
 
   # Reads eula.txt and returns boolean equivalent
   def eula
+    require 'inifile'
+
     config_eula = IniFile.load( @env[:eula] )
     return config_eula.to_h['global']['eula']
   end
@@ -138,6 +140,8 @@ class Server
   # This will "create" one if absent, but will not commit it to disk.
   # See sp! for committing server.properties to the filesystem.
   def sp
+    require 'inifile'
+
     if !@config_sp
       if File.exist?(@env[:sp])
         @config_sp = IniFile.load(@env[:sp])
