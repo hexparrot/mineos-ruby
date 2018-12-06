@@ -13,12 +13,21 @@ options = {}
 OptionParser.new do |opt|
   opt.on('--basedir PATH') { |o| options[:basedir] = o }
   opt.on('--workername NAME') { |o| options[:workername] = o }
+  opt.on('--secretsfile PATH') { |o| options[:secretsfile] = o }
 end.parse!
 
 if options[:basedir] then
+  require 'pathname'
   BASEDIR = Pathname.new(options[:basedir]).cleanpath
 else
   BASEDIR = '/var/games/minecraft'
+end
+
+if options[:secretsfile] then
+  require 'pathname'
+  SECRETS_PATH = Pathname.new(options[:secretsfile]).cleanpath
+else
+  SECRETS_PATH = File.join(File.dirname(__FILE__), 'config', 'secrets.yml')
 end
 
 EM.run do
@@ -43,7 +52,7 @@ EM.run do
   end
 
   require 'yaml'
-  mineos_config = YAML::load_file('config/secrets.yml')
+  mineos_config = YAML::load_file(SECRETS_PATH)
   logger.info("Finished loading mineos secrets.")
 
   require 'bunny'
