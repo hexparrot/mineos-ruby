@@ -30,7 +30,14 @@ class HQ < Sinatra::Base
   conn.start
   
   ch = conn.create_channel
-  exchange = ch.topic('backend')
+
+  # exchange for commands (workerpool+server specific)
+  exchange_cmd = ch.direct('commands')
+
+  # exchange for directives (hostname specific)
+  exchange_dir = ch.topic("directives")
+
+  # exchange for stdout
   exchange_stdout = ch.direct('stdout')
 
   ch
@@ -45,7 +52,7 @@ class HQ < Sinatra::Base
 
   ch
   .queue('')
-  .bind(exchange, :routing_key => "to_hq")
+  .bind(exchange_dir, :routing_key => "to_hq")
   .subscribe do |delivery_info, metadata, payload|
     parsed = JSON.parse payload
     case metadata.type
@@ -55,17 +62,17 @@ class HQ < Sinatra::Base
         available_workers.add(parsed['workerpool'])
 
         # on receipt of IDENT, send object store creds
-        exchange.publish({AWSCREDS: {
-                           endpoint: s3_config['object_store']['host'],
-                           access_key_id: s3_config['object_store']['access_key'],
-                           secret_access_key: s3_config['object_store']['secret_key'],
-                           region: 'us-west-1'
-                           }
-                         }.to_json,
-       :routing_key => "to_workers",
-                         :type => "directive",
-                         :message_id => SecureRandom.uuid,
-                         :timestamp => Time.now.to_i)
+        exchange_dir.publish({ AWSCREDS: {
+                                 endpoint: s3_config['object_store']['host'],
+                                 access_key_id: s3_config['object_store']['access_key'],
+                                 secret_access_key: s3_config['object_store']['secret_key'],
+                                 region: 'us-west-1'
+                               }
+                             }.to_json,
+                             :routing_key => "to_workers",
+                             :type => "directive",
+                             :message_id => SecureRandom.uuid,
+                             :timestamp => Time.now.to_i)
       when 'LIST'
         yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
         promise_retvals[metadata.correlation_id][:hosts].each do |obj|
@@ -93,11 +100,11 @@ class HQ < Sinatra::Base
     end
   end
  
-  exchange.publish('IDENT',
-                   :routing_key => "to_workers",
-                   :type => "directive",
-                   :message_id => SecureRandom.uuid,
-                   :timestamp => Time.now.to_i)
+  exchange_dir.publish('IDENT',
+                       :routing_key => "to_workers",
+                       :type => "directive",
+                       :message_id => SecureRandom.uuid,
+                       :timestamp => Time.now.to_i)
 
 ## route handlers
 
@@ -131,11 +138,11 @@ class HQ < Sinatra::Base
             else
               puts "sending hostname:workerpool `#{hostname}:#{workerpool}` command:"
               puts body_parameters
-              exchange.publish(body_parameters.to_json,
-                               :routing_key => "to_workers.#{hostname}.#{workerpool}",
-                               :type => "command",
-                               :message_id => uuid,
-                               :timestamp => Time.now.to_i)
+              exchange_cmd.publish(body_parameters.to_json,
+                                   :routing_key => "to_workers.#{hostname}.#{workerpool}",
+                                   :type => "command",
+                                   :message_id => uuid,
+                                   :timestamp => Time.now.to_i)
             end
           end # ws.onmessage
 
@@ -183,11 +190,11 @@ class HQ < Sinatra::Base
       }
     end
 
-    exchange.publish('LIST',
-                     :routing_key => "to_workers",
-                     :type => "directive",
-                     :message_id => uuid,
-                     :timestamp => Time.now.to_i)
+    exchange_cmd.publish('LIST',
+                         :routing_key => "to_workers",
+                         :type => "directive",
+                         :message_id => uuid,
+                         :timestamp => Time.now.to_i)
   end
 
   apost '/:worker/:servername' do |worker, servername|
@@ -204,11 +211,11 @@ class HQ < Sinatra::Base
     if !available_workers.include?(worker)
       halt 404, {server_name: servername, success: false}.to_json
     else
-      exchange.publish(body_parameters.to_json,
-                       :routing_key => "to_workers.#{worker}",
-                       :type => "command",
-                       :message_id => uuid,
-                       :timestamp => Time.now.to_i)
+      exchange_cmd.publish(body_parameters.to_json,
+                           :routing_key => "to_workers.#{worker}",
+                           :type => "command",
+                           :message_id => uuid,
+                           :timestamp => Time.now.to_i)
     end
   end
 
