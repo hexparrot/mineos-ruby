@@ -52,7 +52,7 @@ class HQ < Sinatra::Base
     when 'receipt.directive'
       case metadata[:headers]['directive']
       when 'IDENT'
-        available_workers.add(parsed['workername'])
+        available_workers.add(parsed['workerpool'])
 
         # on receipt of IDENT, send object store creds
         exchange.publish({AWSCREDS: {
@@ -69,7 +69,7 @@ class HQ < Sinatra::Base
       when 'LIST'
         yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
         promise_retvals[metadata.correlation_id][:hosts].each do |obj|
-          if obj[:workername] == metadata[:headers]['workername'] then
+          if obj[:workerpool] == metadata[:headers]['workerpool'] then
             obj[:servers] = parsed['servers']
             obj[:timestamp] = metadata[:timestamp]
             yet_to_respond -= 1
@@ -118,21 +118,21 @@ class HQ < Sinatra::Base
 
             body_parameters = JSON.parse msg
             hostname = body_parameters.delete('hostname')
-            workername = body_parameters.delete('workername')
+            workerpool = body_parameters.delete('workerpool')
             servername = body_parameters['server_name']
 
             promises[uuid] = Proc.new { |status_code, retval|
               ws.send(retval)
             }
 
-            if !available_workers.include?(workername)
-              puts "worker `#{workername}` not found."
-              #worker not found?  ignore.  todo: log me somewhere!
+            if !available_workers.include?(workerpool)
+              puts "worker `#{workerpool}` not found."
+              #workerpool not found?  ignore.  todo: log me somewhere!
             else
-              puts "sending worker:server `#{hostname}:#{workername}` command:"
+              puts "sending hostname:workerpool `#{hostname}:#{workerpool}` command:"
               puts body_parameters
               exchange.publish(body_parameters.to_json,
-                               :routing_key => "to_workers.#{hostname}.#{workername}",
+                               :routing_key => "to_workers.#{hostname}.#{workerpool}",
                                :type => "command",
                                :message_id => uuid,
                                :timestamp => Time.now.to_i)

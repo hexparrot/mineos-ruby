@@ -3,7 +3,7 @@
      <h1>Create a simple test server</h1>
      <form id="form">
        <input type="text" id="hostname" value="ruby-worker" />
-       <input type="text" id="workername" value="user" />
+       <input type="text" id="workerpool" value="user" />
        <input type="text" id="servername" value="test" />
        <button type="button" data-string='{"cmd": "get_external_profile",
 "url": "https://launcher.mojang.com/v1/objects/b58b2ceb36e01bcd8dbf49c8fb66c55a9f0676cd/server.jar",
@@ -46,7 +46,7 @@
           btns[i].addEventListener('click', function (event) {
             var payload = JSON.parse(this.getAttribute('data-string'));
             payload['hostname'] = document.getElementById('hostname').value
-            payload['workername'] = document.getElementById('workername').value
+            payload['workerpool'] = document.getElementById('workerpool').value
             payload['server_name'] = document.getElementById('servername').value
             console.log(payload);
             ws.send(JSON.stringify(payload));
