@@ -167,7 +167,7 @@ EM.run do
         else
           retval = Aws.config
           logger.info("Endpoint valid and Aws::S3::Client.new returned no error")
-          logger.debug(retval)
+          #logger.debug(retval)
         end
   
         exchange_dir.publish(retval.to_json,
@@ -354,7 +354,7 @@ EM.run do
   .queue('', exclusive: true)
   .bind(exchange_cmd, routing_key: "to_workers.#{hostname}.#{workerpool}")
   .subscribe do |delivery_info, metadata, payload|
-    puts "received cmd: #{payload}"
+    #logger.debug("received cmd: #{payload}")
     command_handler.call delivery_info, metadata, payload
   end
 
@@ -362,7 +362,7 @@ EM.run do
   .queue('')
   .bind(exchange_dir, routing_key: "to_workers")
   .subscribe do |delivery_info, metadata, payload|
-    puts "received dir: #{payload}"
+    #logger.debug("received dir: #{payload}")
     directive_handler.call delivery_info, metadata, payload
   end
 
