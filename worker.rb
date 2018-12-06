@@ -107,14 +107,14 @@ EM.run do
           uw_diskused: usw.uw_diskused,
           uw_diskused_perc: usw.uw_diskused_perc,
         }
-        exchange_dir.publish({usage: retval}.to_json,
+        exchange_dir.publish({ usage: retval }.to_json,
                              :routing_key => "to_hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.directive',
                              :correlation_id => metadata[:message_id],
-                             :headers => {hostname: hostname,
-                                          workerpool: workerpool,
-                                          directive: 'USAGE'},
+                             :headers => { hostname: hostname,
+                                           workerpool: workerpool,
+                                           directive: 'USAGE' },
                              :message_id => SecureRandom.uuid)
         logger.info("Received USAGE directive from HQ.")
         logger.debug({usage: retval})
@@ -124,14 +124,14 @@ EM.run do
 
       EM.defer do
         usw = Usagewatch
-        exchange_dir.publish({usage: {$1 =>  usw.public_send($1)}}.to_json,
+        exchange_dir.publish({ usage: {$1 =>  usw.public_send($1)} }.to_json,
                              :routing_key => "to_hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.directive',
                              :correlation_id => metadata[:message_id],
-                             :headers => {hostname: hostname,
-                                          workerpool: workerpool,
-                                          directive: 'REQUEST_USAGE'},
+                             :headers => { hostname: hostname,
+                                           workerpool: workerpool,
+                                           directive: 'REQUEST_USAGE' },
                              :message_id => SecureRandom.uuid)
         logger.info("Received USAGE directive from HQ.")
         logger.debug({usage: {$1 =>  usw.public_send($1)}})
@@ -175,9 +175,9 @@ EM.run do
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.directive',
                              :correlation_id => metadata[:message_id],
-                             :headers => {hostname: hostname,
-                                          workerpool: workerpool,
-                                          directive: 'AWSCREDS'},
+                             :headers => { hostname: hostname,
+                                           workerpool: workerpool,
+                                           directive: 'AWSCREDS' },
                              :message_id => SecureRandom.uuid)
       else #if unknown directive
         exchange_dir.publish({}.to_json,
@@ -185,9 +185,9 @@ EM.run do
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.directive',
                              :correlation_id => metadata[:message_id],
-                             :headers => {hostname: hostname,
-                                          workerpool: workerpool,
-                                          directive: 'BOGUS'}, #changing directive
+                             :headers => { hostname: hostname,
+                                           workerpool: workerpool,
+                                           directive: 'BOGUS' }, #changing directive
                              :message_id => SecureRandom.uuid)
         logger.warn("Received bogus directive from HQ. Received:")
         logger.warn(payload)
@@ -267,10 +267,11 @@ EM.run do
                                :timestamp => Time.now.to_i,
                                :type => 'receipt.command',
                                :correlation_id => metadata[:message_id],
-                               :headers => {hostname: hostname,
-                                            workerpool: workerpool,
-                                            exception: {name: 'Seahorse::Client::NetworkingError',
-                                                        detail: e.to_s }},
+                               :headers => { hostname: hostname,
+                                             workerpool: workerpool,
+                                             exception: { name: 'Seahorse::Client::NetworkingError',
+                                                          detail: e.to_s }
+                                           },
                                :message_id => SecureRandom.uuid)
         rescue IOError => e
           logger.error("IOError caught!")
@@ -280,10 +281,11 @@ EM.run do
                                :timestamp => Time.now.to_i,
                                :type => 'receipt.command',
                                :correlation_id => metadata[:message_id],
-                               :headers => {hostname: hostname,
-                                            workerpool: workerpool,
-                                            exception: {name: 'IOError',
-                                                        detail: e.to_s }},
+                               :headers => { hostname: hostname,
+                                             workerpool: workerpool,
+                                             exception: { name: 'IOError',
+                                                          detail: e.to_s }
+                                           },
                                :message_id => SecureRandom.uuid)
         rescue ArgumentError => e
           logger.error("ArgumentError caught!")
@@ -292,10 +294,11 @@ EM.run do
                                :timestamp => Time.now.to_i,
                                :type => 'receipt.command',
                                :correlation_id => metadata[:message_id],
-                               :headers => {hostname: hostname,
-                                            workerpool: workerpool,
-                                            exception: {name: 'ArgumentError',
-                                                        detail: e.to_s }},
+                               :headers => { hostname: hostname,
+                                             workerpool: workerpool,
+                                             exception: { name: 'ArgumentError',
+                                                          detail: e.to_s }
+                                           },
                                :message_id => SecureRandom.uuid)
         rescue RuntimeError => e
           logger.error("RuntimeError caught!")
@@ -306,10 +309,11 @@ EM.run do
                                :timestamp => Time.now.to_i,
                                :type => 'receipt.command',
                                :correlation_id => metadata[:message_id],
-                               :headers => {hostname: hostname,
-                                            workerpool: workerpool,
-                                            exception: {name: 'ArgumentError',
-                                                        detail: e.to_s }},
+                               :headers => { hostname: hostname,
+                                             workerpool: workerpool,
+                                             exception: { name: 'ArgumentError',
+                                                          detail: e.to_s }
+                                           },
                                :message_id => SecureRandom.uuid)
         else
           return_object[:success] = true
@@ -334,10 +338,11 @@ EM.run do
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.command',
                              :correlation_id => metadata[:message_id],
-                             :headers => {hostname: hostname,
-                                          workerpool: workerpool,
-                                          exception: {name: 'NameError',
-                                                      detail: "undefined method `#{cmd}' for class `Server'" }},
+                             :headers => { hostname: hostname,
+                                           workerpool: workerpool,
+                                           exception: { name: 'NameError',
+                                                        detail: "undefined method `#{cmd}' for class `Server'" }
+                                         },
                              :message_id => SecureRandom.uuid)
       }
       EM.defer cb
@@ -362,14 +367,14 @@ EM.run do
   end
 
   exchange_dir.publish({ host: hostname,
-                         workerpool: workerpool}.to_json,
+                         workerpool: workerpool }.to_json,
                        :routing_key => "to_hq",
                        :timestamp => Time.now.to_i,
                        :type => 'receipt.directive',
                        :correlation_id => nil,
                        :headers => { hostname: hostname,
                                      workerpool: workerpool,
-                                     directive: 'IDENT'},
+                                     directive: 'IDENT' },
                        :message_id => SecureRandom.uuid)
   logger.info("Sent IDENT message.")
   logger.info("Worker node set up and listening.")
