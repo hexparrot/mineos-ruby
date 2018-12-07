@@ -54,5 +54,19 @@ class UsersTest < Minitest::Test
     assert_equal(@user, diff.first)
     assert_equal(1, diff.length) 
   end
+
+  def test_create_duplicate_user
+    @inst.create_user(@user, 'mypassword')
+
+    ex = assert_raises(RuntimeError) { @inst.create_user(@user, "mypassword") }
+    assert_equal('user already exists, aborting creation', ex.message)
+  end
+
+  def test_remove_invalid_user
+    @inst.create_user(@user, 'mypassword')
+
+    ex = assert_raises(RuntimeError) { @inst.remove_user("dinosaur") }
+    assert_equal('user not found, aborting removal', ex.message)
+  end
 end
 
