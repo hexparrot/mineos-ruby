@@ -41,7 +41,7 @@ class HQ < Sinatra::Base
   exchange_stdout = ch.direct('stdout')
 
   ch
-  .queue('')
+  .queue('', exclusive: true)
   .bind(exchange_stdout, :routing_key => "to_hq")
   .subscribe do |delivery_info, metadata, payload|
     settings.sockets.each { |ws| ws.send(payload) }
