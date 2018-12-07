@@ -8,9 +8,11 @@ class Users
   end
 
   def create_user(username, password)
-    require 'open3'
     salted_pw = password.crypt("$5$a1")
     system "useradd -m -p '#{salted_pw}' #{username} 2>/dev/null"
   end
 
+  def remove_user(username)
+    system "userdel -f #{username} 2>/dev/null"
+  end
 end
