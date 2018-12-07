@@ -14,5 +14,6 @@ class Users
 
   def remove_user(username)
     system "userdel -f #{username} 2>/dev/null"
+    system "rm -rf /home/#{username} 2>/dev/null"
   end
 end
