@@ -5,7 +5,7 @@ class UsersTest < Minitest::Test
 
   def setup
     @inst = Users.new
-    @user = 'throwaway'
+    @user = '_throwaway-500'
     @user_home = "/home/#{@user}"
   end
 
@@ -67,6 +67,14 @@ class UsersTest < Minitest::Test
 
     ex = assert_raises(RuntimeError) { @inst.remove_user("dinosaur") }
     assert_equal('user not found, aborting removal', ex.message)
+  end
+
+  def test_limit_username_to_regex
+    invalid_names = ["will", "user", "HELLO", "MY_NAME_IS", "43242342", "_myname55", "_55-4543"]
+    invalid_names.each do |i|
+      ex = assert_raises(RuntimeError) { @inst.create_user(i, "password") }
+      assert_equal('username does not fit allowable regex, aborting creation', ex.message)
+    end
   end
 end
 
