@@ -5,7 +5,8 @@ class Users
     require 'set'
 
     raw_output = `cat /etc/passwd |grep '/home' |cut -d: -f1`
-    Set.new(raw_output.strip.split("\n"))
+    candidates = Set.new(raw_output.strip.split("\n"))
+    candidates.delete_if { |e| !e.match(VALID_NAME_REGEX) }
   end
 
   def create_user(username, password)

@@ -21,6 +21,7 @@ class UsersTest < Minitest::Test
     assert_instance_of(Set, all_users)
     all_users.each do |u|
       assert_instance_of(String, u)
+      assert(u.match(Users::VALID_NAME_REGEX))
     end
   end
 
