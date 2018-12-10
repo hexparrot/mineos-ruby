@@ -3,10 +3,14 @@ class Pools
 
   def list_pools
     require 'set'
+    require 'etc'
 
-    raw_output = `cat /etc/passwd |grep '/home' |cut -d: -f1`
-    candidates = Set.new(raw_output.strip.split("\n"))
-    candidates.delete_if { |e| !e.match(VALID_NAME_REGEX) }
+    candidates = Set.new
+    while e = Etc.getpwent do
+      candidates << e[:name] if e[:name].match(VALID_NAME_REGEX)
+    end
+    Etc.endpwent
+    candidates
   end
 
   def create_pool(poolname, password)
