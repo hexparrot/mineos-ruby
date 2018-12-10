@@ -86,5 +86,37 @@ class PoolTest < Minitest::Test
       assert_equal('poolname is too long; limit is 20 characters', ex.message)
     end
   end
+
+  def test_pool_usergroup_created_and_deleted
+    require 'set'
+    require 'etc'
+
+    before_groups = Set.new
+    while e = Etc.getgrent do
+      before_groups << e[:name] if e[:name].match(Pools::VALID_NAME_REGEX)
+    end
+    Etc.endgrent
+
+    @inst.create_pool(@pool, 'mypassword')
+
+    after_groups = Set.new
+    while e = Etc.getgrent do
+      after_groups << e[:name] if e[:name].match(Pools::VALID_NAME_REGEX)
+    end
+    Etc.endgrent
+
+    diff = after_groups - before_groups
+    assert_equal(1, diff.length) 
+
+    @inst.remove_pool(@pool)
+
+    end_groups = Set.new
+    while e = Etc.getgrent do
+      end_groups << e[:name] if e[:name].match(Pools::VALID_NAME_REGEX)
+    end
+    Etc.endgrent
+
+    assert_equal(end_groups.length, before_groups.length)
+  end
 end
 

@@ -18,7 +18,7 @@ class Pools
     raise RuntimeError.new('poolname does not fit allowable regex, aborting creation') if !poolname.match(VALID_NAME_REGEX)
     raise RuntimeError.new('pool already exists, aborting creation') if self.list_pools.include?(poolname)
     salted_pw = password.crypt("$5$a1")
-    system "useradd -m -p '#{salted_pw}' #{poolname} 2>/dev/null"
+    system "useradd -U -m -p '#{salted_pw}' #{poolname} 2>/dev/null"
   end
 
   def remove_pool(poolname)
