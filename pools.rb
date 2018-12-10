@@ -10,6 +10,7 @@ class Pools
   end
 
   def create_pool(poolname, password)
+    raise RuntimeError.new('poolname is too long; limit is 20 characters') if poolname.length > 20
     raise RuntimeError.new('poolname does not fit allowable regex, aborting creation') if !poolname.match(VALID_NAME_REGEX)
     raise RuntimeError.new('pool already exists, aborting creation') if self.list_pools.include?(poolname)
     salted_pw = password.crypt("$5$a1")

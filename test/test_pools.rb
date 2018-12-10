@@ -71,10 +71,19 @@ class PoolTest < Minitest::Test
   end
 
   def test_limit_poolname_to_regex
-    invalid_names = ["will", "pool", "HELLO", "MY_NAME_IS", "43242342", "_myname55", "_55-4543"]
+    invalid_names = ["will", "pool", "HELLO", "MY_NAME_IS", "43242342", "_myname55", "_55-4543", "_abcdefghijklmnopq-A"]
     invalid_names.each do |i|
       ex = assert_raises(RuntimeError) { @inst.create_pool(i, "password") }
       assert_equal('poolname does not fit allowable regex, aborting creation', ex.message)
+    end
+  end
+
+  def test_poolname_length
+    # due to test overlap, length checked first!
+    invalid_names = ["_abcdefghijklmnopq-12", "abcdefghijklmnopqrstuvwxyz"]
+    invalid_names.each do |i|
+      ex = assert_raises(RuntimeError) { @inst.create_pool(i, "mypassword") }
+      assert_equal('poolname is too long; limit is 20 characters', ex.message)
     end
   end
 end
