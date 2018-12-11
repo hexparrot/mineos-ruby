@@ -34,6 +34,7 @@ EM.run do
     else
       json_in = JSON.parse payload
       if json_in.key?('SPAWN') then
+        fp = File.dirname(__FILE__)
 
         def as_user(user, filepath, &block)
           # http://brizzled.clapper.org/blog/2011/01/01/running-a-ruby-block-as-another-user/
@@ -49,7 +50,7 @@ EM.run do
             retry
           else
             require 'fileutils'
-            FileUtils.cp_r '/home/user/mineos-ruby', "/home/#{user}/"
+            FileUtils.cp_r filepath, "/home/#{user}/"
             FileUtils.chown_R user, user, "/home/#{user}/"
           end
 
@@ -68,7 +69,6 @@ EM.run do
         end
 
         worker = json_in['SPAWN']['workerpool']
-        fp = File.dirname(__FILE__)
         as_user(worker, fp) do
           exec "ruby worker.rb"
         end
