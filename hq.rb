@@ -16,6 +16,7 @@ class HQ < Sinatra::Base
 
   require 'set'
   available_workers = Set.new
+  available_managers = Set.new
 
   require 'yaml'
   mineos_config = YAML::load_file('config/secrets.yml')
@@ -51,7 +52,7 @@ class HQ < Sinatra::Base
   promise_retvals = {}
 
   ch
-  .queue('')
+  .queue('', exclusive: true)
   .bind(exchange_dir, :routing_key => "to_hq")
   .subscribe do |delivery_info, metadata, payload|
     parsed = JSON.parse payload
@@ -59,20 +60,25 @@ class HQ < Sinatra::Base
     when 'receipt.directive'
       case metadata[:headers]['directive']
       when 'IDENT'
-        available_workers.add(parsed['workerpool'])
+        if parsed['workerpool'] then
+          #this is coming from a worker
+          available_workers.add(parsed['workerpool'])
 
-        # on receipt of IDENT, send object store creds
-        exchange_dir.publish({ AWSCREDS: {
-                                 endpoint: s3_config['object_store']['host'],
-                                 access_key_id: s3_config['object_store']['access_key'],
-                                 secret_access_key: s3_config['object_store']['secret_key'],
-                                 region: 'us-west-1'
-                               }
-                             }.to_json,
-                             :routing_key => "to_workers",
-                             :type => "directive",
-                             :message_id => SecureRandom.uuid,
-                             :timestamp => Time.now.to_i)
+          # on receipt of IDENT, send object store creds
+          exchange_dir.publish({ AWSCREDS: {
+                                   endpoint: s3_config['object_store']['host'],
+                                   access_key_id: s3_config['object_store']['access_key'],
+                                   secret_access_key: s3_config['object_store']['secret_key'],
+                                   region: 'us-west-1'
+                                 }
+                               }.to_json,
+                               :routing_key => "to_workers",
+                               :type => "directive",
+                               :message_id => SecureRandom.uuid,
+                               :timestamp => Time.now.to_i)
+        else
+          available_managers.add(parsed['host'])
+        end
       when 'LIST'
         yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
         promise_retvals[metadata.correlation_id][:hosts].each do |obj|
