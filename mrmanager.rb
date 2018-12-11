@@ -50,6 +50,7 @@ EM.run do
           else
             require 'fileutils'
             FileUtils.cp_r '/home/user/mineos-ruby', "/home/#{user}/"
+            FileUtils.chown_R user, user, "/home/#{user}/"
           end
 
           # Fork the child process. Process.fork will run a given block of code

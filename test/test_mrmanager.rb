@@ -175,5 +175,18 @@ class ManagerTest < Minitest::Test
                             :timestamp => Time.now.to_i)
     end
     assert_equal(2, step)
+
+    new_home = "/home/#{new_user}"
+    script_home = File.join(new_home, "mineos-ruby")
+    uid = File.stat(new_home).uid
+    owner_name = Etc.getpwuid(uid).name
+
+    assert_equal(new_user, owner_name)
+    Dir.foreach(script_home) do |item|
+      next if item == '.' or item == '..'
+      fp = File.join(script_home, item)
+      file_uid = File.stat(fp).uid
+      assert_equal(new_user, Etc.getpwuid(file_uid).name)
+    end
   end
 end
