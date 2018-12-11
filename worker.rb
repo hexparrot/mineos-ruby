@@ -23,6 +23,13 @@ else
   BASEDIR = '/var/games/minecraft'
 end
 
+if options[:workerpool] then
+  WHOAMI = options[:workerpool]
+else
+  require 'etc'
+  WHOAMI = Etc.getpwuid(Process.uid).name
+end
+
 if options[:secretsfile] then
   require 'pathname'
   SECRETS_PATH = Pathname.new(options[:secretsfile]).cleanpath
@@ -34,7 +41,7 @@ EM.run do
   servers = {}
   server_loggers = {}
   hostname = Socket.gethostname
-  workerpool = options[:workerpool] || ENV['USER']
+  workerpool = WHOAMI
   logger.info("Starting up worker pool: `#{workerpool}`")
 
   logger.info("Scanning servers from BASEDIR: #{BASEDIR}")

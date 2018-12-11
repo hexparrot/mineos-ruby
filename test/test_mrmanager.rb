@@ -86,7 +86,6 @@ class ManagerTest < Minitest::Test
             # coming from spawned process
             assert_equal(@@hostname, parsed['host'])
             assert_equal(@@workerpool, parsed['workerpool'])
-            #assert_equal(guid, metadata.correlation_id)
             assert_equal('receipt.directive', metadata.type)
             assert_equal('IDENT', metadata[:headers]['directive'])
             assert_equal(@@hostname, metadata[:headers]['hostname'])
