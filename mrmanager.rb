@@ -35,11 +35,22 @@ EM.run do
       json_in = JSON.parse payload
       if json_in.key?('SPAWN') then
 
-        def as_user(user, &block)
+        def as_user(user, filepath, &block)
           # http://brizzled.clapper.org/blog/2011/01/01/running-a-ruby-block-as-another-user/
-          require 'etc'
-          # Find the user in the password database.
-          u = (user.is_a? Integer) ? Etc.getpwuid(user) : Etc.getpwnam(user)
+          begin
+            require 'etc'
+            # Find the user in the password database.
+            u = (user.is_a? Integer) ? Etc.getpwuid(user) : Etc.getpwnam(user)
+          rescue ArgumentError => e
+            #invalid name caught here
+            require_relative 'pools'
+            pool_inst = Pools.new
+            pool_inst.create_pool(user, 'mypassword')
+            retry
+          else
+            require 'fileutils'
+            FileUtils.cp_r '/home/user/mineos-ruby', "/home/#{user}/"
+          end
 
           # Fork the child process. Process.fork will run a given block of code
           # in the child process.
@@ -49,14 +60,15 @@ EM.run do
             Process.uid = Process.euid = u.uid
 
             # Invoke the caller's block of code.
-            Dir.chdir(File.dirname(__FILE__)) do
+            Dir.chdir("/home/#{user}/mineos-ruby") do
               block.call()
             end
           end
         end
 
         worker = json_in['SPAWN']['workerpool']
-        as_user worker do
+        fp = File.dirname(__FILE__)
+        as_user(worker, fp) do
           exec "ruby worker.rb"
         end
 
