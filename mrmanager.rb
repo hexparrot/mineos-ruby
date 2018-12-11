@@ -34,7 +34,7 @@ EM.run do
     else
       json_in = JSON.parse payload
       if json_in.key?('SPAWN') then
-        fp = File.dirname(__FILE__)
+        fp = File.expand_path(File.dirname(__FILE__))
 
         def as_user(user, filepath, &block)
           # http://brizzled.clapper.org/blog/2011/01/01/running-a-ruby-block-as-another-user/
@@ -50,7 +50,11 @@ EM.run do
             retry
           else
             require 'fileutils'
-            FileUtils.cp_r filepath, "/home/#{user}/"
+            require 'pathname'
+
+            if File.realdirpath(filepath) != File.realdirpath("/home/#{user}/mineos-ruby") then
+              FileUtils.cp_r filepath, "/home/#{user}/"
+            end
             FileUtils.chown_R user, user, "/home/#{user}/"
           end
 
