@@ -107,12 +107,6 @@ class HQ < Sinatra::Base
     end
   end
  
-  exchange_dir.publish('IDENT',
-                       :routing_key => "to_workers",
-                       :type => "directive",
-                       :message_id => SecureRandom.uuid,
-                       :timestamp => Time.now.to_i)
-
 ## route handlers
 
   get '/' do
@@ -252,6 +246,8 @@ class HQ < Sinatra::Base
     end
   end
 
+## helpers
+
   helpers do
     def current_user
       if session[:user_id]
@@ -261,6 +257,19 @@ class HQ < Sinatra::Base
       end
     end
   end
+
+## startup broadcasts for IDENT
+  exchange_dir.publish('IDENT',
+                       :routing_key => "to_workers",
+                       :type => "directive",
+                       :message_id => SecureRandom.uuid,
+                       :timestamp => Time.now.to_i)
+  exchange_dir.publish('IDENT',
+                       :routing_key => "to_managers",
+                       :type => "directive",
+                       :message_id => SecureRandom.uuid,
+                       :timestamp => Time.now.to_i)
+
 
   run!
 end
