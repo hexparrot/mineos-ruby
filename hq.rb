@@ -127,7 +127,7 @@ class HQ < Sinatra::Base
             body_parameters = JSON.parse msg
             if body_parameters.key?('dir') then
               hostname = body_parameters.delete('hostname')
-              workerpool = body_parameters.delete('pool')
+              workerpool = body_parameters.delete('workerpool')
 
               promises[uuid] = Proc.new { |status_code, retval|
                 ws.send(retval)

@@ -4,11 +4,10 @@
      <form id="form">
        <input type="text" id="hostname" value="ruby-worker" />
        <hr>
-       <input type="text" id="pool" value="_throwaway-500" />
+       <input type="text" id="workerpool" value="_throwaway-500" />
        <button type="button" data-type="directive" data-string='{"dir": "spawn"}'>spawn</button>
        <button type="button" data-type="directive" data-string='{"dir": "remove"}'>remove</button>
        <hr>
-       <input type="text" id="workerpool" value="_throwaway-500" />
        <input type="text" id="servername" value="test" />
        <button type="button" data-type="command" data-string='{"cmd": "get_external_profile",
 "url": "https://launcher.mojang.com/v1/objects/b58b2ceb36e01bcd8dbf49c8fb66c55a9f0676cd/server.jar",
@@ -53,7 +52,7 @@
             var type = this.getAttribute('data-type');
             if (type == 'directive') {
               payload['hostname'] = document.getElementById('hostname').value
-              payload['pool'] = document.getElementById('workerpool').value
+              payload['workerpool'] = document.getElementById('workerpool').value
               console.log(payload);
               ws.send(JSON.stringify(payload));
             } else if (type == 'command') {
