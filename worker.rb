@@ -42,7 +42,7 @@ EM.run do
   server_loggers = {}
   hostname = Socket.gethostname
   workerpool = WHOAMI
-  logger.info("Starting up worker pool: `#{workerpool}`")
+  logger.info("Starting up worker pool: `to_workers.#{hostname}.#{workerpool}`")
 
   logger.info("Scanning servers from BASEDIR: #{BASEDIR}")
   server_dirs = Enumerator.new do |enum|

@@ -34,9 +34,7 @@ EM.run do
     else
       json_in = JSON.parse payload
       if json_in.key?('SPAWN') then
-        fp = File.expand_path(File.dirname(__FILE__))
-
-        def as_user(user, filepath, &block)
+        def as_user(user, script_path, &block)
           # http://brizzled.clapper.org/blog/2011/01/01/running-a-ruby-block-as-another-user/
           begin
             require 'etc'
@@ -52,8 +50,8 @@ EM.run do
             require 'fileutils'
             require 'pathname'
 
-            if File.realdirpath(filepath) != File.realdirpath("/home/#{user}/mineos-ruby") then
-              FileUtils.cp_r filepath, "/home/#{user}/"
+            if File.realdirpath(script_path) != File.realdirpath("/home/#{user}/mineos-ruby") then
+              FileUtils.cp_r script_path, "/home/#{user}/"
             end
             FileUtils.chown_R user, user, "/home/#{user}/"
           end
@@ -67,14 +65,15 @@ EM.run do
 
             # Invoke the caller's block of code.
             Dir.chdir("/home/#{user}/mineos-ruby") do
-              block.call()
+              block.call(user)
             end
           end
         end
 
+        script_path = File.expand_path(File.dirname(__FILE__))
         worker = json_in['SPAWN']['workerpool']
-        as_user(worker, fp) do
-          exec "ruby worker.rb"
+        as_user(worker, script_path) do |user|
+          exec "ruby worker.rb --basedir /home/#{user}/minecraft"
         end
 
         pid = 5
