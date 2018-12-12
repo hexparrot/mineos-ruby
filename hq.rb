@@ -77,6 +77,7 @@ class HQ < Sinatra::Base
                                :message_id => SecureRandom.uuid,
                                :timestamp => Time.now.to_i)
         else
+          puts "adding new manager: #{parsed['host']}"
           available_managers.add(parsed['host'])
         end
       when 'LIST'
@@ -130,25 +131,51 @@ class HQ < Sinatra::Base
             uuid = SecureRandom.uuid
 
             body_parameters = JSON.parse msg
-            hostname = body_parameters.delete('hostname')
-            workerpool = body_parameters.delete('workerpool')
-            servername = body_parameters['server_name']
+            if body_parameters.key?('dir') then
+              hostname = body_parameters.delete('hostname')
+              workerpool = body_parameters.delete('pool')
 
-            promises[uuid] = Proc.new { |status_code, retval|
-              ws.send(retval)
-            }
+              promises[uuid] = Proc.new { |status_code, retval|
+                ws.send(retval)
+              }
 
-            if !available_workers.include?(workerpool)
-              puts "worker `#{workerpool}` not found."
-              #workerpool not found?  ignore.  todo: log me somewhere!
-            else
-              puts "sending hostname:workerpool `#{hostname}:#{workerpool}` command:"
-              puts body_parameters
-              exchange_cmd.publish(body_parameters.to_json,
-                                   :routing_key => "to_workers.#{hostname}.#{workerpool}",
-                                   :type => "command",
-                                   :message_id => uuid,
-                                   :timestamp => Time.now.to_i)
+              if !available_managers.include?(hostname)
+                puts "hostname `#{hostname}` not found."
+              else
+                puts "sending hostname:workerpool `#{hostname}:#{workerpool}` directive:"
+                puts body_parameters
+                case body_parameters['dir']
+                when 'spawn'
+                  exchange_dir.publish({SPAWN: {workerpool: workerpool}}.to_json,
+                                        :routing_key => "to_managers.#{hostname}",
+                                        :type => "directive",
+                                        :message_id => uuid,
+                                        :timestamp => Time.now.to_i)
+                when 'remove'
+                  # not yet implemented
+                end
+              end
+            elsif body_parameters.key?('cmd') then
+              hostname = body_parameters.delete('hostname')
+              workerpool = body_parameters.delete('workerpool')
+              servername = body_parameters['server_name']
+
+              promises[uuid] = Proc.new { |status_code, retval|
+                ws.send(retval)
+              }
+
+              if !available_workers.include?(workerpool)
+                puts "worker `#{workerpool}` not found."
+                #workerpool not found?  ignore.  todo: log me somewhere!
+              else
+                puts "sending hostname:workerpool `#{hostname}:#{workerpool}` command:"
+                puts body_parameters
+                exchange_cmd.publish(body_parameters.to_json,
+                                     :routing_key => "to_workers.#{hostname}.#{workerpool}",
+                                     :type => "command",
+                                     :message_id => uuid,
+                                     :timestamp => Time.now.to_i)
+              end
             end
           end # ws.onmessage
 
