@@ -24,7 +24,7 @@ EM.run do
     case payload
     when 'IDENT'
       exchange_dir.publish({ host: hostname }.to_json,
-                           :routing_key => "to_hq",
+                           :routing_key => "hq",
                            :timestamp => Time.now.to_i,
                            :type => 'receipt.directive',
                            :correlation_id => metadata[:message_id],
@@ -81,7 +81,7 @@ EM.run do
         exchange_dir.publish({ host: hostname,
                                workerpool: worker,
                                pid: 5 }.to_json,
-                             :routing_key => "to_hq",
+                             :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.directive',
                              :correlation_id => metadata[:message_id],
@@ -96,20 +96,20 @@ EM.run do
 
   ch
   .queue('')
-  .bind(exchange_dir, routing_key: "to_managers.#{hostname}")
+  .bind(exchange_dir, routing_key: "managers.#{hostname}")
   .subscribe do |delivery_info, metadata, payload|
     directive_handler.call delivery_info, metadata, payload
   end
 
   ch
   .queue('')
-  .bind(exchange_dir, routing_key: "to_managers")
+  .bind(exchange_dir, routing_key: "managers")
   .subscribe do |delivery_info, metadata, payload|
     directive_handler.call delivery_info, metadata, payload
   end
 
   exchange_dir.publish({ host: hostname }.to_json,
-                       :routing_key => "to_hq",
+                       :routing_key => "hq",
                        :timestamp => Time.now.to_i,
                        :type => 'receipt.directive',
                        :correlation_id => nil,

@@ -42,7 +42,7 @@ EM.run do
   server_loggers = {}
   hostname = Socket.gethostname
   workerpool = WHOAMI
-  logger.info("Starting up worker pool: `to_workers.#{hostname}.#{workerpool}`")
+  logger.info("Starting up worker pool: `workers.#{hostname}.#{workerpool}`")
 
   logger.info("Scanning servers from BASEDIR: #{BASEDIR}")
   server_dirs = Enumerator.new do |enum|
@@ -81,7 +81,7 @@ EM.run do
     when "IDENT"
       exchange_dir.publish({ host: hostname,
                              workerpool: workerpool}.to_json,
-                           :routing_key => "to_hq",
+                           :routing_key => "hq",
                            :timestamp => Time.now.to_i,
                            :type => 'receipt.directive',
                            :correlation_id => metadata[:message_id],
@@ -92,7 +92,7 @@ EM.run do
       logger.info("Received IDENT directive from HQ.")
     when "LIST"
       exchange_dir.publish({ servers: server_dirs.to_a }.to_json,
-                           :routing_key => "to_hq",
+                           :routing_key => "hq",
                            :timestamp => Time.now.to_i,
                            :type => 'receipt.directive',
                            :correlation_id => metadata[:message_id],
@@ -115,7 +115,7 @@ EM.run do
           uw_diskused_perc: usw.uw_diskused_perc,
         }
         exchange_dir.publish({ usage: retval }.to_json,
-                             :routing_key => "to_hq",
+                             :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.directive',
                              :correlation_id => metadata[:message_id],
@@ -132,7 +132,7 @@ EM.run do
       EM.defer do
         usw = Usagewatch
         exchange_dir.publish({ usage: {$1 =>  usw.public_send($1)} }.to_json,
-                             :routing_key => "to_hq",
+                             :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.directive',
                              :correlation_id => metadata[:message_id],
@@ -178,7 +178,7 @@ EM.run do
         end
   
         exchange_dir.publish(retval.to_json,
-                             :routing_key => "to_hq",
+                             :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.directive',
                              :correlation_id => metadata[:message_id],
@@ -188,7 +188,7 @@ EM.run do
                              :message_id => SecureRandom.uuid)
       else #if unknown directive
         exchange_dir.publish({}.to_json,
-                             :routing_key => "to_hq",
+                             :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.directive',
                              :correlation_id => metadata[:message_id],
@@ -226,7 +226,7 @@ EM.run do
           puts line
           exchange_stdout.publish({ msg: line,
                                     server_name: server_name }.to_json,
-                                  :routing_key => "to_hq",
+                                  :routing_key => "hq",
                                   :timestamp => Time.now.to_i,
                                   :type => 'stdout',
                                   :correlation_id => metadata[:message_id],
@@ -270,7 +270,7 @@ EM.run do
           logger.error("Networking error caught with s3 client!")
           logger.debug(e)
           exchange_cmd.publish(return_object.to_json,
-                               :routing_key => "to_hq",
+                               :routing_key => "hq",
                                :timestamp => Time.now.to_i,
                                :type => 'receipt.command',
                                :correlation_id => metadata[:message_id],
@@ -284,7 +284,7 @@ EM.run do
           logger.error("IOError caught!")
           logger.error("Worker process may no longer be attached to child process?")
           exchange_cmd.publish(return_object.to_json,
-                               :routing_key => "to_hq",
+                               :routing_key => "hq",
                                :timestamp => Time.now.to_i,
                                :type => 'receipt.command',
                                :correlation_id => metadata[:message_id],
@@ -297,7 +297,7 @@ EM.run do
         rescue ArgumentError => e
           logger.error("ArgumentError caught!")
           exchange_cmd.publish(return_object.to_json,
-                               :routing_key => "to_hq",
+                               :routing_key => "hq",
                                :timestamp => Time.now.to_i,
                                :type => 'receipt.command',
                                :correlation_id => metadata[:message_id],
@@ -312,7 +312,7 @@ EM.run do
           logger.debug(e)
           logger.debug(return_object)
           exchange_cmd.publish(return_object.to_json,
-                               :routing_key => "to_hq",
+                               :routing_key => "hq",
                                :timestamp => Time.now.to_i,
                                :type => 'receipt.command',
                                :correlation_id => metadata[:message_id],
@@ -326,7 +326,7 @@ EM.run do
           return_object[:success] = true
           logger.debug(return_object)
           exchange_cmd.publish(return_object.to_json,
-                               :routing_key => "to_hq",
+                               :routing_key => "hq",
                                :timestamp => Time.now.to_i,
                                :type => 'receipt.command',
                                :correlation_id => metadata[:message_id],
@@ -341,7 +341,7 @@ EM.run do
     else #method not defined in api
       cb = Proc.new { |retval|
         exchange_cmd.publish(return_object.to_json,
-                             :routing_key => "to_hq",
+                             :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.command',
                              :correlation_id => metadata[:message_id],
@@ -359,7 +359,7 @@ EM.run do
 
   ch
   .queue('', exclusive: true)
-  .bind(exchange_cmd, routing_key: "to_workers.#{hostname}.#{workerpool}")
+  .bind(exchange_cmd, routing_key: "workers.#{hostname}.#{workerpool}")
   .subscribe do |delivery_info, metadata, payload|
     #logger.debug("received cmd: #{payload}")
     command_handler.call delivery_info, metadata, payload
@@ -367,7 +367,7 @@ EM.run do
 
   ch
   .queue('')
-  .bind(exchange_dir, routing_key: "to_workers")
+  .bind(exchange_dir, routing_key: "workers")
   .subscribe do |delivery_info, metadata, payload|
     #logger.debug("received dir: #{payload}")
     directive_handler.call delivery_info, metadata, payload
@@ -375,7 +375,7 @@ EM.run do
 
   exchange_dir.publish({ host: hostname,
                          workerpool: workerpool }.to_json,
-                       :routing_key => "to_hq",
+                       :routing_key => "hq",
                        :timestamp => Time.now.to_i,
                        :type => 'receipt.directive',
                        :correlation_id => nil,

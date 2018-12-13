@@ -43,7 +43,7 @@ class HQ < Sinatra::Base
 
   ch
   .queue('', exclusive: true)
-  .bind(exchange_stdout, :routing_key => "to_hq")
+  .bind(exchange_stdout, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
     settings.sockets.each { |ws| ws.send(payload) }
   end
@@ -53,7 +53,7 @@ class HQ < Sinatra::Base
 
   ch
   .queue('', exclusive: true)
-  .bind(exchange_dir, :routing_key => "to_hq")
+  .bind(exchange_dir, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
     parsed = JSON.parse payload
     case metadata.type
@@ -72,7 +72,7 @@ class HQ < Sinatra::Base
                                    region: 'us-west-1'
                                  }
                                }.to_json,
-                               :routing_key => "to_workers",
+                               :routing_key => "workers",
                                :type => "directive",
                                :message_id => SecureRandom.uuid,
                                :timestamp => Time.now.to_i)
@@ -141,7 +141,7 @@ class HQ < Sinatra::Base
                 case body_parameters['dir']
                 when 'spawn'
                   exchange_dir.publish({SPAWN: {workerpool: workerpool}}.to_json,
-                                        :routing_key => "to_managers.#{hostname}",
+                                        :routing_key => "managers.#{hostname}",
                                         :type => "directive",
                                         :message_id => uuid,
                                         :timestamp => Time.now.to_i)
@@ -165,7 +165,7 @@ class HQ < Sinatra::Base
                 puts "sending hostname:workerpool `#{hostname}:#{workerpool}` command:"
                 puts body_parameters
                 exchange_cmd.publish(body_parameters.to_json,
-                                     :routing_key => "to_workers.#{hostname}.#{workerpool}",
+                                     :routing_key => "workers.#{hostname}.#{workerpool}",
                                      :type => "command",
                                      :message_id => uuid,
                                      :timestamp => Time.now.to_i)
@@ -218,7 +218,7 @@ class HQ < Sinatra::Base
     end
 
     exchange_cmd.publish('LIST',
-                         :routing_key => "to_workers",
+                         :routing_key => "workers",
                          :type => "directive",
                          :message_id => uuid,
                          :timestamp => Time.now.to_i)
@@ -239,7 +239,7 @@ class HQ < Sinatra::Base
       halt 404, {server_name: servername, success: false}.to_json
     else
       exchange_cmd.publish(body_parameters.to_json,
-                           :routing_key => "to_workers.#{worker}",
+                           :routing_key => "workers.#{worker}",
                            :type => "command",
                            :message_id => uuid,
                            :timestamp => Time.now.to_i)
@@ -260,12 +260,12 @@ class HQ < Sinatra::Base
 
 ## startup broadcasts for IDENT
   exchange_dir.publish('IDENT',
-                       :routing_key => "to_workers",
+                       :routing_key => "workers",
                        :type => "directive",
                        :message_id => SecureRandom.uuid,
                        :timestamp => Time.now.to_i)
   exchange_dir.publish('IDENT',
-                       :routing_key => "to_managers",
+                       :routing_key => "managers",
                        :type => "directive",
                        :message_id => SecureRandom.uuid,
                        :timestamp => Time.now.to_i)
