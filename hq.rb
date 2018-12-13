@@ -136,7 +136,7 @@ class HQ < Sinatra::Base
               if !available_managers.include?(hostname)
                 puts "hostname `#{hostname}` not found."
               else
-                puts "sending hostname:workerpool `#{hostname}:#{workerpool}` directive:"
+                puts "sending `#{hostname}:#{workerpool}` directive:"
                 puts body_parameters
                 case body_parameters['dir']
                 when 'spawn'
@@ -146,7 +146,11 @@ class HQ < Sinatra::Base
                                         :message_id => uuid,
                                         :timestamp => Time.now.to_i)
                 when 'remove'
-                  # not yet implemented
+                  exchange_dir.publish({REMOVE: {workerpool: workerpool}}.to_json,
+                                        :routing_key => "managers.#{hostname}",
+                                        :type => "directive",
+                                        :message_id => uuid,
+                                        :timestamp => Time.now.to_i)
                 end
               end
             elsif body_parameters.key?('cmd') then

@@ -92,6 +92,12 @@ EM.run do
                                            directive: 'SPAWN' },
                              :message_id => SecureRandom.uuid)
 
+      elsif json_in.key?('REMOVE') then
+        require_relative 'pools'
+
+        worker = json_in['REMOVE']['workerpool']
+        pool_inst = Pools.new
+        pool_inst.remove_pool(worker)
       end #if
     end #case
   } #end directive_handler
