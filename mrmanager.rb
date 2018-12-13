@@ -23,20 +23,20 @@ EM.run do
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
     when 'IDENT'
-      exchange_dir.publish({ host: hostname }.to_json,
-                           :routing_key => "to_hq",
-                           :timestamp => Time.now.to_i,
-                           :type => 'receipt.directive',
-                           :correlation_id => metadata[:message_id],
-                           :headers => { hostname: hostname,
-                                         directive: 'IDENT' },
-                           :message_id => SecureRandom.uuid)
+      EM::Timer.new(1) {
+        exchange_dir.publish({ host: hostname }.to_json,
+                             :routing_key => "hq",
+                             :timestamp => Time.now.to_i,
+                             :type => 'receipt.directive',
+                             :correlation_id => metadata[:message_id],
+                             :headers => { hostname: hostname,
+                                           directive: 'IDENT' },
+                             :message_id => SecureRandom.uuid)
+      }
     else
       json_in = JSON.parse payload
       if json_in.key?('SPAWN') then
-        fp = File.expand_path(File.dirname(__FILE__))
-
-        def as_user(user, filepath, &block)
+        def as_user(user, script_path, &block)
           # http://brizzled.clapper.org/blog/2011/01/01/running-a-ruby-block-as-another-user/
           begin
             require 'etc'
@@ -52,8 +52,8 @@ EM.run do
             require 'fileutils'
             require 'pathname'
 
-            if File.realdirpath(filepath) != File.realdirpath("/home/#{user}/mineos-ruby") then
-              FileUtils.cp_r filepath, "/home/#{user}/"
+            if File.realdirpath(script_path) != File.realdirpath("/home/#{user}/mineos-ruby") then
+              FileUtils.cp_r script_path, "/home/#{user}/"
             end
             FileUtils.chown_R user, user, "/home/#{user}/"
           end
@@ -67,14 +67,15 @@ EM.run do
 
             # Invoke the caller's block of code.
             Dir.chdir("/home/#{user}/mineos-ruby") do
-              block.call()
+              block.call(user)
             end
           end
         end
 
+        script_path = File.expand_path(File.dirname(__FILE__))
         worker = json_in['SPAWN']['workerpool']
-        as_user(worker, fp) do
-          exec "ruby worker.rb"
+        as_user(worker, script_path) do |user|
+          exec "ruby worker.rb --basedir /home/#{user}/minecraft"
         end
 
         pid = 5
@@ -82,7 +83,7 @@ EM.run do
         exchange_dir.publish({ host: hostname,
                                workerpool: worker,
                                pid: 5 }.to_json,
-                             :routing_key => "to_hq",
+                             :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.directive',
                              :correlation_id => metadata[:message_id],
@@ -97,20 +98,20 @@ EM.run do
 
   ch
   .queue('')
-  .bind(exchange_dir, routing_key: "to_managers.#{hostname}")
+  .bind(exchange_dir, routing_key: "managers.#{hostname}")
   .subscribe do |delivery_info, metadata, payload|
     directive_handler.call delivery_info, metadata, payload
   end
 
   ch
   .queue('')
-  .bind(exchange_dir, routing_key: "to_managers")
+  .bind(exchange_dir, routing_key: "managers")
   .subscribe do |delivery_info, metadata, payload|
     directive_handler.call delivery_info, metadata, payload
   end
 
   exchange_dir.publish({ host: hostname }.to_json,
-                       :routing_key => "to_hq",
+                       :routing_key => "hq",
                        :timestamp => Time.now.to_i,
                        :type => 'receipt.directive',
                        :correlation_id => nil,

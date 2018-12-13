@@ -14,7 +14,7 @@ class ServerTest < Minitest::Test
     @@workerpool = ENV['USER']
 
     require 'yaml'
-    mineos_config = YAML::load_file('../config/secrets.yml')
+    mineos_config = YAML::load_file('config/secrets.yml')
 
     require 'bunny'
     conn = Bunny.new(:host => mineos_config['rabbitmq']['host'],
@@ -46,7 +46,7 @@ class ServerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_dir, :routing_key => "to_hq")
+      .bind(@exchange_dir, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal(@@hostname, parsed['host'])
@@ -63,7 +63,7 @@ class ServerTest < Minitest::Test
       end
 
       @exchange_dir.publish('IDENT',
-                            :routing_key => "to_workers",
+                            :routing_key => "workers",
                             :type => "directive",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
@@ -78,10 +78,10 @@ class ServerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_cmd, :routing_key => "to_hq")
+      .bind(@exchange_cmd, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         @exchange_dir.publish('LIST',
-                              :routing_key => "to_workers",
+                              :routing_key => "workers",
                               :type => "directive",
                               :message_id => guid,
                               :timestamp => Time.now.to_i)
@@ -90,7 +90,7 @@ class ServerTest < Minitest::Test
 
       @ch
       .queue('')
-      .bind(@exchange_dir, :routing_key => "to_hq")
+      .bind(@exchange_dir, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         servers = parsed['servers']
@@ -109,7 +109,7 @@ class ServerTest < Minitest::Test
 
       @exchange_cmd.publish({ cmd: 'create',
                               server_name: 'test'}.to_json,
-                            :routing_key => "to_workers.#{@@hostname}.#{@@workerpool}",
+                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
                             :type => "command",
                             :message_id => SecureRandom.uuid,
                             :timestamp => Time.now.to_i)
@@ -124,7 +124,7 @@ class ServerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_cmd, :routing_key => "to_hq")
+      .bind(@exchange_cmd, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal('test', parsed['server_name'])
@@ -146,7 +146,7 @@ class ServerTest < Minitest::Test
       @exchange_cmd.publish({ cmd: 'create',
                               server_name: 'test',
                               server_type: ':conventional_jar' }.to_json,
-                            :routing_key => "to_workers.#{@@hostname}.#{@@workerpool}",
+                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
                             :type => "command",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
@@ -161,7 +161,7 @@ class ServerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_cmd, :routing_key => "to_hq")
+      .bind(@exchange_cmd, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal('test', parsed['server_name'])
@@ -182,7 +182,7 @@ class ServerTest < Minitest::Test
 
       @exchange_cmd.publish({ cmd: 'create',
                               server_name: 'test' }.to_json,
-                            :routing_key => "to_workers.#{@@hostname}.#{@@workerpool}",
+                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
                             :type => "command",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
@@ -196,34 +196,34 @@ class ServerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_cmd, :routing_key => "to_hq")
+      .bind(@exchange_cmd, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         case step
         when 0
           @exchange_cmd.publish({ cmd: 'modify_sc', server_name: 'test', attr: 'jarfile',
                                   value: 'minecraft_server.1.8.9.jar', section: 'java' }.to_json,
-                                :routing_key => "to_workers.#{@@hostname}.#{@@workerpool}",
+                                :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
                                 :timestamp => Time.now.to_i,
                                 :type => 'command',
                                 :message_id => SecureRandom.uuid)
         when 1
           @exchange_cmd.publish({ cmd: 'modify_sc', server_name: 'test', attr: 'java_xmx',
                                   value: 384, section: 'java' }.to_json,
-                                :routing_key => "to_workers.#{@@hostname}.#{@@workerpool}",
+                                :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
                                 :timestamp => Time.now.to_i,
                                 :type => 'command',
                                 :message_id => SecureRandom.uuid)
         when 2
           @exchange_cmd.publish({ cmd: 'modify_sc', server_name: 'test', attr: 'java_xms',
                                   value: 384, section: 'java' }.to_json,
-                                :routing_key => "to_workers.#{@@hostname}.#{@@workerpool}",
+                                :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
                                 :timestamp => Time.now.to_i,
                                 :type => 'command',
                                 :message_id => SecureRandom.uuid)
         when 3
           @exchange_cmd.publish({ cmd: 'get_start_args', server_name: 'test', type: ':conventional_jar' }.to_json,
-                                :routing_key => "to_workers.#{@@hostname}.#{@@workerpool}",
+                                :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
                                 :timestamp => Time.now.to_i,
                                 :type => 'command',
                                 :message_id => SecureRandom.uuid)
@@ -249,7 +249,7 @@ class ServerTest < Minitest::Test
       end
  
       @exchange_cmd.publish({ cmd: 'create', server_name: 'test', server_type: ':conventional_jar' }.to_json,
-                            :routing_key => "to_workers.#{@@hostname}.#{@@workerpool}",
+                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
                             :timestamp => Time.now.to_i,
                             :type => 'command',
                             :message_id => SecureRandom.uuid)
@@ -264,7 +264,7 @@ class ServerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_dir, :routing_key => "to_hq")
+      .bind(@exchange_dir, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert(parsed['usage'].key?('uw_cpuused'))
@@ -286,7 +286,7 @@ class ServerTest < Minitest::Test
       end
 
       @exchange_dir.publish('USAGE',
-                            :routing_key => "to_workers",
+                            :routing_key => "workers",
                             :type => "directive",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
@@ -301,7 +301,7 @@ class ServerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_dir, :routing_key => "to_hq")
+      .bind(@exchange_dir, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert(parsed['usage'].key?('uw_cpuused'))
@@ -319,7 +319,7 @@ class ServerTest < Minitest::Test
       end
 
       @exchange_dir.publish('uw_cpuused',
-                            :routing_key => "to_workers",
+                            :routing_key => "workers",
                             :type => 'directive',
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
@@ -334,7 +334,7 @@ class ServerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_cmd, :routing_key => "to_hq")
+      .bind(@exchange_cmd, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal('test', parsed['server_name'])
@@ -355,7 +355,7 @@ class ServerTest < Minitest::Test
       end
  
       @exchange_cmd.publish({ cmd: 'fakeo', server_name: 'test' }.to_json,
-                            :routing_key => "to_workers.#{@@hostname}.#{@@workerpool}",
+                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
                             :type => "command",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
@@ -370,7 +370,7 @@ class ServerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_cmd, :routing_key => "to_hq")
+      .bind(@exchange_cmd, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal('test', parsed['server_name'])
@@ -391,7 +391,7 @@ class ServerTest < Minitest::Test
       end
  
       @exchange_cmd.publish({ cmd: 'modify_sp', server_name: 'test' }.to_json,
-                            :routing_key => "to_workers.#{@@hostname}.#{@@workerpool}",
+                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
                             :type => "command",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
@@ -406,7 +406,7 @@ class ServerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_cmd, :routing_key => "to_hq")
+      .bind(@exchange_cmd, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         step += 1
         assert(false)
@@ -414,7 +414,7 @@ class ServerTest < Minitest::Test
       end
  
       @exchange_cmd.publish({ cmd: 'create', server_name: 'test', server_type: ':conventional_jar' }.to_json,
-                            :routing_key => "to_workers.#{@@hostname}.someawesomeserver",
+                            :routing_key => "workers.#{@@hostname}.someawesomeserver",
                             :timestamp => Time.now.to_i,
                             :type => 'command',
                             :message_id => SecureRandom.uuid)
@@ -434,12 +434,12 @@ class ServerTest < Minitest::Test
     step = 0
 
     require 'yaml'
-    config = YAML::load_file('../config/objstore.yml')
+    config = YAML::load_file('config/objstore.yml')
 
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_dir, :routing_key => "to_hq")
+      .bind(@exchange_dir, :routing_key => "hq")
       .subscribe() do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal(guid, metadata.correlation_id)
@@ -465,7 +465,7 @@ class ServerTest < Minitest::Test
                                region: 'us-west-1'
                               }
                             }.to_json,
-                            :routing_key => "to_workers",
+                            :routing_key => "workers",
                             :type => "directive",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
@@ -478,12 +478,12 @@ class ServerTest < Minitest::Test
     step = 0
 
     require 'yaml'
-    config = YAML::load_file('../config/objstore.yml')
+    config = YAML::load_file('config/objstore.yml')
 
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_dir, :routing_key => "to_hq")
+      .bind(@exchange_dir, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal(guid, metadata.correlation_id)
@@ -509,7 +509,7 @@ class ServerTest < Minitest::Test
                                 region: 'us-west-1'
                               }
                             }.to_json,
-                            :routing_key => "to_workers",
+                            :routing_key => "workers",
                             :type => "directive",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
@@ -524,7 +524,7 @@ class ServerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_dir, :routing_key => "to_hq")
+      .bind(@exchange_dir, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal(guid, metadata.correlation_id)
@@ -539,7 +539,7 @@ class ServerTest < Minitest::Test
       end
 
       @exchange_dir.publish({ THISISFAKE: {} }.to_json,
-                            :routing_key => "to_workers",
+                            :routing_key => "workers",
                             :type => "directive",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)

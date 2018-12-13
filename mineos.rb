@@ -62,9 +62,10 @@ class Server
   # Create directory paths in filesystem
   # Includes /var/games/minecraft/{servers,backup,archive}/servername
   def create_paths
+    require 'fileutils'
     [:cwd, :bwd, :awd].each do |directory|
       begin
-        Dir.mkdir @env[directory]
+        FileUtils.mkdir_p @env[directory]
       rescue Errno::EEXIST
       end
     end

@@ -37,7 +37,7 @@ class ManagerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_dir, :routing_key => "to_hq")
+      .bind(@exchange_dir, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal(@@hostname, parsed['host'])
@@ -52,7 +52,7 @@ class ManagerTest < Minitest::Test
       end
 
       @exchange_dir.publish('IDENT',
-                            :routing_key => "to_managers",
+                            :routing_key => "managers",
                             :type => "directive",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
@@ -67,7 +67,7 @@ class ManagerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_dir, :routing_key => "to_hq")
+      .bind(@exchange_dir, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         case metadata[:headers]['directive']
@@ -110,7 +110,7 @@ class ManagerTest < Minitest::Test
       end
 
       @exchange_dir.publish({SPAWN: {workerpool: @@workerpool}}.to_json,
-                            :routing_key => "to_managers.#{@@hostname}",
+                            :routing_key => "managers.#{@@hostname}",
                             :type => "directive",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
@@ -126,7 +126,7 @@ class ManagerTest < Minitest::Test
     EM.run do
       @ch
       .queue('')
-      .bind(@exchange_dir, :routing_key => "to_hq")
+      .bind(@exchange_dir, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         case metadata[:headers]['directive']
@@ -169,7 +169,7 @@ class ManagerTest < Minitest::Test
       end
 
       @exchange_dir.publish({SPAWN: {workerpool: new_user}}.to_json,
-                            :routing_key => "to_managers.#{@@hostname}",
+                            :routing_key => "managers.#{@@hostname}",
                             :type => "directive",
                             :message_id => guid,
                             :timestamp => Time.now.to_i)
