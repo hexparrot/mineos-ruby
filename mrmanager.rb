@@ -23,14 +23,16 @@ EM.run do
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
     when 'IDENT'
-      exchange_dir.publish({ host: hostname }.to_json,
-                           :routing_key => "hq",
-                           :timestamp => Time.now.to_i,
-                           :type => 'receipt.directive',
-                           :correlation_id => metadata[:message_id],
-                           :headers => { hostname: hostname,
-                                         directive: 'IDENT' },
-                           :message_id => SecureRandom.uuid)
+      EM::Timer.new(1) {
+        exchange_dir.publish({ host: hostname }.to_json,
+                             :routing_key => "hq",
+                             :timestamp => Time.now.to_i,
+                             :type => 'receipt.directive',
+                             :correlation_id => metadata[:message_id],
+                             :headers => { hostname: hostname,
+                                           directive: 'IDENT' },
+                             :message_id => SecureRandom.uuid)
+      }
     else
       json_in = JSON.parse payload
       if json_in.key?('SPAWN') then
