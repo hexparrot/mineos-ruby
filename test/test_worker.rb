@@ -14,7 +14,7 @@ class ServerTest < Minitest::Test
     @@workerpool = ENV['USER']
 
     require 'yaml'
-    mineos_config = YAML::load_file('../config/secrets.yml')
+    mineos_config = YAML::load_file('config/secrets.yml')
 
     require 'bunny'
     conn = Bunny.new(:host => mineos_config['rabbitmq']['host'],
@@ -434,7 +434,7 @@ class ServerTest < Minitest::Test
     step = 0
 
     require 'yaml'
-    config = YAML::load_file('../config/objstore.yml')
+    config = YAML::load_file('config/objstore.yml')
 
     EM.run do
       @ch
@@ -478,7 +478,7 @@ class ServerTest < Minitest::Test
     step = 0
 
     require 'yaml'
-    config = YAML::load_file('../config/objstore.yml')
+    config = YAML::load_file('config/objstore.yml')
 
     EM.run do
       @ch

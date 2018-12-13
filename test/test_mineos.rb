@@ -1,5 +1,5 @@
 require 'minitest/autorun'
-require './mineos'
+require_relative '../mineos'
 
 class ServerTest < Minitest::Test
 
