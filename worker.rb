@@ -79,28 +79,30 @@ EM.run do
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
     when "IDENT"
-      exchange_dir.publish({ host: hostname,
+      logger.info("Received IDENT directive from HQ.")
+      exchange_dir.publish({ hostname: hostname,
                              workerpool: workerpool}.to_json,
                            :routing_key => "hq",
                            :timestamp => Time.now.to_i,
-                           :type => 'receipt.directive',
+                           :type => 'receipt',
                            :correlation_id => metadata[:message_id],
                            :headers => { hostname: hostname,
                                          workerpool: workerpool,
                                          directive: 'IDENT' },
                            :message_id => SecureRandom.uuid)
-      logger.info("Received IDENT directive from HQ.")
+      logger.info("Sent IDENT receipt to HQ.")
     when "LIST"
+      logger.info("Received LIST directive from HQ.")
       exchange_dir.publish({ servers: server_dirs.to_a }.to_json,
                            :routing_key => "hq",
                            :timestamp => Time.now.to_i,
-                           :type => 'receipt.directive',
+                           :type => 'receipt',
                            :correlation_id => metadata[:message_id],
                            :headers => { hostname: hostname,
                                          workerpool: workerpool,
                                          directive: 'LIST' },
                            :message_id => SecureRandom.uuid)
-      logger.info("Received LIST directive from HQ.")
+      logger.info("Sent LIST receipt to HQ.")
       logger.debug({servers: server_dirs.to_a})
     when "USAGE"
       require 'usagewatch'
@@ -117,7 +119,7 @@ EM.run do
         exchange_dir.publish({ usage: retval }.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
-                             :type => 'receipt.directive',
+                             :type => 'receipt',
                              :correlation_id => metadata[:message_id],
                              :headers => { hostname: hostname,
                                            workerpool: workerpool,
@@ -134,7 +136,7 @@ EM.run do
         exchange_dir.publish({ usage: {$1 =>  usw.public_send($1)} }.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
-                             :type => 'receipt.directive',
+                             :type => 'receipt',
                              :correlation_id => metadata[:message_id],
                              :headers => { hostname: hostname,
                                            workerpool: workerpool,
@@ -190,7 +192,7 @@ EM.run do
         exchange_dir.publish({}.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
-                             :type => 'receipt.directive',
+                             :type => 'receipt',
                              :correlation_id => metadata[:message_id],
                              :headers => { hostname: hostname,
                                            workerpool: workerpool,
@@ -295,11 +297,12 @@ EM.run do
                                            },
                                :message_id => SecureRandom.uuid)
         rescue ArgumentError => e
+          # e.g., too few arguments
           logger.error("ArgumentError caught!")
           exchange_cmd.publish(return_object.to_json,
                                :routing_key => "hq",
                                :timestamp => Time.now.to_i,
-                               :type => 'receipt.command',
+                               :type => 'receipt',
                                :correlation_id => metadata[:message_id],
                                :headers => { hostname: hostname,
                                              workerpool: workerpool,
@@ -328,7 +331,7 @@ EM.run do
           exchange_cmd.publish(return_object.to_json,
                                :routing_key => "hq",
                                :timestamp => Time.now.to_i,
-                               :type => 'receipt.command',
+                               :type => 'receipt',
                                :correlation_id => metadata[:message_id],
                                :headers => { hostname: hostname,
                                              workerpool: workerpool,
