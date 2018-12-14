@@ -145,12 +145,32 @@ EM.run do
         logger.info("Received USAGE directive from HQ.")
         logger.debug({usage: {$1 =>  usw.public_send($1)}})
       end
+    when "VERIFY_OBJSTORE"
+      require 'aws-sdk-s3'
+
+      logger.info("Received VERIFY_OBJSTORE directive from HQ.")
+      EM.defer do
+        if Aws.config.empty? then
+          logger.info("Sending nil ACK back to HQ.")
+          exchange_dir.publish({ AWSCREDS: nil }.to_json,
+                               :routing_key => "hq",
+                               :timestamp => Time.now.to_i,
+                               :type => 'receipt',
+                               :correlation_id => metadata[:message_id],
+                               :headers => { hostname: hostname,
+                                             workerpool: workerpool,
+                                             directive: 'VERIFY_OBJSTORE' },
+                               :message_id => SecureRandom.uuid)
+        end
+      end
     else
       json_in = JSON.parse payload
       if json_in.key?('AWSCREDS') then
-        parsed = json_in['AWSCREDS']
-  
         require 'aws-sdk-s3'
+
+        logger.info("Received AWSCREDS directive from HQ.")
+
+        parsed = json_in['AWSCREDS']
         Aws.config.update({
           endpoint: parsed['endpoint'],
           access_key_id: parsed['access_key_id'],
@@ -158,31 +178,21 @@ EM.run do
           force_path_style: true,
           region: parsed['region']
         })
-  
-        logger.info("Received AWSCREDS directive from HQ.")
 
         begin
           c = Aws::S3::Client.new
         rescue ArgumentError => e
-          retval = {
-            endpoint: nil,
-            access_key_id: nil,
-            secret_access_key: nil,
-            force_path_style: true,
-            region: nil
-          } 
+          retval = false
           logger.error("Endpoint invalid and Aws::S3::Client.new failed. Returning:")
-          logger.debug(retval)
         else
-          retval = Aws.config
+          retval = true
           logger.info("Endpoint valid and Aws::S3::Client.new returned no error")
-          #logger.debug(retval)
         end
   
         exchange_dir.publish(retval.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
-                             :type => 'receipt.directive',
+                             :type => 'receipt',
                              :correlation_id => metadata[:message_id],
                              :headers => { hostname: hostname,
                                            workerpool: workerpool,
@@ -366,6 +376,14 @@ EM.run do
   .subscribe do |delivery_info, metadata, payload|
     #logger.debug("received cmd: #{payload}")
     command_handler.call delivery_info, metadata, payload
+  end
+
+  ch
+  .queue('')
+  .bind(exchange_dir, routing_key: "workers.#{hostname}.#{workerpool}")
+  .subscribe do |delivery_info, metadata, payload|
+    #logger.debug("received dir: #{payload}")
+    directive_handler.call delivery_info, metadata, payload
   end
 
   ch

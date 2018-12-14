@@ -465,92 +465,144 @@ class ServerTest < Minitest::Test
     assert_equal(0, step)
   end
 
-  def test_get_aws_creds
-    guid = SecureRandom.uuid
+  def test_query_objstore_creds
+    # request workers to reply if they need object store creds (likely aws)
+    guid1 = SecureRandom.uuid
+    guid2 = SecureRandom.uuid
     step = 0
 
     require 'yaml'
     config = YAML::load_file('config/objstore.yml')
 
+    # 2) worker returns it does not have the creds
     EM.run do
       @ch
       .queue('')
       .bind(@exchange_dir, :routing_key => "hq")
       .subscribe() do |delivery_info, metadata, payload|
-        parsed = JSON.parse payload
-        assert_equal(guid, metadata.correlation_id)
-        assert_equal('receipt.directive', metadata.type)
-        assert_equal('AWSCREDS', metadata[:headers]['directive'])
-        assert_equal(@@hostname, metadata[:headers]['hostname'])
-        assert_equal(@@workerpool, metadata[:headers]['workerpool'])
-        assert_equal(config['object_store']['host'], parsed['endpoint'])
-        assert_equal(config['object_store']['access_key'], parsed['access_key_id'])
-        assert_equal(config['object_store']['secret_key'], parsed['secret_access_key'])
-        assert_equal(true, parsed['force_path_style'])
-        assert_equal('us-west-1', parsed['region'])
-        assert(metadata.timestamp)
-        assert(metadata.message_id)
-        step += 1
-        EM.stop
+        case step
+        when 0
+          # ack no creds stored by worker
+          parsed = JSON.parse payload
+          assert_nil(parsed['AWSCREDS'])
+          assert_equal(guid1, metadata.correlation_id)
+          assert_equal('receipt', metadata.type)
+          assert_equal('VERIFY_OBJSTORE', metadata[:headers]['directive'])
+          assert_equal(@@hostname, metadata[:headers]['hostname'])
+          assert_equal(@@workerpool, metadata[:headers]['workerpool'])
+          assert(metadata.timestamp)
+          assert(metadata.message_id)
+
+          # send creds directly to worker
+          @exchange_dir.publish({ AWSCREDS: {
+                                    endpoint: config['object_store']['host'],
+                                    access_key_id: config['object_store']['access_key'],
+                                    secret_access_key: config['object_store']['secret_key'],
+                                    region: 'us-west-1'
+                                  }
+                                }.to_json,
+                                :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                                :type => "directive",
+                                :message_id => guid2,
+                                :timestamp => Time.now.to_i)
+          step += 1
+        when 1
+          # verify creds tested and connection successful
+          # nil = none found, false = invalid, true = working
+          parsed = JSON.parse payload
+          assert_equal(true, parsed)
+          assert_equal(guid2, metadata.correlation_id)
+          assert_equal('receipt', metadata.type)
+          assert_equal('AWSCREDS', metadata[:headers]['directive'])
+          assert_equal(@@hostname, metadata[:headers]['hostname'])
+          assert_equal(@@workerpool, metadata[:headers]['workerpool'])
+          assert(metadata.timestamp)
+          assert(metadata.message_id)
+          step += 1
+          EM.stop
+        end
       end
 
-      @exchange_dir.publish({ AWSCREDS: {
-                               endpoint: config['object_store']['host'],
-                               access_key_id: config['object_store']['access_key'],
-                               secret_access_key: config['object_store']['secret_key'],
-                               region: 'us-west-1'
-                              }
-                            }.to_json,
+      guid = SecureRandom.uuid
+      # 1) send directive requesting workers to check they have AWSCREDS
+      @exchange_dir.publish('VERIFY_OBJSTORE',
                             :routing_key => "workers",
                             :type => "directive",
-                            :message_id => guid,
+                            :message_id => guid1,
                             :timestamp => Time.now.to_i)
+
     end
-    assert_equal(1, step)
+    assert_equal(2, step)
   end
 
   def test_get_aws_creds_when_invalid_endpoint
-    guid = SecureRandom.uuid
+    # request workers to reply if they need object store creds (likely aws)
+    guid1 = SecureRandom.uuid
+    guid2 = SecureRandom.uuid
     step = 0
 
     require 'yaml'
     config = YAML::load_file('config/objstore.yml')
 
+    # 2) worker returns it does not have the creds
     EM.run do
       @ch
       .queue('')
       .bind(@exchange_dir, :routing_key => "hq")
-      .subscribe do |delivery_info, metadata, payload|
-        parsed = JSON.parse payload
-        assert_equal(guid, metadata.correlation_id)
-        assert_equal('receipt.directive', metadata.type)
-        assert_equal('AWSCREDS', metadata[:headers]['directive'])
-        assert_equal(@@hostname, metadata[:headers]['hostname'])
-        assert_equal(@@workerpool, metadata[:headers]['workerpool'])
-        assert_nil(parsed['endpoint'])
-        assert_nil(parsed['access_key_id'])
-        assert_nil(parsed['secret_access_key'])
-        assert_equal(true, parsed['force_path_style'])
-        assert_nil(parsed['region'])
-        assert(metadata.timestamp)
-        assert(metadata.message_id)
-        step += 1
-        EM.stop
+      .subscribe() do |delivery_info, metadata, payload|
+        case step
+        when 0
+          # ack no creds stored by worker
+          parsed = JSON.parse payload
+          assert_nil(parsed['AWSCREDS'])
+          assert_equal(guid1, metadata.correlation_id)
+          assert_equal('receipt', metadata.type)
+          assert_equal('VERIFY_OBJSTORE', metadata[:headers]['directive'])
+          assert_equal(@@hostname, metadata[:headers]['hostname'])
+          assert_equal(@@workerpool, metadata[:headers]['workerpool'])
+          assert(metadata.timestamp)
+          assert(metadata.message_id)
+
+          # send creds directly to worker
+          @exchange_dir.publish({ AWSCREDS: {
+                                    endpoint: 'fakeendpoint',
+                                    access_key_id: config['object_store']['access_key'],
+                                    secret_access_key: config['object_store']['secret_key'],
+                                    region: 'us-west-1'
+                                  }
+                                }.to_json,
+                                :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                                :type => "directive",
+                                :message_id => guid2,
+                                :timestamp => Time.now.to_i)
+          step += 1
+        when 1
+          # verify creds tested and connection successful
+          # nil = none found, false = invalid, true = working
+          parsed = JSON.parse payload
+          assert_equal(false, parsed)
+          assert_equal(guid2, metadata.correlation_id)
+          assert_equal('receipt', metadata.type)
+          assert_equal('AWSCREDS', metadata[:headers]['directive'])
+          assert_equal(@@hostname, metadata[:headers]['hostname'])
+          assert_equal(@@workerpool, metadata[:headers]['workerpool'])
+          assert(metadata.timestamp)
+          assert(metadata.message_id)
+          step += 1
+          EM.stop
+        end
       end
 
-      @exchange_dir.publish({ AWSCREDS: {
-                                endpoint: 'fakeendpoint',
-                                access_key_id: config['object_store']['access_key'],
-                                secret_access_key: config['object_store']['secret_key'],
-                                region: 'us-west-1'
-                              }
-                            }.to_json,
+      guid = SecureRandom.uuid
+      # 1) send directive requesting workers to check they have AWSCREDS
+      @exchange_dir.publish('VERIFY_OBJSTORE',
                             :routing_key => "workers",
                             :type => "directive",
-                            :message_id => guid,
+                            :message_id => guid1,
                             :timestamp => Time.now.to_i)
+
     end
-    assert_equal(1, step)
+    assert_equal(2, step)
   end
 
   def test_worker_bogus_directive
