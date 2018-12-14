@@ -398,7 +398,7 @@ EM.run do
                          workerpool: workerpool }.to_json,
                        :routing_key => "hq",
                        :timestamp => Time.now.to_i,
-                       :type => 'receipt.directive',
+                       :type => 'receipt',
                        :correlation_id => nil,
                        :headers => { hostname: hostname,
                                      workerpool: workerpool,

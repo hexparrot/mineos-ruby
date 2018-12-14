@@ -42,7 +42,7 @@ class ManagerTest < Minitest::Test
         parsed = JSON.parse payload
         assert_equal(@@hostname, parsed['host'])
         assert_equal(guid, metadata.correlation_id)
-        assert_equal('receipt.directive', metadata.type)
+        assert_equal('receipt', metadata.type)
         assert_equal('IDENT', metadata[:headers]['directive'])
         assert_equal(@@hostname, metadata[:headers]['hostname'])
         assert(metadata.timestamp)
@@ -74,7 +74,7 @@ class ManagerTest < Minitest::Test
         when 'SPAWN'
           assert_equal(@@hostname, parsed['host'])
           assert_equal(guid, metadata.correlation_id)
-          assert_equal('receipt.directive', metadata.type)
+          assert_equal('receipt', metadata.type)
           assert_equal('SPAWN', metadata[:headers]['directive'])
           assert_equal(@@hostname, metadata[:headers]['hostname'])
           assert_equal(@@workerpool, metadata[:headers]['workerpool'])
@@ -86,7 +86,7 @@ class ManagerTest < Minitest::Test
             # coming from spawned process
             assert_equal(@@hostname, parsed['host'])
             assert_equal(@@workerpool, parsed['workerpool'])
-            assert_equal('receipt.directive', metadata.type)
+            assert_equal('receipt', metadata.type)
             assert_equal('IDENT', metadata[:headers]['directive'])
             assert_equal(@@hostname, metadata[:headers]['hostname'])
             assert_equal(@@workerpool, metadata[:headers]['workerpool'])
@@ -97,9 +97,8 @@ class ManagerTest < Minitest::Test
             # coming from manager
             assert_equal(@@hostname, parsed['host'])
             assert_equal(@@workerpool, parsed['workerpool'])
-            assert(parsed['pid'])
             assert_equal(guid, metadata.correlation_id)
-            assert_equal('receipt.directive', metadata.type)
+            assert_equal('receipt', metadata.type)
             assert_equal('IDENT', metadata[:headers]['directive'])
             assert_equal(@@hostname, metadata[:headers]['hostname'])
             assert(metadata.timestamp)
@@ -133,7 +132,7 @@ class ManagerTest < Minitest::Test
         when 'SPAWN'
           assert_equal(@@hostname, parsed['host'])
           assert_equal(guid, metadata.correlation_id)
-          assert_equal('receipt.directive', metadata.type)
+          assert_equal('receipt', metadata.type)
           assert_equal('SPAWN', metadata[:headers]['directive'])
           assert_equal(@@hostname, metadata[:headers]['hostname'])
           assert_equal(new_user, metadata[:headers]['workerpool'])
@@ -145,7 +144,7 @@ class ManagerTest < Minitest::Test
             # coming from spawned process
             assert_equal(@@hostname, parsed['host'])
             assert_equal(new_user, parsed['workerpool'])
-            assert_equal('receipt.directive', metadata.type)
+            assert_equal('receipt', metadata.type)
             assert_equal('IDENT', metadata[:headers]['directive'])
             assert_equal(@@hostname, metadata[:headers]['hostname'])
             assert_equal(new_user, metadata[:headers]['workerpool'])
@@ -156,9 +155,8 @@ class ManagerTest < Minitest::Test
             # coming from manager
             assert_equal(@@hostname, parsed['host'])
             assert_equal(new_user, parsed['workerpool'])
-            assert(parsed['pid'])
             assert_equal(guid, metadata.correlation_id)
-            assert_equal('receipt.directive', metadata.type)
+            assert_equal('receipt', metadata.type)
             assert_equal('IDENT', metadata[:headers]['directive'])
             assert_equal(@@hostname, metadata[:headers]['hostname'])
             assert(metadata.timestamp)

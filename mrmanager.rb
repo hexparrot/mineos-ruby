@@ -23,19 +23,20 @@ EM.run do
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
     when 'IDENT'
-      EM::Timer.new(1) {
+      EM::Timer.new(1) do
         exchange_dir.publish({ host: hostname }.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
-                             :type => 'receipt.directive',
+                             :type => 'receipt',
                              :correlation_id => metadata[:message_id],
                              :headers => { hostname: hostname,
                                            directive: 'IDENT' },
                              :message_id => SecureRandom.uuid)
-      }
+      end
     else
       json_in = JSON.parse payload
       if json_in.key?('SPAWN') then
+
         def as_user(user, script_path, &block)
           # http://brizzled.clapper.org/blog/2011/01/01/running-a-ruby-block-as-another-user/
           begin
@@ -52,8 +53,13 @@ EM.run do
             require 'fileutils'
             require 'pathname'
 
-            if File.realdirpath(script_path) != File.realdirpath("/home/#{user}/mineos-ruby") then
-              FileUtils.cp_r script_path, "/home/#{user}/"
+            begin
+              if File.realdirpath(script_path) != File.realdirpath("/home/#{user}/mineos-ruby") then
+                FileUtils.cp_r script_path, "/home/#{user}/"
+              end
+            rescue Errno::ENOENT => e
+              FileUtils.mkdir_p "/home/#{user}/"
+              retry
             end
             FileUtils.chown_R user, user, "/home/#{user}/"
           end
@@ -78,14 +84,11 @@ EM.run do
           exec "ruby worker.rb --basedir /home/#{user}/minecraft"
         end
 
-        pid = 5
-
         exchange_dir.publish({ host: hostname,
-                               workerpool: worker,
-                               pid: 5 }.to_json,
+                               workerpool: worker }.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
-                             :type => 'receipt.directive',
+                             :type => 'receipt',
                              :correlation_id => metadata[:message_id],
                              :headers => { hostname: hostname,
                                            workerpool: worker, 
@@ -119,7 +122,7 @@ EM.run do
   exchange_dir.publish({ host: hostname }.to_json,
                        :routing_key => "hq",
                        :timestamp => Time.now.to_i,
-                       :type => 'receipt.directive',
+                       :type => 'directive',
                        :correlation_id => nil,
                        :headers => { hostname: hostname,
                                      directive: 'IDENT' },
