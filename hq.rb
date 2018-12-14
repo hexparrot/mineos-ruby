@@ -56,54 +56,73 @@ class HQ < Sinatra::Base
   .bind(exchange_dir, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
     parsed = JSON.parse payload
-    case metadata.type
-    when 'receipt.directive'
-      case metadata[:headers]['directive']
-      when 'IDENT'
-        if parsed['workerpool'] then
-          #this is coming from a worker
-          available_workers.add(parsed['workerpool'])
 
-          # on receipt of IDENT, send object store creds
-          exchange_dir.publish({ AWSCREDS: {
-                                   endpoint: s3_config['object_store']['host'],
-                                   access_key_id: s3_config['object_store']['access_key'],
-                                   secret_access_key: s3_config['object_store']['secret_key'],
-                                   region: 'us-west-1'
-                                 }
-                               }.to_json,
-                               :routing_key => "workers",
-                               :type => "directive",
-                               :message_id => SecureRandom.uuid,
-                               :timestamp => Time.now.to_i)
-        else
-          puts "adding new manager: #{parsed['host']}"
-          available_managers.add(parsed['host'])
-        end
-      when 'LIST'
-        yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
-        promise_retvals[metadata.correlation_id][:hosts].each do |obj|
-          if obj[:workerpool] == metadata[:headers]['workerpool'] then
-            obj[:servers] = parsed['servers']
-            obj[:timestamp] = metadata[:timestamp]
-            yet_to_respond -= 1
-          end
-        end
-  
-        if yet_to_respond == 0 then
-          #timeout needs to be added for if server does not respond
-          #this mechanism expected to fail without 100% reply rate
-          promises[metadata.correlation_id].call 200, promise_retvals[metadata.correlation_id].to_json
-        end
-      end
-    when 'receipt.command'
-      if metadata[:headers]['exception'] then
-        promises[metadata.correlation_id].call 400, payload
-      elsif parsed['cmd'] == 'create' then
-        promises[metadata.correlation_id].call 201, payload
+    case metadata[:headers]['directive']
+    when 'IDENT'
+      if parsed['workerpool'] then
+        # this is IDENT from a worker.rb process
+        puts "worker.rb process reply: #{parsed['workerpool']}"
+        available_workers.add(parsed['workerpool'])
+
+        host = metadata[:headers]['hostname']
+        workerpool = metadata[:headers]['workerpool']
+        exchange_dir.publish('VERIFY_OBJSTORE',
+                             :routing_key => "workers.#{host}.#{workerpool}",
+                             :type => "directive",
+                             :message_id => SecureRandom.uuid,
+                             :timestamp => Time.now.to_i)
       else
-        promises[metadata.correlation_id].call 200, payload
+        # this is IDENT from a mrmanager.rb process
+        puts "mrmanager.rb process reply: #{parsed['host']}"
+        available_managers.add(parsed['host'])
       end
+    when 'LIST'
+      yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
+      promise_retvals[metadata.correlation_id][:hosts].each do |obj|
+        if obj[:workerpool] == metadata[:headers]['workerpool'] then
+          obj[:servers] = parsed['servers']
+          obj[:timestamp] = metadata[:timestamp]
+          yet_to_respond -= 1
+        end
+      end
+  
+      if yet_to_respond == 0 then
+        #timeout needs to be added for if server does not respond
+        #this mechanism expected to fail without 100% reply rate
+        promises[metadata.correlation_id].call 200, promise_retvals[metadata.correlation_id].to_json
+      end
+    when 'VERIFY_OBJSTORE'
+      if parsed['AWSCREDS'].nil? then
+        # on receipt of non-true VERIFY_OBJSTORE, send object store creds
+        host = metadata[:headers]['hostname']
+        workerpool = metadata[:headers]['workerpool']
+        exchange_dir.publish({ AWSCREDS: {
+                                 endpoint: s3_config['object_store']['host'],
+                                 access_key_id: s3_config['object_store']['access_key'],
+                                 secret_access_key: s3_config['object_store']['secret_key'],
+                                 region: 'us-west-1'
+                               }
+                             }.to_json,
+                             :routing_key => "workers.#{host}.#{workerpool}",
+                             :type => "directive",
+                             :message_id => SecureRandom.uuid,
+                             :timestamp => Time.now.to_i)
+      end
+    end
+  end
+
+  ch
+  .queue('', exclusive: true)
+  .bind(exchange_cmd, :routing_key => "hq")
+  .subscribe do |delivery_info, metadata, payload|
+    parsed = JSON.parse payload
+
+    if metadata[:headers]['exception'] then
+      promises[metadata.correlation_id].call 400, payload
+    elsif parsed['cmd'] == 'create' then
+      promises[metadata.correlation_id].call 201, payload
+    else
+      promises[metadata.correlation_id].call 200, payload
     end
   end
  
