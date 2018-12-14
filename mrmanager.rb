@@ -35,34 +35,40 @@ EM.run do
       end
     else
       json_in = JSON.parse payload
+      worker = json_in['SPAWN']['workerpool']
+
       if json_in.key?('SPAWN') then
+        require_relative 'pools'
+        require 'fileutils'
+
+        pool_inst = Pools.new
+        begin
+          pool_inst.create_pool(worker, 'mypassword')
+        rescue RuntimeError => e
+          case e.message
+          when 'pool already exists, aborting creation'
+            # allow through but check if HOMEDIR exists
+            FileUtils.mkdir_p "/home/#{worker}/" if !Dir.exist?("/home/#{worker}")
+          when 'poolname does not fit allowable regex, aborting creation'
+            # normal user running worker.rb?
+            FileUtils.mkdir_p "/home/#{worker}/" if !Dir.exist?("/home/#{worker}")
+          else
+            raise
+          end
+        end
+
+        rb_script_path = File.expand_path(File.dirname(__FILE__))
+
+        # if the path dest is not the same as path source, copy git repo
+        if File.realdirpath(rb_script_path) != File.realdirpath("/home/#{worker}/mineos-ruby") then
+          FileUtils.cp_r rb_script_path, "/home/#{worker}/"
+          FileUtils.chown_R worker, worker, "/home/#{worker}/"
+        end
 
         def as_user(user, script_path, &block)
-          # http://brizzled.clapper.org/blog/2011/01/01/running-a-ruby-block-as-another-user/
-          begin
-            require 'etc'
-            # Find the user in the password database.
-            u = (user.is_a? Integer) ? Etc.getpwuid(user) : Etc.getpwnam(user)
-          rescue ArgumentError => e
-            #invalid name caught here
-            require_relative 'pools'
-            pool_inst = Pools.new
-            pool_inst.create_pool(user, 'mypassword')
-            retry
-          else
-            require 'fileutils'
-            require 'pathname'
-
-            begin
-              if File.realdirpath(script_path) != File.realdirpath("/home/#{user}/mineos-ruby") then
-                FileUtils.cp_r script_path, "/home/#{user}/"
-              end
-            rescue Errno::ENOENT => e
-              FileUtils.mkdir_p "/home/#{user}/"
-              retry
-            end
-            FileUtils.chown_R user, user, "/home/#{user}/"
-          end
+          require 'etc'
+          # Find the user in the password database.
+          u = (user.is_a? Integer) ? Etc.getpwuid(user) : Etc.getpwnam(user)
 
           # Fork the child process. Process.fork will run a given block of code
           # in the child process.
@@ -78,9 +84,7 @@ EM.run do
           end
         end
 
-        script_path = File.expand_path(File.dirname(__FILE__))
-        worker = json_in['SPAWN']['workerpool']
-        as_user(worker, script_path) do |user|
+        as_user(worker, rb_script_path) do |user|
           exec "ruby worker.rb --basedir /home/#{user}/minecraft"
         end
 
