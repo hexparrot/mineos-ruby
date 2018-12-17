@@ -35,12 +35,12 @@ EM.run do
       end
     else
       json_in = JSON.parse payload
-      worker = json_in['SPAWN']['workerpool']
 
       if json_in.key?('SPAWN') then
         require_relative 'pools'
         require 'fileutils'
 
+        worker = json_in['SPAWN']['workerpool']
         pool_inst = Pools.new
         begin
           pool_inst.create_pool(worker, 'mypassword')
