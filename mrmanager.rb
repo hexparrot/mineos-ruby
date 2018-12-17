@@ -72,16 +72,21 @@ EM.run do
 
           # Fork the child process. Process.fork will run a given block of code
           # in the child process.
-          Process.fork do
-            # We're in the child. Set the process's user ID.
-            Process.gid = Process.egid = u.uid
-            Process.uid = Process.euid = u.uid
+          p1 = Process.fork do
+            Process.setsid
+            p2 = Process.fork do
+              # We're in the child. Set the process's user ID.
+              Process.gid = Process.egid = u.uid
+              Process.uid = Process.euid = u.uid
 
-            # Invoke the caller's block of code.
-            Dir.chdir("/home/#{user}/mineos-ruby") do
-              block.call(user)
-            end
-          end
+              # Invoke the caller's block of code.
+              Dir.chdir("/home/#{user}/mineos-ruby") do
+                block.call(user)
+              end
+            end #p2
+            Process.detach(p2)
+          end #p1
+          Process.detach(p1)
         end
 
         as_user(worker, rb_script_path) do |user|
