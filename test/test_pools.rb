@@ -11,6 +11,7 @@ class PoolTest < Minitest::Test
 
   def teardown
     system "userdel -f #{@pool} 2>/dev/null"
+    system "groupdel -f #{@pool} 2>/dev/null"
     system "rm -rf #{@pool_home} 2>/dev/null"
   end
 
@@ -117,6 +118,26 @@ class PoolTest < Minitest::Test
     Etc.endgrent
 
     assert_equal(end_groups.length, before_groups.length)
+  end
+
+  def test_create_pool_group_already_exists
+    before_pools = @inst.list_pools
+    assert(!before_pools.find { |u| u == @pool })
+    assert !Dir.exist?(@pool_home)
+
+    # group shouldn't exist, now create it
+    system "groupadd #{@pool} 2>/dev/null"
+
+    # create pool will fail because group exists
+    # useradd: group _throwaway-500 exists - if you want to add this user to that group, use -g.
+    success = @inst.create_pool(@pool, 'mypassword')
+    assert(success)
+    assert Dir.exist?(@pool_home)
+
+    after_pools = @inst.list_pools
+    diff = after_pools - before_pools
+    assert_equal(@pool, diff.first)
+    assert_equal(1, diff.length)
   end
 end
 
