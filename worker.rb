@@ -379,7 +379,7 @@ EM.run do
   end
 
   ch
-  .queue('')
+  .queue('', exclusive: true)
   .bind(exchange_dir, routing_key: "workers.#{hostname}.#{workerpool}")
   .subscribe do |delivery_info, metadata, payload|
     #logger.debug("received dir: #{payload}")
