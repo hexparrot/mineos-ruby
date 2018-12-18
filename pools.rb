@@ -18,15 +18,15 @@ class Pools
     raise RuntimeError.new('poolname does not fit allowable regex, aborting creation') if !poolname.match(VALID_NAME_REGEX)
     raise RuntimeError.new('pool already exists, aborting creation') if self.list_pools.include?(poolname)
 
-    candidates = Set.new
+    match = Set.new
     while e = Etc.getgrent do
-      candidates << e[:name] if e[:name].match(VALID_NAME_REGEX)
+      match << e[:name] if e[:name] == poolname
     end
     Etc.endgrent
 
     salted_pw = password.crypt("$5$a1")
 
-    if candidates.length > 0 then #group alread exists but user doesn't exist?
+    if match.first then #group alread exists but user doesn't exist?
       gid = Etc.getgrnam(poolname)['gid']
       system "useradd -g #{gid} -m -p '#{salted_pw}' #{poolname} 2>/dev/null"
     else

@@ -127,6 +127,7 @@ class PoolTest < Minitest::Test
 
     # group shouldn't exist, now create it
     system "groupadd #{@pool} 2>/dev/null"
+    expected_gid = Etc.getgrnam(@pool)['gid']
 
     # create pool will fail because group exists
     # useradd: group _throwaway-500 exists - if you want to add this user to that group, use -g.
@@ -134,10 +135,45 @@ class PoolTest < Minitest::Test
     assert(success)
     assert Dir.exist?(@pool_home)
 
+    assigned_gid = Etc.getpwnam(@pool)['gid']
+    assert(assigned_gid, expected_gid)
+
     after_pools = @inst.list_pools
     diff = after_pools - before_pools
     assert_equal(@pool, diff.first)
     assert_equal(1, diff.length)
+  end
+
+  def test_create_pool_group_already_exists
+    before_pools = @inst.list_pools
+    assert(!before_pools.find { |u| u == @pool })
+    assert !Dir.exist?(@pool_home)
+
+    # creating decoy regex-matched group
+    system "groupadd _aa-555 2>/dev/null"
+    decoy_gid = Etc.getgrnam("_aa-555")['gid']
+
+    # real group shouldn't exist
+
+    # creating other decoy regex-matched group
+    system "groupadd _throwaway-555 2>/dev/null"
+    decoy2_gid = Etc.getgrnam("_aa-555")['gid']
+
+    success = @inst.create_pool(@pool, 'mypassword')
+    assert(success)
+    assert Dir.exist?(@pool_home)
+
+    expected_gid = Etc.getgrnam(@pool)['gid']
+    assigned_gid = Etc.getpwnam(@pool)['gid']
+    assert(assigned_gid, expected_gid)
+
+    after_pools = @inst.list_pools
+    diff = after_pools - before_pools
+    assert_equal(@pool, diff.first)
+    assert_equal(1, diff.length)
+
+    system "groupdel -f _aa-555 2>/dev/null"
+    system "groupdel -f _throwaway-555 2>/dev/null"
   end
 end
 
