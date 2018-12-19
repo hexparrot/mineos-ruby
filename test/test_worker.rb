@@ -25,8 +25,7 @@ class ServerTest < Minitest::Test
     conn.start
 
     @ch = conn.create_channel
-    @exchange_cmd = @ch.direct('commands')
-    @exchange_dir = @ch.topic('directives')
+    @exchange = @ch.topic('backend')
 
     require 'fileutils'
     FileUtils.rm_rf(@@basedir)
@@ -47,8 +46,8 @@ class ServerTest < Minitest::Test
 
     EM.run do
       @ch
-      .queue('')
-      .bind(@exchange_dir, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal(@@hostname, parsed['hostname'])
@@ -64,11 +63,11 @@ class ServerTest < Minitest::Test
         EM.stop
       end
 
-      @exchange_dir.publish('IDENT',
-                            :routing_key => "workers",
-                            :type => "directive",
-                            :message_id => guid,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish('IDENT',
+                        :routing_key => "workers",
+                        :type => "directive",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
@@ -83,23 +82,23 @@ class ServerTest < Minitest::Test
     EM.run do
       # 2) worker returns receipt of creation
       @ch
-      .queue('')
-      .bind(@exchange_cmd, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         # 3) hq sends out request for LIST of servers
         # no assertions, since create command not important here
-        @exchange_dir.publish('LIST',
-                              :routing_key => "workers",
-                              :type => "directive",
-                              :message_id => guid,
-                              :timestamp => Time.now.to_i)
+        @exchange.publish('LIST',
+                          :routing_key => "workers",
+                          :type => "directive",
+                          :message_id => guid,
+                          :timestamp => Time.now.to_i)
         step += 1
       end
 
       # 4) worker returns receipt of LIST
       @ch
-      .queue('')
-      .bind(@exchange_dir, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         servers = parsed['servers']
@@ -117,12 +116,12 @@ class ServerTest < Minitest::Test
       end
 
       # 1) create server via cmd channel
-      @exchange_cmd.publish({ cmd: 'create',
-                              server_name: 'test' }.to_json,
-                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
-                            :type => "command",
-                            :message_id => SecureRandom.uuid,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish({ cmd: 'create',
+                          server_name: 'test' }.to_json,
+                        :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                        :type => "command",
+                        :message_id => SecureRandom.uuid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(2, step)
   end
@@ -134,8 +133,8 @@ class ServerTest < Minitest::Test
     EM.run do
       # 2) worker returns receipt of creation
       @ch
-      .queue('')
-      .bind(@exchange_cmd, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal('test', parsed['server_name'])
@@ -154,13 +153,13 @@ class ServerTest < Minitest::Test
       end
  
       # 1) create server via cmd channel
-      @exchange_cmd.publish({ cmd: 'create',
-                              server_name: 'test',
-                              server_type: ':conventional_jar' }.to_json,
-                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
-                            :type => "command",
-                            :message_id => guid,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish({ cmd: 'create',
+                          server_name: 'test',
+                          server_type: ':conventional_jar' }.to_json,
+                        :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                        :type => "command",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
@@ -172,8 +171,8 @@ class ServerTest < Minitest::Test
     EM.run do
       # 2) worker returns receipt of creation
       @ch
-      .queue('')
-      .bind(@exchange_cmd, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal('test', parsed['server_name'])
@@ -193,12 +192,12 @@ class ServerTest < Minitest::Test
       end
 
       # 1) create server via cmd channel
-      @exchange_cmd.publish({ cmd: 'create',
-                              server_name: 'test' }.to_json,
-                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
-                            :type => "command",
-                            :message_id => guid,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish({ cmd: 'create',
+                          server_name: 'test' }.to_json,
+                        :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                        :type => "command",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
@@ -211,42 +210,42 @@ class ServerTest < Minitest::Test
 
       # 2) worker returns receipt
       @ch
-      .queue('')
-      .bind(@exchange_cmd, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         case step
         when 0
           # 2.1) setting s.c. settings, not testing reply here
-          @exchange_cmd.publish({ cmd: 'modify_sc', server_name: 'test', attr: 'jarfile',
-                                  value: 'minecraft_server.1.8.9.jar', section: 'java' }.to_json,
-                                :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
-                                :timestamp => Time.now.to_i,
-                                :type => 'command',
-                                :message_id => SecureRandom.uuid)
+          @exchange.publish({ cmd: 'modify_sc', server_name: 'test', attr: 'jarfile',
+                              value: 'minecraft_server.1.8.9.jar', section: 'java' }.to_json,
+                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                            :timestamp => Time.now.to_i,
+                            :type => 'command',
+                            :message_id => SecureRandom.uuid)
         when 1
           # 2.2) continuation
-          @exchange_cmd.publish({ cmd: 'modify_sc', server_name: 'test', attr: 'java_xmx',
-                                  value: 384, section: 'java' }.to_json,
-                                :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
-                                :timestamp => Time.now.to_i,
-                                :type => 'command',
-                                :message_id => SecureRandom.uuid)
+          @exchange.publish({ cmd: 'modify_sc', server_name: 'test', attr: 'java_xmx',
+                              value: 384, section: 'java' }.to_json,
+                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                            :timestamp => Time.now.to_i,
+                            :type => 'command',
+                            :message_id => SecureRandom.uuid)
         when 2
           # 2.3) continuation
-          @exchange_cmd.publish({ cmd: 'modify_sc', server_name: 'test', attr: 'java_xms',
-                                  value: 384, section: 'java' }.to_json,
-                                :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
-                                :timestamp => Time.now.to_i,
-                                :type => 'command',
-                                :message_id => SecureRandom.uuid)
+          @exchange.publish({ cmd: 'modify_sc', server_name: 'test', attr: 'java_xms',
+                              value: 384, section: 'java' }.to_json,
+                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                            :timestamp => Time.now.to_i,
+                            :type => 'command',
+                            :message_id => SecureRandom.uuid)
         when 3
           # 2.4) requesting worker send start args
-          @exchange_cmd.publish({ cmd: 'get_start_args', server_name: 'test', type: ':conventional_jar' }.to_json,
-                                :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
-                                :timestamp => Time.now.to_i,
-                                :type => 'command',
-                                :message_id => SecureRandom.uuid)
+          @exchange.publish({ cmd: 'get_start_args', server_name: 'test', type: ':conventional_jar' }.to_json,
+                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                            :timestamp => Time.now.to_i,
+                            :type => 'command',
+                            :message_id => SecureRandom.uuid)
         when 4
           retval = parsed['retval']
           assert_equal("/usr/bin/java", retval[0])
@@ -269,11 +268,11 @@ class ServerTest < Minitest::Test
       end
  
       # 1) create server via cmd channel
-      @exchange_cmd.publish({ cmd: 'create', server_name: 'test', server_type: ':conventional_jar' }.to_json,
-                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
-                            :timestamp => Time.now.to_i,
-                            :type => 'command',
-                            :message_id => SecureRandom.uuid)
+      @exchange.publish({ cmd: 'create', server_name: 'test', server_type: ':conventional_jar' }.to_json,
+                        :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                        :timestamp => Time.now.to_i,
+                        :type => 'command',
+                        :message_id => SecureRandom.uuid)
     end
     assert_equal(5, step)
   end
@@ -286,8 +285,8 @@ class ServerTest < Minitest::Test
     EM.run do
       # 2) worker returns receipt of USAGE directive
       @ch
-      .queue('')
-      .bind(@exchange_dir, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert(parsed['usage'].key?('uw_cpuused'))
@@ -309,11 +308,11 @@ class ServerTest < Minitest::Test
       end
 
       # 1) request workers return usage
-      @exchange_dir.publish('USAGE',
-                            :routing_key => "workers",
-                            :type => "directive",
-                            :message_id => guid,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish('USAGE',
+                        :routing_key => "workers",
+                        :type => "directive",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
@@ -326,8 +325,8 @@ class ServerTest < Minitest::Test
     # 2) worker returns receipt of USAGE directive
     EM.run do
       @ch
-      .queue('')
-      .bind(@exchange_dir, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert(parsed['usage'].key?('uw_cpuused'))
@@ -345,11 +344,11 @@ class ServerTest < Minitest::Test
       end
   
       # 1) request workers return specific usage
-      @exchange_dir.publish('uw_cpuused',
-                            :routing_key => "workers",
-                            :type => 'directive',
-                            :message_id => guid,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish('uw_cpuused',
+                        :routing_key => "workers",
+                        :type => 'directive',
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
@@ -362,8 +361,8 @@ class ServerTest < Minitest::Test
     EM.run do
     # 2) worker returns receipt of BOGUS directive
       @ch
-      .queue('')
-      .bind(@exchange_cmd, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal('test', parsed['server_name'])
@@ -384,11 +383,11 @@ class ServerTest < Minitest::Test
       end
  
       # 1) request workers perform made-up command
-      @exchange_cmd.publish({ cmd: 'fakeo', server_name: 'test' }.to_json,
-                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
-                            :type => "command",
-                            :message_id => guid,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish({ cmd: 'fakeo', server_name: 'test' }.to_json,
+                        :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                        :type => "command",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
@@ -401,8 +400,8 @@ class ServerTest < Minitest::Test
     # 2) worker returns receipt indicating no action performed
     EM.run do
       @ch
-      .queue('')
-      .bind(@exchange_cmd, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal('test', parsed['server_name'])
@@ -423,11 +422,11 @@ class ServerTest < Minitest::Test
       end
  
       # 1) request workers perform a command
-      @exchange_cmd.publish({ cmd: 'modify_sp', server_name: 'test' }.to_json,
-                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
-                            :type => "command",
-                            :message_id => guid,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish({ cmd: 'modify_sp', server_name: 'test' }.to_json,
+                        :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                        :type => "command",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
@@ -440,8 +439,8 @@ class ServerTest < Minitest::Test
     # 2) no worker returns receipt (also no action performed)
     EM.run do
       @ch
-      .queue('')
-      .bind(@exchange_cmd, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         step += 1
         assert(false)
@@ -449,11 +448,11 @@ class ServerTest < Minitest::Test
       end
  
       # 1) request worker perform a command but route it incorrectly to fake workerpool
-      @exchange_cmd.publish({ cmd: 'create', server_name: 'test', server_type: ':conventional_jar' }.to_json,
-                            :routing_key => "workers.#{@@hostname}.someawesomeserver",
-                            :timestamp => Time.now.to_i,
-                            :type => 'command',
-                            :message_id => SecureRandom.uuid)
+      @exchange.publish({ cmd: 'create', server_name: 'test', server_type: ':conventional_jar' }.to_json,
+                        :routing_key => "workers.#{@@hostname}.someawesomeserver",
+                        :timestamp => Time.now.to_i,
+                        :type => 'command',
+                        :message_id => SecureRandom.uuid)
 
       EM.add_timer(1) {
         assert !Dir.exist?(File.join(@@basedir, 'servers', 'test'))
@@ -477,8 +476,8 @@ class ServerTest < Minitest::Test
     # 2) worker returns it does not have the creds
     EM.run do
       @ch
-      .queue('')
-      .bind(@exchange_dir, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe() do |delivery_info, metadata, payload|
         case step
         when 0
@@ -494,17 +493,17 @@ class ServerTest < Minitest::Test
           assert(metadata.message_id)
 
           # send creds directly to worker
-          @exchange_dir.publish({ AWSCREDS: {
-                                    endpoint: config['object_store']['host'],
-                                    access_key_id: config['object_store']['access_key'],
-                                    secret_access_key: config['object_store']['secret_key'],
-                                    region: 'us-west-1'
-                                  }
-                                }.to_json,
-                                :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
-                                :type => "directive",
-                                :message_id => guid2,
-                                :timestamp => Time.now.to_i)
+          @exchange.publish({ AWSCREDS: {
+                                endpoint: config['object_store']['host'],
+                                access_key_id: config['object_store']['access_key'],
+                                secret_access_key: config['object_store']['secret_key'],
+                                region: 'us-west-1'
+                              }
+                            }.to_json,
+                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                            :type => "directive",
+                            :message_id => guid2,
+                            :timestamp => Time.now.to_i)
           step += 1
         when 1
           # verify creds tested and connection successful
@@ -525,11 +524,11 @@ class ServerTest < Minitest::Test
 
       guid = SecureRandom.uuid
       # 1) send directive requesting workers to check they have AWSCREDS
-      @exchange_dir.publish('VERIFY_OBJSTORE',
-                            :routing_key => "workers",
-                            :type => "directive",
-                            :message_id => guid1,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish('VERIFY_OBJSTORE',
+                        :routing_key => "workers",
+                        :type => "directive",
+                        :message_id => guid1,
+                        :timestamp => Time.now.to_i)
 
     end
     assert_equal(2, step)
@@ -547,8 +546,8 @@ class ServerTest < Minitest::Test
     # 2) worker returns it does not have the creds
     EM.run do
       @ch
-      .queue('')
-      .bind(@exchange_dir, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe() do |delivery_info, metadata, payload|
         case step
         when 0
@@ -564,17 +563,17 @@ class ServerTest < Minitest::Test
           assert(metadata.message_id)
 
           # send creds directly to worker
-          @exchange_dir.publish({ AWSCREDS: {
-                                    endpoint: 'fakeendpoint',
-                                    access_key_id: config['object_store']['access_key'],
-                                    secret_access_key: config['object_store']['secret_key'],
-                                    region: 'us-west-1'
-                                  }
-                                }.to_json,
-                                :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
-                                :type => "directive",
-                                :message_id => guid2,
-                                :timestamp => Time.now.to_i)
+          @exchange.publish({ AWSCREDS: {
+                                endpoint: 'fakeendpoint',
+                                access_key_id: config['object_store']['access_key'],
+                                secret_access_key: config['object_store']['secret_key'],
+                                region: 'us-west-1'
+                              }
+                            }.to_json,
+                            :routing_key => "workers.#{@@hostname}.#{@@workerpool}",
+                            :type => "directive",
+                            :message_id => guid2,
+                            :timestamp => Time.now.to_i)
           step += 1
         when 1
           # verify creds tested and connection successful
@@ -595,11 +594,11 @@ class ServerTest < Minitest::Test
 
       guid = SecureRandom.uuid
       # 1) send directive requesting workers to check they have AWSCREDS
-      @exchange_dir.publish('VERIFY_OBJSTORE',
-                            :routing_key => "workers",
-                            :type => "directive",
-                            :message_id => guid1,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish('VERIFY_OBJSTORE',
+                        :routing_key => "workers",
+                        :type => "directive",
+                        :message_id => guid1,
+                        :timestamp => Time.now.to_i)
 
     end
     assert_equal(2, step)
@@ -613,8 +612,8 @@ class ServerTest < Minitest::Test
     # 2) worker rewrites directive to bogus in receipt
     EM.run do
       @ch
-      .queue('')
-      .bind(@exchange_dir, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal(guid, metadata.correlation_id)
@@ -629,11 +628,11 @@ class ServerTest < Minitest::Test
       end
 
       # 1) request workers perform a command
-      @exchange_dir.publish({ THISISFAKE: {} }.to_json,
-                            :routing_key => "workers",
-                            :type => "directive",
-                            :message_id => guid,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish({ THISISFAKE: {} }.to_json,
+                        :routing_key => "workers",
+                        :type => "directive",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
 

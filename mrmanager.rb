@@ -18,13 +18,13 @@ EM.run do
   conn.start
 
   ch = conn.create_channel
-  exchange_dir = ch.topic("directives")
+  exchange = ch.topic("backend")
 
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
     when 'IDENT'
       EM::Timer.new(1) do
-        exchange_dir.publish({ host: hostname }.to_json,
+        exchange.publish({ host: hostname }.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt',
@@ -36,35 +36,14 @@ EM.run do
     else
       json_in = JSON.parse payload
 
-      if json_in.key?('SPAWN') then
+      if json_in.key?('MKPOOL') then
         require_relative 'pools'
-        require 'fileutils'
 
-        worker = json_in['SPAWN']['workerpool']
+        worker = json_in['MKPOOL']['workerpool']
         pool_inst = Pools.new
-        begin
-          pool_inst.create_pool(worker, 'mypassword')
-        rescue RuntimeError => e
-          case e.message
-          when 'pool already exists, aborting creation'
-            # allow through but check if HOMEDIR exists
-            FileUtils.mkdir_p "/home/#{worker}/" if !Dir.exist?("/home/#{worker}")
-          when 'poolname does not fit allowable regex, aborting creation'
-            # normal user running worker.rb?
-            FileUtils.mkdir_p "/home/#{worker}/" if !Dir.exist?("/home/#{worker}")
-          else
-            raise
-          end
-        end
-
-        rb_script_path = File.expand_path(File.dirname(__FILE__))
-
-        # if the path dest is not the same as path source, copy git repo
-        if File.realdirpath(rb_script_path) != File.realdirpath("/home/#{worker}/mineos-ruby") then
-          FileUtils.cp_r rb_script_path, "/home/#{worker}/"
-          FileUtils.chown_R worker, worker, "/home/#{worker}/"
-        end
-
+        pool_inst.create_pool(worker, 'mypassword')
+        puts "Created pool: #{worker}"
+      elsif json_in.key?('SPAWN') then
         def as_user(user, script_path, &block)
           require 'etc'
           # Find the user in the password database.
@@ -80,7 +59,7 @@ EM.run do
               Process.uid = Process.euid = u.uid
 
               # Invoke the caller's block of code.
-              Dir.chdir("/home/#{user}/mineos-ruby") do
+              Dir.chdir(script_path) do
                 block.call(user)
               end
             end #p2
@@ -89,20 +68,23 @@ EM.run do
           Process.detach(p1)
         end
 
+        worker = json_in['SPAWN']['workerpool']
+        rb_script_path = File.expand_path(File.dirname(__FILE__))
+
         as_user(worker, rb_script_path) do |user|
           exec "ruby worker.rb --basedir /home/#{user}/minecraft"
         end
 
-        exchange_dir.publish({ host: hostname,
-                               workerpool: worker }.to_json,
-                             :routing_key => "hq",
-                             :timestamp => Time.now.to_i,
-                             :type => 'receipt',
-                             :correlation_id => metadata[:message_id],
-                             :headers => { hostname: hostname,
-                                           workerpool: worker, 
-                                           directive: 'SPAWN' },
-                             :message_id => SecureRandom.uuid)
+        exchange.publish({ host: hostname,
+                           workerpool: worker }.to_json,
+                         :routing_key => "hq",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt',
+                         :correlation_id => metadata[:message_id],
+                         :headers => { hostname: hostname,
+                                       workerpool: worker, 
+                                       directive: 'SPAWN' },
+                         :message_id => SecureRandom.uuid)
 
       elsif json_in.key?('REMOVE') then
         require_relative 'pools'
@@ -110,32 +92,26 @@ EM.run do
         worker = json_in['REMOVE']['workerpool']
         pool_inst = Pools.new
         pool_inst.remove_pool(worker)
+        puts "Removed pool: #{worker}"
       end #if
     end #case
   } #end directive_handler
 
   ch
-  .queue('')
-  .bind(exchange_dir, routing_key: "managers.#{hostname}")
+  .queue("managers")
+  .bind(exchange, routing_key: "managers.#")
   .subscribe do |delivery_info, metadata, payload|
     directive_handler.call delivery_info, metadata, payload
   end
 
-  ch
-  .queue('')
-  .bind(exchange_dir, routing_key: "managers")
-  .subscribe do |delivery_info, metadata, payload|
-    directive_handler.call delivery_info, metadata, payload
-  end
-
-  exchange_dir.publish({ host: hostname }.to_json,
-                       :routing_key => "hq",
-                       :timestamp => Time.now.to_i,
-                       :type => 'directive',
-                       :correlation_id => nil,
-                       :headers => { hostname: hostname,
-                                     directive: 'IDENT' },
-                       :message_id => SecureRandom.uuid)
+  exchange.publish({ host: hostname }.to_json,
+                   :routing_key => "hq",
+                   :timestamp => Time.now.to_i,
+                   :type => 'directive',
+                   :correlation_id => nil,
+                   :headers => { hostname: hostname,
+                                 directive: 'IDENT' },
+                   :message_id => SecureRandom.uuid)
 
 end #EM::Run
 

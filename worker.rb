@@ -72,36 +72,35 @@ EM.run do
   logger.info("Finished creating AMQP connection.")
 
   ch = conn.create_channel
-  exchange_cmd = ch.direct("commands")
-  exchange_dir = ch.topic("directives")
+  exchange = ch.topic("backend")
   exchange_stdout = ch.direct("stdout")
 
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
     when "IDENT"
       logger.info("Received IDENT directive from HQ.")
-      exchange_dir.publish({ hostname: hostname,
-                             workerpool: workerpool}.to_json,
-                           :routing_key => "hq",
-                           :timestamp => Time.now.to_i,
-                           :type => 'receipt',
-                           :correlation_id => metadata[:message_id],
-                           :headers => { hostname: hostname,
-                                         workerpool: workerpool,
-                                         directive: 'IDENT' },
-                           :message_id => SecureRandom.uuid)
+      exchange.publish({ hostname: hostname,
+                         workerpool: workerpool}.to_json,
+                       :routing_key => "hq",
+                       :timestamp => Time.now.to_i,
+                       :type => 'receipt',
+                       :correlation_id => metadata[:message_id],
+                       :headers => { hostname: hostname,
+                                     workerpool: workerpool,
+                                     directive: 'IDENT' },
+                       :message_id => SecureRandom.uuid)
       logger.info("Sent IDENT receipt to HQ.")
     when "LIST"
       logger.info("Received LIST directive from HQ.")
-      exchange_dir.publish({ servers: server_dirs.to_a }.to_json,
-                           :routing_key => "hq",
-                           :timestamp => Time.now.to_i,
-                           :type => 'receipt',
-                           :correlation_id => metadata[:message_id],
-                           :headers => { hostname: hostname,
-                                         workerpool: workerpool,
-                                         directive: 'LIST' },
-                           :message_id => SecureRandom.uuid)
+      exchange.publish({ servers: server_dirs.to_a }.to_json,
+                       :routing_key => "hq",
+                       :timestamp => Time.now.to_i,
+                       :type => 'receipt',
+                       :correlation_id => metadata[:message_id],
+                       :headers => { hostname: hostname,
+                                     workerpool: workerpool,
+                                     directive: 'LIST' },
+                       :message_id => SecureRandom.uuid)
       logger.info("Sent LIST receipt to HQ.")
       logger.debug({servers: server_dirs.to_a})
     when "USAGE"
@@ -116,15 +115,15 @@ EM.run do
           uw_diskused: usw.uw_diskused,
           uw_diskused_perc: usw.uw_diskused_perc,
         }
-        exchange_dir.publish({ usage: retval }.to_json,
-                             :routing_key => "hq",
-                             :timestamp => Time.now.to_i,
-                             :type => 'receipt',
-                             :correlation_id => metadata[:message_id],
-                             :headers => { hostname: hostname,
-                                           workerpool: workerpool,
-                                           directive: 'USAGE' },
-                             :message_id => SecureRandom.uuid)
+        exchange.publish({ usage: retval }.to_json,
+                         :routing_key => "hq",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt',
+                         :correlation_id => metadata[:message_id],
+                         :headers => { hostname: hostname,
+                                       workerpool: workerpool,
+                                       directive: 'USAGE' },
+                         :message_id => SecureRandom.uuid)
         logger.info("Received USAGE directive from HQ.")
         logger.debug({usage: retval})
       end
@@ -133,15 +132,15 @@ EM.run do
 
       EM.defer do
         usw = Usagewatch
-        exchange_dir.publish({ usage: {$1 =>  usw.public_send($1)} }.to_json,
-                             :routing_key => "hq",
-                             :timestamp => Time.now.to_i,
-                             :type => 'receipt',
-                             :correlation_id => metadata[:message_id],
-                             :headers => { hostname: hostname,
-                                           workerpool: workerpool,
-                                           directive: 'REQUEST_USAGE' },
-                             :message_id => SecureRandom.uuid)
+        exchange.publish({ usage: {$1 =>  usw.public_send($1)} }.to_json,
+                         :routing_key => "hq",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt',
+                         :correlation_id => metadata[:message_id],
+                         :headers => { hostname: hostname,
+                                       workerpool: workerpool,
+                                       directive: 'REQUEST_USAGE' },
+                         :message_id => SecureRandom.uuid)
         logger.info("Received USAGE directive from HQ.")
         logger.debug({usage: {$1 =>  usw.public_send($1)}})
       end
@@ -152,15 +151,15 @@ EM.run do
       EM.defer do
         if Aws.config.empty? then
           logger.info("Sending nil ACK back to HQ.")
-          exchange_dir.publish({ AWSCREDS: nil }.to_json,
-                               :routing_key => "hq",
-                               :timestamp => Time.now.to_i,
-                               :type => 'receipt',
-                               :correlation_id => metadata[:message_id],
-                               :headers => { hostname: hostname,
-                                             workerpool: workerpool,
-                                             directive: 'VERIFY_OBJSTORE' },
-                               :message_id => SecureRandom.uuid)
+          exchange.publish({ AWSCREDS: nil }.to_json,
+                           :routing_key => "hq",
+                           :timestamp => Time.now.to_i,
+                           :type => 'receipt',
+                           :correlation_id => metadata[:message_id],
+                           :headers => { hostname: hostname,
+                                         workerpool: workerpool,
+                                         directive: 'VERIFY_OBJSTORE' },
+                           :message_id => SecureRandom.uuid)
         end
       end
     else
@@ -189,25 +188,25 @@ EM.run do
           logger.info("Endpoint valid and Aws::S3::Client.new returned no error")
         end
   
-        exchange_dir.publish(retval.to_json,
-                             :routing_key => "hq",
-                             :timestamp => Time.now.to_i,
-                             :type => 'receipt',
-                             :correlation_id => metadata[:message_id],
-                             :headers => { hostname: hostname,
-                                           workerpool: workerpool,
-                                           directive: 'AWSCREDS' },
-                             :message_id => SecureRandom.uuid)
+        exchange.publish(retval.to_json,
+                         :routing_key => "hq",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt',
+                         :correlation_id => metadata[:message_id],
+                         :headers => { hostname: hostname,
+                                       workerpool: workerpool,
+                                       directive: 'AWSCREDS' },
+                         :message_id => SecureRandom.uuid)
       else #if unknown directive
-        exchange_dir.publish({}.to_json,
-                             :routing_key => "hq",
-                             :timestamp => Time.now.to_i,
-                             :type => 'receipt',
-                             :correlation_id => metadata[:message_id],
-                             :headers => { hostname: hostname,
-                                           workerpool: workerpool,
-                                           directive: 'BOGUS' }, #changing directive
-                             :message_id => SecureRandom.uuid)
+        exchange.publish({}.to_json,
+                         :routing_key => "hq",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt',
+                         :correlation_id => metadata[:message_id],
+                         :headers => { hostname: hostname,
+                                       workerpool: workerpool,
+                                       directive: 'BOGUS' }, #changing directive
+                         :message_id => SecureRandom.uuid)
         logger.warn("Received bogus directive from HQ. Received:")
         logger.warn(payload)
         logger.warn("Ignored as BOGUS. Returned: {}")
@@ -281,89 +280,89 @@ EM.run do
         rescue Seahorse::Client::NetworkingError => e
           logger.error("Networking error caught with s3 client!")
           logger.debug(e)
-          exchange_cmd.publish(return_object.to_json,
-                               :routing_key => "hq",
-                               :timestamp => Time.now.to_i,
-                               :type => 'receipt.command',
-                               :correlation_id => metadata[:message_id],
-                               :headers => { hostname: hostname,
-                                             workerpool: workerpool,
-                                             exception: { name: 'Seahorse::Client::NetworkingError',
-                                                          detail: e.to_s }
-                                           },
-                               :message_id => SecureRandom.uuid)
+          exchange.publish(return_object.to_json,
+                           :routing_key => "hq",
+                           :timestamp => Time.now.to_i,
+                           :type => 'receipt.command',
+                           :correlation_id => metadata[:message_id],
+                           :headers => { hostname: hostname,
+                                         workerpool: workerpool,
+                                         exception: { name: 'Seahorse::Client::NetworkingError',
+                                                      detail: e.to_s }
+                                       },
+                           :message_id => SecureRandom.uuid)
         rescue IOError => e
           logger.error("IOError caught!")
           logger.error("Worker process may no longer be attached to child process?")
-          exchange_cmd.publish(return_object.to_json,
-                               :routing_key => "hq",
-                               :timestamp => Time.now.to_i,
-                               :type => 'receipt.command',
-                               :correlation_id => metadata[:message_id],
-                               :headers => { hostname: hostname,
-                                             workerpool: workerpool,
-                                             exception: { name: 'IOError',
-                                                          detail: e.to_s }
-                                           },
-                               :message_id => SecureRandom.uuid)
+          exchange.publish(return_object.to_json,
+                           :routing_key => "hq",
+                           :timestamp => Time.now.to_i,
+                           :type => 'receipt.command',
+                           :correlation_id => metadata[:message_id],
+                           :headers => { hostname: hostname,
+                                         workerpool: workerpool,
+                                         exception: { name: 'IOError',
+                                                      detail: e.to_s }
+                                       },
+                           :message_id => SecureRandom.uuid)
         rescue ArgumentError => e
           # e.g., too few arguments
           logger.error("ArgumentError caught!")
-          exchange_cmd.publish(return_object.to_json,
-                               :routing_key => "hq",
-                               :timestamp => Time.now.to_i,
-                               :type => 'receipt',
-                               :correlation_id => metadata[:message_id],
-                               :headers => { hostname: hostname,
-                                             workerpool: workerpool,
-                                             exception: { name: 'ArgumentError',
-                                                          detail: e.to_s }
-                                           },
-                               :message_id => SecureRandom.uuid)
+          exchange.publish(return_object.to_json,
+                           :routing_key => "hq",
+                           :timestamp => Time.now.to_i,
+                           :type => 'receipt',
+                           :correlation_id => metadata[:message_id],
+                           :headers => { hostname: hostname,
+                                         workerpool: workerpool,
+                                         exception: { name: 'ArgumentError',
+                                                      detail: e.to_s }
+                                       },
+                           :message_id => SecureRandom.uuid)
         rescue RuntimeError => e
           logger.error("RuntimeError caught!")
           logger.debug(e)
           logger.debug(return_object)
-          exchange_cmd.publish(return_object.to_json,
-                               :routing_key => "hq",
-                               :timestamp => Time.now.to_i,
-                               :type => 'receipt.command',
-                               :correlation_id => metadata[:message_id],
-                               :headers => { hostname: hostname,
-                                             workerpool: workerpool,
-                                             exception: { name: 'ArgumentError',
-                                                          detail: e.to_s }
-                                           },
-                               :message_id => SecureRandom.uuid)
+          exchange.publish(return_object.to_json,
+                           :routing_key => "hq",
+                           :timestamp => Time.now.to_i,
+                           :type => 'receipt.command',
+                           :correlation_id => metadata[:message_id],
+                           :headers => { hostname: hostname,
+                                         workerpool: workerpool,
+                                         exception: { name: 'ArgumentError',
+                                                      detail: e.to_s }
+                                       },
+                           :message_id => SecureRandom.uuid)
         else
           return_object[:success] = true
           logger.debug(return_object)
-          exchange_cmd.publish(return_object.to_json,
-                               :routing_key => "hq",
-                               :timestamp => Time.now.to_i,
-                               :type => 'receipt',
-                               :correlation_id => metadata[:message_id],
-                               :headers => { hostname: hostname,
-                                             workerpool: workerpool,
-                                             exception: false },
-                               :message_id => SecureRandom.uuid)
+          exchange.publish(return_object.to_json,
+                           :routing_key => "hq",
+                           :timestamp => Time.now.to_i,
+                           :type => 'receipt',
+                           :correlation_id => metadata[:message_id],
+                           :headers => { hostname: hostname,
+                                         workerpool: workerpool,
+                                         exception: false },
+                           :message_id => SecureRandom.uuid)
         end
       end #to_call
 
       EM.defer to_call
     else #method not defined in api
       cb = Proc.new { |retval|
-        exchange_cmd.publish(return_object.to_json,
-                             :routing_key => "hq",
-                             :timestamp => Time.now.to_i,
-                             :type => 'receipt.command',
-                             :correlation_id => metadata[:message_id],
-                             :headers => { hostname: hostname,
-                                           workerpool: workerpool,
-                                           exception: { name: 'NameError',
-                                                        detail: "undefined method `#{cmd}' for class `Server'" }
-                                         },
-                             :message_id => SecureRandom.uuid)
+        exchange.publish(return_object.to_json,
+                         :routing_key => "hq",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt.command',
+                         :correlation_id => metadata[:message_id],
+                         :headers => { hostname: hostname,
+                                       workerpool: workerpool,
+                                       exception: { name: 'NameError',
+                                                    detail: "undefined method `#{cmd}' for class `Server'" }
+                                     },
+                         :message_id => SecureRandom.uuid)
       }
       EM.defer cb
     end #inst.respond_to
@@ -371,39 +370,30 @@ EM.run do
   }
 
   ch
-  .queue('', exclusive: true)
-  .bind(exchange_cmd, routing_key: "workers.#{hostname}.#{workerpool}")
+  .queue("workers.#{hostname}.#{workerpool}", exclusive: true)
+  .bind(exchange, routing_key: "workers.#.#")
   .subscribe do |delivery_info, metadata, payload|
     #logger.debug("received cmd: #{payload}")
-    command_handler.call delivery_info, metadata, payload
+    if delivery_info[:routing_key] == "workers.#{hostname}.#{workerpool}" then
+      case metadata[:type]
+      when 'command'
+        command_handler.call delivery_info, metadata, payload
+      when 'directive'
+        directive_handler.call delivery_info, metadata, payload
+      end
+    end
   end
 
-  ch
-  .queue('')
-  .bind(exchange_dir, routing_key: "workers.#{hostname}.#{workerpool}")
-  .subscribe do |delivery_info, metadata, payload|
-    #logger.debug("received dir: #{payload}")
-    directive_handler.call delivery_info, metadata, payload
-  end
-
-  ch
-  .queue('')
-  .bind(exchange_dir, routing_key: "workers")
-  .subscribe do |delivery_info, metadata, payload|
-    #logger.debug("received dir: #{payload}")
-    directive_handler.call delivery_info, metadata, payload
-  end
-
-  exchange_dir.publish({ host: hostname,
-                         workerpool: workerpool }.to_json,
-                       :routing_key => "hq",
-                       :timestamp => Time.now.to_i,
-                       :type => 'receipt',
-                       :correlation_id => nil,
-                       :headers => { hostname: hostname,
-                                     workerpool: workerpool,
-                                     directive: 'IDENT' },
-                       :message_id => SecureRandom.uuid)
+  exchange.publish({ host: hostname,
+                     workerpool: workerpool }.to_json,
+                   :routing_key => "hq",
+                   :timestamp => Time.now.to_i,
+                   :type => 'receipt',
+                   :correlation_id => nil,
+                   :headers => { hostname: hostname,
+                                 workerpool: workerpool,
+                                 directive: 'IDENT' },
+                   :message_id => SecureRandom.uuid)
   logger.info("Sent IDENT message.")
   logger.info("Worker node set up and listening.")
 

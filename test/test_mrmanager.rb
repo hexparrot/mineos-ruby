@@ -23,7 +23,7 @@ class ManagerTest < Minitest::Test
     conn.start
 
     @ch = conn.create_channel
-    @exchange_dir = @ch.topic('directives')
+    @exchange = @ch.topic('backend')
   end
 
   def teardown
@@ -36,8 +36,8 @@ class ManagerTest < Minitest::Test
 
     EM.run do
       @ch
-      .queue('')
-      .bind(@exchange_dir, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         assert_equal(@@hostname, parsed['host'])
@@ -51,11 +51,11 @@ class ManagerTest < Minitest::Test
         EM.stop
       end
 
-      @exchange_dir.publish('IDENT',
-                            :routing_key => "managers",
-                            :type => "directive",
-                            :message_id => guid,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish('IDENT',
+                        :routing_key => "managers",
+                        :type => "directive",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(1, step)
   end
@@ -66,8 +66,8 @@ class ManagerTest < Minitest::Test
 
     EM.run do
       @ch
-      .queue('')
-      .bind(@exchange_dir, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         case metadata[:headers]['directive']
@@ -96,7 +96,6 @@ class ManagerTest < Minitest::Test
           else
             # coming from manager
             assert_equal(@@hostname, parsed['host'])
-            assert_equal(@@workerpool, parsed['workerpool'])
             assert_equal(guid, metadata.correlation_id)
             assert_equal('receipt', metadata.type)
             assert_equal('IDENT', metadata[:headers]['directive'])
@@ -108,11 +107,11 @@ class ManagerTest < Minitest::Test
         end
       end
 
-      @exchange_dir.publish({SPAWN: {workerpool: @@workerpool}}.to_json,
-                            :routing_key => "managers.#{@@hostname}",
-                            :type => "directive",
-                            :message_id => guid,
-                            :timestamp => Time.now.to_i)
+      @exchange.publish({SPAWN: {workerpool: @@workerpool}}.to_json,
+                        :routing_key => "managers.#{@@hostname}",
+                        :type => "directive",
+                        :message_id => guid,
+                        :timestamp => Time.now.to_i)
     end
     assert_equal(2, step)
   end
@@ -124,8 +123,8 @@ class ManagerTest < Minitest::Test
 
     EM.run do
       @ch
-      .queue('')
-      .bind(@exchange_dir, :routing_key => "hq")
+      .queue('hq')
+      .bind(@exchange, :routing_key => "hq")
       .subscribe do |delivery_info, metadata, payload|
         parsed = JSON.parse payload
         case metadata[:headers]['directive']
@@ -166,7 +165,7 @@ class ManagerTest < Minitest::Test
         end
       end
 
-      @exchange_dir.publish({SPAWN: {workerpool: new_user}}.to_json,
+      @exchange.publish({SPAWN: {workerpool: new_user}}.to_json,
                             :routing_key => "managers.#{@@hostname}",
                             :type => "directive",
                             :message_id => guid,
@@ -174,17 +173,18 @@ class ManagerTest < Minitest::Test
     end
     assert_equal(2, step)
 
-    new_home = "/home/#{new_user}"
-    script_home = File.join(new_home, "mineos-ruby")
-    uid = File.stat(new_home).uid
-    owner_name = Etc.getpwuid(uid).name
+    #used to be useful when scripts expected in /home/user
+    #new_home = "/home/#{new_user}"
+    #script_home = File.join(new_home, "mineos-ruby")
+    #uid = File.stat(new_home).uid
+    #owner_name = Etc.getpwuid(uid).name
 
-    assert_equal(new_user, owner_name)
-    Dir.foreach(script_home) do |item|
-      next if item == '.' or item == '..'
-      fp = File.join(script_home, item)
-      file_uid = File.stat(fp).uid
-      assert_equal(new_user, Etc.getpwuid(file_uid).name)
-    end
+    #assert_equal(new_user, owner_name)
+    #Dir.foreach(script_home) do |item|
+    #  next if item == '.' or item == '..'
+    #  fp = File.join(script_home, item)
+    #  file_uid = File.stat(fp).uid
+    #  assert_equal(new_user, Etc.getpwuid(file_uid).name)
+    #end
   end
 end
