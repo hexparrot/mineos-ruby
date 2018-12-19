@@ -41,13 +41,8 @@ EM.run do
 
         worker = json_in['MKPOOL']['workerpool']
         pool_inst = Pools.new
-        begin
-          pool_inst.create_pool(worker, 'mypassword')
-        rescue RuntimeError => e
-          puts 'pool creation error:'
-          puts e.message
-          raise
-        end
+        pool_inst.create_pool(worker, 'mypassword')
+        puts "Created pool: #{worker}"
       elsif json_in.key?('SPAWN') then
         def as_user(user, script_path, &block)
           require 'etc'
@@ -97,6 +92,7 @@ EM.run do
         worker = json_in['REMOVE']['workerpool']
         pool_inst = Pools.new
         pool_inst.remove_pool(worker)
+        puts "Removed pool: #{worker}"
       end #if
     end #case
   } #end directive_handler
