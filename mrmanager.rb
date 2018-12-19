@@ -57,14 +57,6 @@ EM.run do
           end
         end
 
-        rb_script_path = File.expand_path(File.dirname(__FILE__))
-
-        # if the path dest is not the same as path source, copy git repo
-        if File.realdirpath(rb_script_path) != File.realdirpath("/home/#{worker}/mineos-ruby") then
-          FileUtils.cp_r rb_script_path, "/home/#{worker}/"
-          FileUtils.chown_R worker, worker, "/home/#{worker}/"
-        end
-
         def as_user(user, script_path, &block)
           require 'etc'
           # Find the user in the password database.
@@ -80,7 +72,7 @@ EM.run do
               Process.uid = Process.euid = u.uid
 
               # Invoke the caller's block of code.
-              Dir.chdir("/home/#{user}/mineos-ruby") do
+              Dir.chdir(script_path) do
                 block.call(user)
               end
             end #p2
@@ -88,6 +80,8 @@ EM.run do
           end #p1
           Process.detach(p1)
         end
+
+        rb_script_path = File.expand_path(File.dirname(__FILE__))
 
         as_user(worker, rb_script_path) do |user|
           exec "ruby worker.rb --basedir /home/#{user}/minecraft"
