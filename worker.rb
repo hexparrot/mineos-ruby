@@ -374,11 +374,13 @@ EM.run do
   .bind(exchange, routing_key: "workers.#.#")
   .subscribe do |delivery_info, metadata, payload|
     #logger.debug("received cmd: #{payload}")
-    case metadata[:type]
-    when 'command'
-      command_handler.call delivery_info, metadata, payload
-    when 'directive'
-      directive_handler.call delivery_info, metadata, payload
+    if delivery_info[:routing_key] == "workers.#{hostname}.#{workerpool}" then
+      case metadata[:type]
+      when 'command'
+        command_handler.call delivery_info, metadata, payload
+      when 'directive'
+        directive_handler.call delivery_info, metadata, payload
+      end
     end
   end
 
