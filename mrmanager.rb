@@ -18,13 +18,13 @@ EM.run do
   conn.start
 
   ch = conn.create_channel
-  exchange_dir = ch.topic("directives")
+  exchange = ch.topic("backend")
 
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
     when 'IDENT'
       EM::Timer.new(1) do
-        exchange_dir.publish({ host: hostname }.to_json,
+        exchange.publish({ host: hostname }.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt',
@@ -75,16 +75,16 @@ EM.run do
           exec "ruby worker.rb --basedir /home/#{user}/minecraft"
         end
 
-        exchange_dir.publish({ host: hostname,
-                               workerpool: worker }.to_json,
-                             :routing_key => "hq",
-                             :timestamp => Time.now.to_i,
-                             :type => 'receipt',
-                             :correlation_id => metadata[:message_id],
-                             :headers => { hostname: hostname,
-                                           workerpool: worker, 
-                                           directive: 'SPAWN' },
-                             :message_id => SecureRandom.uuid)
+        exchange.publish({ host: hostname,
+                           workerpool: worker }.to_json,
+                         :routing_key => "hq",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt',
+                         :correlation_id => metadata[:message_id],
+                         :headers => { hostname: hostname,
+                                       workerpool: worker, 
+                                       directive: 'SPAWN' },
+                         :message_id => SecureRandom.uuid)
 
       elsif json_in.key?('REMOVE') then
         require_relative 'pools'
@@ -98,27 +98,20 @@ EM.run do
   } #end directive_handler
 
   ch
-  .queue('')
-  .bind(exchange_dir, routing_key: "managers.#{hostname}")
+  .queue("managers")
+  .bind(exchange, routing_key: "managers.#")
   .subscribe do |delivery_info, metadata, payload|
     directive_handler.call delivery_info, metadata, payload
   end
 
-  ch
-  .queue('')
-  .bind(exchange_dir, routing_key: "managers")
-  .subscribe do |delivery_info, metadata, payload|
-    directive_handler.call delivery_info, metadata, payload
-  end
-
-  exchange_dir.publish({ host: hostname }.to_json,
-                       :routing_key => "hq",
-                       :timestamp => Time.now.to_i,
-                       :type => 'directive',
-                       :correlation_id => nil,
-                       :headers => { hostname: hostname,
-                                     directive: 'IDENT' },
-                       :message_id => SecureRandom.uuid)
+  exchange.publish({ host: hostname }.to_json,
+                   :routing_key => "hq",
+                   :timestamp => Time.now.to_i,
+                   :type => 'directive',
+                   :correlation_id => nil,
+                   :headers => { hostname: hostname,
+                                 directive: 'IDENT' },
+                   :message_id => SecureRandom.uuid)
 
 end #EM::Run
 

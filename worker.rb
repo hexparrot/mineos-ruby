@@ -72,15 +72,14 @@ EM.run do
   logger.info("Finished creating AMQP connection.")
 
   ch = conn.create_channel
-  exchange_cmd = ch.direct("commands")
-  exchange_dir = ch.topic("directives")
+  exchange = ch.topic("backend")
   exchange_stdout = ch.direct("stdout")
 
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
     when "IDENT"
       logger.info("Received IDENT directive from HQ.")
-      exchange_dir.publish({ hostname: hostname,
+      exchange.publish({ hostname: hostname,
                              workerpool: workerpool}.to_json,
                            :routing_key => "hq",
                            :timestamp => Time.now.to_i,
@@ -93,7 +92,7 @@ EM.run do
       logger.info("Sent IDENT receipt to HQ.")
     when "LIST"
       logger.info("Received LIST directive from HQ.")
-      exchange_dir.publish({ servers: server_dirs.to_a }.to_json,
+      exchange.publish({ servers: server_dirs.to_a }.to_json,
                            :routing_key => "hq",
                            :timestamp => Time.now.to_i,
                            :type => 'receipt',
@@ -116,7 +115,7 @@ EM.run do
           uw_diskused: usw.uw_diskused,
           uw_diskused_perc: usw.uw_diskused_perc,
         }
-        exchange_dir.publish({ usage: retval }.to_json,
+        exchange.publish({ usage: retval }.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt',
@@ -133,7 +132,7 @@ EM.run do
 
       EM.defer do
         usw = Usagewatch
-        exchange_dir.publish({ usage: {$1 =>  usw.public_send($1)} }.to_json,
+        exchange.publish({ usage: {$1 =>  usw.public_send($1)} }.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt',
@@ -152,7 +151,7 @@ EM.run do
       EM.defer do
         if Aws.config.empty? then
           logger.info("Sending nil ACK back to HQ.")
-          exchange_dir.publish({ AWSCREDS: nil }.to_json,
+          exchange.publish({ AWSCREDS: nil }.to_json,
                                :routing_key => "hq",
                                :timestamp => Time.now.to_i,
                                :type => 'receipt',
@@ -189,7 +188,7 @@ EM.run do
           logger.info("Endpoint valid and Aws::S3::Client.new returned no error")
         end
   
-        exchange_dir.publish(retval.to_json,
+        exchange.publish(retval.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt',
@@ -199,7 +198,7 @@ EM.run do
                                            directive: 'AWSCREDS' },
                              :message_id => SecureRandom.uuid)
       else #if unknown directive
-        exchange_dir.publish({}.to_json,
+        exchange.publish({}.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt',
@@ -281,7 +280,7 @@ EM.run do
         rescue Seahorse::Client::NetworkingError => e
           logger.error("Networking error caught with s3 client!")
           logger.debug(e)
-          exchange_cmd.publish(return_object.to_json,
+          exchange.publish(return_object.to_json,
                                :routing_key => "hq",
                                :timestamp => Time.now.to_i,
                                :type => 'receipt.command',
@@ -295,7 +294,7 @@ EM.run do
         rescue IOError => e
           logger.error("IOError caught!")
           logger.error("Worker process may no longer be attached to child process?")
-          exchange_cmd.publish(return_object.to_json,
+          exchange.publish(return_object.to_json,
                                :routing_key => "hq",
                                :timestamp => Time.now.to_i,
                                :type => 'receipt.command',
@@ -309,7 +308,7 @@ EM.run do
         rescue ArgumentError => e
           # e.g., too few arguments
           logger.error("ArgumentError caught!")
-          exchange_cmd.publish(return_object.to_json,
+          exchange.publish(return_object.to_json,
                                :routing_key => "hq",
                                :timestamp => Time.now.to_i,
                                :type => 'receipt',
@@ -324,7 +323,7 @@ EM.run do
           logger.error("RuntimeError caught!")
           logger.debug(e)
           logger.debug(return_object)
-          exchange_cmd.publish(return_object.to_json,
+          exchange.publish(return_object.to_json,
                                :routing_key => "hq",
                                :timestamp => Time.now.to_i,
                                :type => 'receipt.command',
@@ -338,7 +337,7 @@ EM.run do
         else
           return_object[:success] = true
           logger.debug(return_object)
-          exchange_cmd.publish(return_object.to_json,
+          exchange.publish(return_object.to_json,
                                :routing_key => "hq",
                                :timestamp => Time.now.to_i,
                                :type => 'receipt',
@@ -353,7 +352,7 @@ EM.run do
       EM.defer to_call
     else #method not defined in api
       cb = Proc.new { |retval|
-        exchange_cmd.publish(return_object.to_json,
+        exchange.publish(return_object.to_json,
                              :routing_key => "hq",
                              :timestamp => Time.now.to_i,
                              :type => 'receipt.command',
@@ -371,30 +370,19 @@ EM.run do
   }
 
   ch
-  .queue('', exclusive: true)
-  .bind(exchange_cmd, routing_key: "workers.#{hostname}.#{workerpool}")
+  .queue("workers.#{hostname}.#{workerpool}", exclusive: true)
+  .bind(exchange, routing_key: "workers.#{hostname}.#{workerpool}")
   .subscribe do |delivery_info, metadata, payload|
     #logger.debug("received cmd: #{payload}")
-    command_handler.call delivery_info, metadata, payload
+    case metadata[:type]
+    when 'command'
+      command_handler.call delivery_info, metadata, payload
+    when 'directive'
+      directive_handler.call delivery_info, metadata, payload
+    end
   end
 
-  ch
-  .queue('', exclusive: true)
-  .bind(exchange_dir, routing_key: "workers.#{hostname}.#{workerpool}")
-  .subscribe do |delivery_info, metadata, payload|
-    #logger.debug("received dir: #{payload}")
-    directive_handler.call delivery_info, metadata, payload
-  end
-
-  ch
-  .queue('')
-  .bind(exchange_dir, routing_key: "workers")
-  .subscribe do |delivery_info, metadata, payload|
-    #logger.debug("received dir: #{payload}")
-    directive_handler.call delivery_info, metadata, payload
-  end
-
-  exchange_dir.publish({ host: hostname,
+  exchange.publish({ host: hostname,
                          workerpool: workerpool }.to_json,
                        :routing_key => "hq",
                        :timestamp => Time.now.to_i,

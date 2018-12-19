@@ -32,11 +32,8 @@ class HQ < Sinatra::Base
   
   ch = conn.create_channel
 
-  # exchange for commands (workerpool+server specific)
-  exchange_cmd = ch.direct('commands')
-
   # exchange for directives (hostname specific)
-  exchange_dir = ch.topic("directives")
+  exchange = ch.topic("backend")
 
   # exchange for stdout
   exchange_stdout = ch.direct('stdout')
@@ -52,80 +49,75 @@ class HQ < Sinatra::Base
   promise_retvals = {}
 
   ch
-  .queue('', exclusive: true)
-  .bind(exchange_dir, :routing_key => "hq")
+  .queue('hq', exclusive: true)
+  .bind(exchange, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
-    parsed = JSON.parse payload
-
-    case metadata[:headers]['directive']
-    when 'IDENT'
-      if parsed['workerpool'] then
-        # this is IDENT from a worker.rb process
-        puts "worker.rb process reply: #{parsed['workerpool']}"
-        available_workers.add(parsed['workerpool'])
-
-        host = metadata[:headers]['hostname']
-        workerpool = metadata[:headers]['workerpool']
-        exchange_dir.publish('VERIFY_OBJSTORE',
-                             :routing_key => "workers.#{host}.#{workerpool}",
-                             :type => "directive",
-                             :message_id => SecureRandom.uuid,
-                             :timestamp => Time.now.to_i)
+    if metadata[:headers]['command'] then
+      if metadata[:headers]['exception'] then
+        promises[metadata.correlation_id].call 400, payload
+      elsif parsed['cmd'] == 'create' then
+        promises[metadata.correlation_id].call 201, payload
       else
-        # this is IDENT from a mrmanager.rb process
-        puts "mrmanager.rb process reply: #{parsed['host']}"
-        available_managers.add(parsed['host'])
+        promises[metadata.correlation_id].call 200, payload
       end
-    when 'LIST'
-      yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
-      promise_retvals[metadata.correlation_id][:hosts].each do |obj|
-        if obj[:workerpool] == metadata[:headers]['workerpool'] then
-          obj[:servers] = parsed['servers']
-          obj[:timestamp] = metadata[:timestamp]
-          yet_to_respond -= 1
+    elsif metadata[:headers]['directive'] then
+      parsed = JSON.parse payload
+
+      case metadata[:headers]['directive']
+      when 'IDENT'
+        if parsed['workerpool'] then
+          # this is IDENT from a worker.rb process
+          puts "worker.rb process reply: #{parsed['workerpool']}"
+          available_workers.add(parsed['workerpool'])
+
+          host = metadata[:headers]['hostname']
+          workerpool = metadata[:headers]['workerpool']
+          exchange.publish('VERIFY_OBJSTORE',
+                               :routing_key => "workers.#{host}.#{workerpool}",
+                               :type => "directive",
+                               :message_id => SecureRandom.uuid,
+                               :timestamp => Time.now.to_i)
+        else
+          # this is IDENT from a mrmanager.rb process
+          puts "mrmanager.rb process reply: #{parsed['host']}"
+          available_managers.add(parsed['host'])
+        end
+      when 'LIST'
+        yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
+        promise_retvals[metadata.correlation_id][:hosts].each do |obj|
+          if obj[:workerpool] == metadata[:headers]['workerpool'] then
+            obj[:servers] = parsed['servers']
+            obj[:timestamp] = metadata[:timestamp]
+            yet_to_respond -= 1
+          end
+        end
+  
+        if yet_to_respond == 0 then
+          #timeout needs to be added for if server does not respond
+          #this mechanism expected to fail without 100% reply rate
+          promises[metadata.correlation_id].call 200, promise_retvals[metadata.correlation_id].to_json
+        end
+      when 'VERIFY_OBJSTORE'
+        if parsed['AWSCREDS'].nil? then
+          # on receipt of non-true VERIFY_OBJSTORE, send object store creds
+          host = metadata[:headers]['hostname']
+          workerpool = metadata[:headers]['workerpool']
+          exchange.publish({ AWSCREDS: {
+                                   endpoint: s3_config['object_store']['host'],
+                                   access_key_id: s3_config['object_store']['access_key'],
+                                   secret_access_key: s3_config['object_store']['secret_key'],
+                                   region: 'us-west-1'
+                                 }
+                               }.to_json,
+                               :routing_key => "workers.#{host}.#{workerpool}",
+                               :type => "directive",
+                               :message_id => SecureRandom.uuid,
+                               :timestamp => Time.now.to_i)
         end
       end
-  
-      if yet_to_respond == 0 then
-        #timeout needs to be added for if server does not respond
-        #this mechanism expected to fail without 100% reply rate
-        promises[metadata.correlation_id].call 200, promise_retvals[metadata.correlation_id].to_json
-      end
-    when 'VERIFY_OBJSTORE'
-      if parsed['AWSCREDS'].nil? then
-        # on receipt of non-true VERIFY_OBJSTORE, send object store creds
-        host = metadata[:headers]['hostname']
-        workerpool = metadata[:headers]['workerpool']
-        exchange_dir.publish({ AWSCREDS: {
-                                 endpoint: s3_config['object_store']['host'],
-                                 access_key_id: s3_config['object_store']['access_key'],
-                                 secret_access_key: s3_config['object_store']['secret_key'],
-                                 region: 'us-west-1'
-                               }
-                             }.to_json,
-                             :routing_key => "workers.#{host}.#{workerpool}",
-                             :type => "directive",
-                             :message_id => SecureRandom.uuid,
-                             :timestamp => Time.now.to_i)
-      end
-    end
+    end #if [:headers]['directive']
   end
 
-  ch
-  .queue('', exclusive: true)
-  .bind(exchange_cmd, :routing_key => "hq")
-  .subscribe do |delivery_info, metadata, payload|
-    parsed = JSON.parse payload
-
-    if metadata[:headers]['exception'] then
-      promises[metadata.correlation_id].call 400, payload
-    elsif parsed['cmd'] == 'create' then
-      promises[metadata.correlation_id].call 201, payload
-    else
-      promises[metadata.correlation_id].call 200, payload
-    end
-  end
- 
 ## route handlers
 
   get '/' do
@@ -159,19 +151,19 @@ class HQ < Sinatra::Base
                 puts body_parameters
                 case body_parameters['dir']
                 when 'mkpool'
-                  exchange_dir.publish({MKPOOL: {workerpool: workerpool}}.to_json,
+                  exchange.publish({MKPOOL: {workerpool: workerpool}}.to_json,
                                         :routing_key => "managers.#{hostname}",
                                         :type => "directive",
                                         :message_id => uuid,
                                         :timestamp => Time.now.to_i)
                 when 'spawn'
-                  exchange_dir.publish({SPAWN: {workerpool: workerpool}}.to_json,
+                  exchange.publish({SPAWN: {workerpool: workerpool}}.to_json,
                                         :routing_key => "managers.#{hostname}",
                                         :type => "directive",
                                         :message_id => uuid,
                                         :timestamp => Time.now.to_i)
                 when 'remove'
-                  exchange_dir.publish({REMOVE: {workerpool: workerpool}}.to_json,
+                  exchange.publish({REMOVE: {workerpool: workerpool}}.to_json,
                                         :routing_key => "managers.#{hostname}",
                                         :type => "directive",
                                         :message_id => uuid,
@@ -193,7 +185,7 @@ class HQ < Sinatra::Base
               else
                 puts "sending hostname:workerpool `#{hostname}:#{workerpool}` command:"
                 puts body_parameters
-                exchange_cmd.publish(body_parameters.to_json,
+                exchange.publish(body_parameters.to_json,
                                      :routing_key => "workers.#{hostname}.#{workerpool}",
                                      :type => "command",
                                      :message_id => uuid,
@@ -246,7 +238,7 @@ class HQ < Sinatra::Base
       }
     end
 
-    exchange_cmd.publish('LIST',
+    exchange.publish('LIST',
                          :routing_key => "workers",
                          :type => "directive",
                          :message_id => uuid,
@@ -267,7 +259,7 @@ class HQ < Sinatra::Base
     if !available_workers.include?(worker)
       halt 404, {server_name: servername, success: false}.to_json
     else
-      exchange_cmd.publish(body_parameters.to_json,
+      exchange.publish(body_parameters.to_json,
                            :routing_key => "workers.#{worker}",
                            :type => "command",
                            :message_id => uuid,
@@ -288,12 +280,12 @@ class HQ < Sinatra::Base
   end
 
 ## startup broadcasts for IDENT
-  exchange_dir.publish('IDENT',
+  exchange.publish('IDENT',
                        :routing_key => "workers",
                        :type => "directive",
                        :message_id => SecureRandom.uuid,
                        :timestamp => Time.now.to_i)
-  exchange_dir.publish('IDENT',
+  exchange.publish('IDENT',
                        :routing_key => "managers",
                        :type => "directive",
                        :message_id => SecureRandom.uuid,
