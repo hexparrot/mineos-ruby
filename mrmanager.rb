@@ -98,10 +98,13 @@ EM.run do
   } #end directive_handler
 
   ch
-  .queue("managers")
+  .queue("managers.#{hostname}")
   .bind(exchange, routing_key: "managers.#")
   .subscribe do |delivery_info, metadata, payload|
-    directive_handler.call delivery_info, metadata, payload
+    if delivery_info[:routing_key] == "managers.#{hostname}" then
+puts delivery_info
+      directive_handler.call delivery_info, metadata, payload
+    end
   end
 
   exchange.publish({ host: hostname }.to_json,
