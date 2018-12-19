@@ -374,8 +374,6 @@ EM.run do
   .bind(exchange, routing_key: "workers.#.#")
   .subscribe do |delivery_info, metadata, payload|
     #logger.debug("received cmd: #{payload}")
-puts metadata
-puts payload
     case metadata[:type]
     when 'command'
       command_handler.call delivery_info, metadata, payload
