@@ -158,6 +158,12 @@ class HQ < Sinatra::Base
                 puts "sending `#{hostname}:#{workerpool}` directive:"
                 puts body_parameters
                 case body_parameters['dir']
+                when 'mkpool'
+                  exchange_dir.publish({MKPOOL: {workerpool: workerpool}}.to_json,
+                                        :routing_key => "managers.#{hostname}",
+                                        :type => "directive",
+                                        :message_id => uuid,
+                                        :timestamp => Time.now.to_i)
                 when 'spawn'
                   exchange_dir.publish({SPAWN: {workerpool: workerpool}}.to_json,
                                         :routing_key => "managers.#{hostname}",

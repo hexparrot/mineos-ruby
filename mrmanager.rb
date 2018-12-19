@@ -36,27 +36,19 @@ EM.run do
     else
       json_in = JSON.parse payload
 
-      if json_in.key?('SPAWN') then
+      if json_in.key?('MKPOOL') then
         require_relative 'pools'
-        require 'fileutils'
 
-        worker = json_in['SPAWN']['workerpool']
+        worker = json_in['MKPOOL']['workerpool']
         pool_inst = Pools.new
         begin
           pool_inst.create_pool(worker, 'mypassword')
         rescue RuntimeError => e
-          case e.message
-          when 'pool already exists, aborting creation'
-            # allow through but check if HOMEDIR exists
-            FileUtils.mkdir_p "/home/#{worker}/" if !Dir.exist?("/home/#{worker}")
-          when 'poolname does not fit allowable regex, aborting creation'
-            # normal user running worker.rb?
-            FileUtils.mkdir_p "/home/#{worker}/" if !Dir.exist?("/home/#{worker}")
-          else
-            raise
-          end
+          puts 'pool creation error:'
+          puts e.message
+          raise
         end
-
+      elsif json_in.key?('SPAWN') then
         def as_user(user, script_path, &block)
           require 'etc'
           # Find the user in the password database.
@@ -81,6 +73,7 @@ EM.run do
           Process.detach(p1)
         end
 
+        worker = json_in['SPAWN']['workerpool']
         rb_script_path = File.expand_path(File.dirname(__FILE__))
 
         as_user(worker, rb_script_path) do |user|
