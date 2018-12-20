@@ -4,8 +4,8 @@ WORKER_HOSTNAME=Socket.gethostname
 
 Airborne.configure do |config|
   require 'yaml'
-  mineos_config = YAML::load_file('config/secrets.yml')
-  HOST = mineos_config['rabbitmq']['host']
+  amqp_config = YAML::load_file('config/amqp.yml')
+  HOST = amqp_config['rabbitmq']['host']
 
   config.base_url = "http://#{HOST}:4567"
 end

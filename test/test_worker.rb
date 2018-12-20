@@ -14,14 +14,10 @@ class ServerTest < Minitest::Test
     @@workerpool = ENV['USER']
 
     require 'yaml'
-    mineos_config = YAML::load_file('config/secrets.yml')
+    amqp_creds = YAML::load_file('config/amqp.yml')['rabbitmq'].transform_keys(&:to_sym)
 
     require 'bunny'
-    conn = Bunny.new(:host => mineos_config['rabbitmq']['host'],
-                     :port => mineos_config['rabbitmq']['port'],
-                     :user => mineos_config['rabbitmq']['user'],
-                     :pass => mineos_config['rabbitmq']['pass'],
-                     :vhost => mineos_config['rabbitmq']['vhost'])
+    conn = Bunny.new(amqp_creds)
     conn.start
 
     @ch = conn.create_channel
