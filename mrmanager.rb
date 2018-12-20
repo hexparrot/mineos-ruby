@@ -55,7 +55,7 @@ EM.run do
 
               # Invoke the caller's block of code.
               Dir.chdir(script_path) do
-                block.call(user)
+                block.call
               end
             end #p2
             Process.detach(p2)
@@ -65,9 +65,13 @@ EM.run do
 
         worker = json_in['SPAWN']['workerpool']
         rb_script_path = File.expand_path(File.dirname(__FILE__))
+        pickled_creds = YAML::dump(amqp_creds)
 
-        as_user(worker, rb_script_path) do |user|
-          exec "ruby worker.rb --basedir /home/#{user}/minecraft"
+        as_user(worker, rb_script_path) do
+          # works but has unfortunate side-effect of echoing creds to
+          # stdout from root's terminal when killed
+          #exec "ruby worker.rb --basedir /home/#{user}/minecraft"
+          exec "echo '#{pickled_creds}' | ruby worker.rb --amqp-stdin --basedir /home/#{worker}/minecraft"
         end
 
         exchange.publish({ host: hostname,
