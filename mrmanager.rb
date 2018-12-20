@@ -6,15 +6,10 @@ EM.run do
   hostname = Socket.gethostname
 
   require 'yaml'
-  SECRETS_PATH = File.join(File.dirname(__FILE__), 'config', 'secrets.yml')
-  mineos_config = YAML::load_file(SECRETS_PATH)
+  amqp_creds = YAML::load_file('config/amqp.yml')['rabbitmq'].transform_keys(&:to_sym)
 
   require 'bunny'
-  conn = Bunny.new(:host => mineos_config['rabbitmq']['host'],
-                   :port => mineos_config['rabbitmq']['port'],
-                   :user => mineos_config['rabbitmq']['user'],
-                   :pass => mineos_config['rabbitmq']['pass'],
-                   :vhost => mineos_config['rabbitmq']['vhost'])
+  conn = Bunny.new(amqp_creds)
   conn.start
 
   ch = conn.create_channel
@@ -60,7 +55,7 @@ EM.run do
 
               # Invoke the caller's block of code.
               Dir.chdir(script_path) do
-                block.call(user)
+                block.call
               end
             end #p2
             Process.detach(p2)
@@ -70,9 +65,13 @@ EM.run do
 
         worker = json_in['SPAWN']['workerpool']
         rb_script_path = File.expand_path(File.dirname(__FILE__))
+        pickled_creds = YAML::dump(amqp_creds)
 
-        as_user(worker, rb_script_path) do |user|
-          exec "ruby worker.rb --basedir /home/#{user}/minecraft"
+        as_user(worker, rb_script_path) do
+          # works but has unfortunate side-effect of echoing creds to
+          # stdout from root's terminal when killed
+          #exec "ruby worker.rb --basedir /home/#{user}/minecraft"
+          exec "echo '#{pickled_creds}' | ruby worker.rb --amqp-stdin --basedir /home/#{worker}/minecraft"
         end
 
         exchange.publish({ host: hostname,

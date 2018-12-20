@@ -13,7 +13,8 @@ options = {}
 OptionParser.new do |opt|
   opt.on('--basedir PATH') { |o| options[:basedir] = o }
   opt.on('--workerpool NAME') { |o| options[:workerpool] = o }
-  opt.on('--secretsfile PATH') { |o| options[:secretsfile] = o }
+  opt.on('--amqp-filepath PATH') { |o| options[:amqp_file] = o }
+  opt.on('--amqp-stdin') { |o| options[:amqp_stdin] = o }
 end.parse!
 
 if options[:basedir] then
@@ -30,11 +31,26 @@ else
   WHOAMI = Etc.getpwuid(Process.uid).name
 end
 
-if options[:secretsfile] then
+require 'yaml'
+amqp_creds = nil
+if options[:amqp_stdin] then
+  if !STDIN.tty? then # if STDIN is not attached to terminal (being piped to, instead)
+    amqp_creds = YAML::load($stdin.read)
+    logger.info("AMQP: Detected piped content via STDIN")
+  else
+    logger.error("AMQP: Specified piped creds, but couldn't detect piped content via STDIN")
+    raise RuntimeError.new("STDIN expecting piped input but received none")
+  end
+elsif options[:amqp_file] then
   require 'pathname'
-  SECRETS_PATH = Pathname.new(options[:secretsfile]).cleanpath
+
+  normalized_path = Pathname.new(options[:rabbit_creds]).cleanpath
+  amqp_creds = YAML::load_file(normalized_path)['rabbitmq'].transform_keys(&:to_sym)
+  logger.info("AMQP: Specified creds via filepath")
 else
-  SECRETS_PATH = File.join(File.dirname(__FILE__), 'config', 'secrets.yml')
+  fallback_path = File.join(File.dirname(__FILE__), 'config', 'amqp.yml')
+  amqp_creds = YAML::load_file(fallback_path)['rabbitmq'].transform_keys(&:to_sym)
+  logger.info("AMQP: Using credentials from location: config/amqp.yml")
 end
 
 EM.run do
@@ -58,16 +74,8 @@ EM.run do
     logger.info("Finished setting up server instance: `#{sn}`")
   end
 
-  require 'yaml'
-  mineos_config = YAML::load_file(SECRETS_PATH)
-  logger.info("Finished loading mineos secrets.")
-
   require 'bunny'
-  conn = Bunny.new(:host => mineos_config['rabbitmq']['host'],
-                   :port => mineos_config['rabbitmq']['port'],
-                   :user => mineos_config['rabbitmq']['user'],
-                   :pass => mineos_config['rabbitmq']['pass'],
-                   :vhost => mineos_config['rabbitmq']['vhost'])
+  conn = Bunny.new(amqp_creds)
   conn.start
   logger.info("Finished creating AMQP connection.")
 
