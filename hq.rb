@@ -2,8 +2,12 @@ require 'sinatra/async'
 require 'sinatra-websocket'
 require 'json'
 require 'securerandom'
+require 'set'
 
 USERS = []
+SATELLITES = Hash.new
+SATELLITES[:workers] = Set.new
+SATELLITES[:managers] = Set.new
 
 class HQ < Sinatra::Base
   set :server, :thin
@@ -12,10 +16,6 @@ class HQ < Sinatra::Base
   register Sinatra::Async
   enable :show_exceptions
   enable :sessions
-
-  require 'set'
-  available_workers = Set.new
-  available_managers = Set.new
 
   require 'yaml'
   amqp_creds = YAML::load_file('config/amqp.yml')['rabbitmq'].transform_keys(&:to_sym)
@@ -63,7 +63,7 @@ class HQ < Sinatra::Base
         if parsed['workerpool'] then
           # this is IDENT from a worker.rb process
           puts "worker.rb process reply: #{parsed['workerpool']}"
-          available_workers.add(parsed['workerpool'])
+          SATELLITES[:workers].add(parsed['workerpool'])
 
           host = metadata[:headers]['hostname']
           workerpool = metadata[:headers]['workerpool']
@@ -75,7 +75,7 @@ class HQ < Sinatra::Base
         else
           # this is IDENT from a mrmanager.rb process
           puts "mrmanager.rb process reply: #{parsed['host']}"
-          available_managers.add(parsed['host'])
+          SATELLITES[:managers].add(parsed['host'])
         end
       when 'LIST'
         yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
@@ -139,7 +139,7 @@ class HQ < Sinatra::Base
                 ws.send(retval)
               }
 
-              if !available_managers.include?(hostname)
+              if !SATELLITES[:managers].include?(hostname)
                 puts "hostname `#{hostname}` not found."
               else
                 puts "sending `#{hostname}:#{workerpool}` directive:"
@@ -174,7 +174,7 @@ class HQ < Sinatra::Base
                 ws.send(retval)
               }
 
-              if !available_workers.include?(workerpool)
+              if !SATELLITES[:workers].include?(workerpool)
                 puts "worker `#{workerpool}` not found."
                 #workerpool not found?  ignore.  todo: log me somewhere!
               else
