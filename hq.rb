@@ -212,57 +212,6 @@ class HQ < Sinatra::Base
     redirect '/'
   end
 
-  get '/workerlist' do
-    {:hosts => available_workers.to_a}.to_json
-  end
-
-  aget '/serverlist' do
-    uuid = SecureRandom.uuid
-
-    promises[uuid] = Proc.new { |status_code, retval|
-      status status_code
-      body retval
-    }
-
-    promise_retvals[uuid] = {hosts: [], timestamp: Time.now.to_i}
-
-    available_workers.each do |worker|
-      promise_retvals[uuid][:hosts] << {
-        hostname: worker,
-        servers: [],
-        timestamp: nil
-      }
-    end
-
-    exchange.publish('LIST',
-                     :routing_key => "workers",
-                     :type => "directive",
-                     :message_id => uuid,
-                     :timestamp => Time.now.to_i)
-  end
-
-  apost '/:worker/:servername' do |worker, servername|
-    body_parameters = JSON.parse request.body.read
-
-    uuid = SecureRandom.uuid
-    body_parameters['server_name'] = servername
-
-    promises[uuid] = Proc.new { |status_code, retval|
-      status status_code
-      body retval
-    }
-
-    if !available_workers.include?(worker)
-      halt 404, {server_name: servername, success: false}.to_json
-    else
-      exchange.publish(body_parameters.to_json,
-                       :routing_key => "workers.#{worker}",
-                       :type => "command",
-                       :message_id => uuid,
-                       :timestamp => Time.now.to_i)
-    end
-  end
-
 ## helpers
 
   helpers do
