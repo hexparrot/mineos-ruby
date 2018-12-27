@@ -1,6 +1,5 @@
 require 'sinatra/async'
 require 'sinatra-websocket'
-require 'eventmachine'
 require 'json'
 require 'securerandom'
 
