@@ -1,10 +1,13 @@
 require 'sinatra/async'
 require 'sinatra-websocket'
-require 'eventmachine'
 require 'json'
 require 'securerandom'
+require 'set'
 
 USERS = []
+SATELLITES = Hash.new
+SATELLITES[:workers] = Set.new
+SATELLITES[:managers] = Set.new
 
 class HQ < Sinatra::Base
   set :server, :thin
@@ -13,10 +16,6 @@ class HQ < Sinatra::Base
   register Sinatra::Async
   enable :show_exceptions
   enable :sessions
-
-  require 'set'
-  available_workers = Set.new
-  available_managers = Set.new
 
   require 'yaml'
   amqp_creds = YAML::load_file('config/amqp.yml')['rabbitmq'].transform_keys(&:to_sym)
@@ -64,19 +63,19 @@ class HQ < Sinatra::Base
         if parsed['workerpool'] then
           # this is IDENT from a worker.rb process
           puts "worker.rb process reply: #{parsed['workerpool']}"
-          available_workers.add(parsed['workerpool'])
+          SATELLITES[:workers].add(parsed['workerpool'])
 
           host = metadata[:headers]['hostname']
           workerpool = metadata[:headers]['workerpool']
           exchange.publish('VERIFY_OBJSTORE',
-                               :routing_key => "workers.#{host}.#{workerpool}",
-                               :type => "directive",
-                               :message_id => SecureRandom.uuid,
-                               :timestamp => Time.now.to_i)
+                           :routing_key => "workers.#{host}.#{workerpool}",
+                           :type => "directive",
+                           :message_id => SecureRandom.uuid,
+                           :timestamp => Time.now.to_i)
         else
           # this is IDENT from a mrmanager.rb process
           puts "mrmanager.rb process reply: #{parsed['host']}"
-          available_managers.add(parsed['host'])
+          SATELLITES[:managers].add(parsed['host'])
         end
       when 'LIST'
         yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
@@ -99,16 +98,16 @@ class HQ < Sinatra::Base
           host = metadata[:headers]['hostname']
           workerpool = metadata[:headers]['workerpool']
           exchange.publish({ AWSCREDS: {
-                                   endpoint: s3_config['object_store']['host'],
-                                   access_key_id: s3_config['object_store']['access_key'],
-                                   secret_access_key: s3_config['object_store']['secret_key'],
-                                   region: 'us-west-1'
-                                 }
-                               }.to_json,
-                               :routing_key => "workers.#{host}.#{workerpool}",
-                               :type => "directive",
-                               :message_id => SecureRandom.uuid,
-                               :timestamp => Time.now.to_i)
+                               endpoint: s3_config['object_store']['host'],
+                               access_key_id: s3_config['object_store']['access_key'],
+                               secret_access_key: s3_config['object_store']['secret_key'],
+                               region: 'us-west-1'
+                             }
+                           }.to_json,
+                           :routing_key => "workers.#{host}.#{workerpool}",
+                           :type => "directive",
+                           :message_id => SecureRandom.uuid,
+                           :timestamp => Time.now.to_i)
         end
       end
     end #if [:headers]['directive']
@@ -140,7 +139,7 @@ class HQ < Sinatra::Base
                 ws.send(retval)
               }
 
-              if !available_managers.include?(hostname)
+              if !SATELLITES[:managers].include?(hostname)
                 puts "hostname `#{hostname}` not found."
               else
                 puts "sending `#{hostname}:#{workerpool}` directive:"
@@ -148,22 +147,22 @@ class HQ < Sinatra::Base
                 case body_parameters['dir']
                 when 'mkpool'
                   exchange.publish({MKPOOL: {workerpool: workerpool}}.to_json,
-                                        :routing_key => "managers.#{hostname}",
-                                        :type => "directive",
-                                        :message_id => uuid,
-                                        :timestamp => Time.now.to_i)
+                                    :routing_key => "managers.#{hostname}",
+                                    :type => "directive",
+                                    :message_id => uuid,
+                                    :timestamp => Time.now.to_i)
                 when 'spawn'
                   exchange.publish({SPAWN: {workerpool: workerpool}}.to_json,
-                                        :routing_key => "managers.#{hostname}",
-                                        :type => "directive",
-                                        :message_id => uuid,
-                                        :timestamp => Time.now.to_i)
+                                    :routing_key => "managers.#{hostname}",
+                                    :type => "directive",
+                                    :message_id => uuid,
+                                    :timestamp => Time.now.to_i)
                 when 'remove'
                   exchange.publish({REMOVE: {workerpool: workerpool}}.to_json,
-                                        :routing_key => "managers.#{hostname}",
-                                        :type => "directive",
-                                        :message_id => uuid,
-                                        :timestamp => Time.now.to_i)
+                                    :routing_key => "managers.#{hostname}",
+                                    :type => "directive",
+                                    :message_id => uuid,
+                                    :timestamp => Time.now.to_i)
                 end
               end
             elsif body_parameters.key?('cmd') then
@@ -175,17 +174,17 @@ class HQ < Sinatra::Base
                 ws.send(retval)
               }
 
-              if !available_workers.include?(workerpool)
+              if !SATELLITES[:workers].include?(workerpool)
                 puts "worker `#{workerpool}` not found."
                 #workerpool not found?  ignore.  todo: log me somewhere!
               else
                 puts "sending hostname:workerpool `#{hostname}:#{workerpool}` command:"
                 puts body_parameters
                 exchange.publish(body_parameters.to_json,
-                                     :routing_key => "workers.#{hostname}.#{workerpool}",
-                                     :type => "command",
-                                     :message_id => uuid,
-                                     :timestamp => Time.now.to_i)
+                                 :routing_key => "workers.#{hostname}.#{workerpool}",
+                                 :type => "command",
+                                 :message_id => uuid,
+                                 :timestamp => Time.now.to_i)
               end
             end
           end # ws.onmessage
@@ -212,57 +211,6 @@ class HQ < Sinatra::Base
     redirect '/'
   end
 
-  get '/workerlist' do
-    {:hosts => available_workers.to_a}.to_json
-  end
-
-  aget '/serverlist' do
-    uuid = SecureRandom.uuid
-
-    promises[uuid] = Proc.new { |status_code, retval|
-      status status_code
-      body retval
-    }
-
-    promise_retvals[uuid] = {hosts: [], timestamp: Time.now.to_i}
-
-    available_workers.each do |worker|
-      promise_retvals[uuid][:hosts] << {
-        hostname: worker,
-        servers: [],
-        timestamp: nil
-      }
-    end
-
-    exchange.publish('LIST',
-                         :routing_key => "workers",
-                         :type => "directive",
-                         :message_id => uuid,
-                         :timestamp => Time.now.to_i)
-  end
-
-  apost '/:worker/:servername' do |worker, servername|
-    body_parameters = JSON.parse request.body.read
-
-    uuid = SecureRandom.uuid
-    body_parameters['server_name'] = servername
-
-    promises[uuid] = Proc.new { |status_code, retval|
-      status status_code
-      body retval
-    }
-
-    if !available_workers.include?(worker)
-      halt 404, {server_name: servername, success: false}.to_json
-    else
-      exchange.publish(body_parameters.to_json,
-                           :routing_key => "workers.#{worker}",
-                           :type => "command",
-                           :message_id => uuid,
-                           :timestamp => Time.now.to_i)
-    end
-  end
-
 ## helpers
 
   helpers do
@@ -277,16 +225,15 @@ class HQ < Sinatra::Base
 
 ## startup broadcasts for IDENT
   exchange.publish('IDENT',
-                       :routing_key => "workers",
-                       :type => "directive",
-                       :message_id => SecureRandom.uuid,
-                       :timestamp => Time.now.to_i)
+                   :routing_key => "workers",
+                   :type => "directive",
+                   :message_id => SecureRandom.uuid,
+                   :timestamp => Time.now.to_i)
   exchange.publish('IDENT',
-                       :routing_key => "managers",
-                       :type => "directive",
-                       :message_id => SecureRandom.uuid,
-                       :timestamp => Time.now.to_i)
-
+                   :routing_key => "managers",
+                   :type => "directive",
+                   :message_id => SecureRandom.uuid,
+                   :timestamp => Time.now.to_i)
 
   run!
 end
