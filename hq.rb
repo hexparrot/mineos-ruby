@@ -5,9 +5,7 @@ require 'securerandom'
 require 'set'
 
 USERS = []
-SATELLITES = Hash.new
-SATELLITES[:workers] = Set.new
-SATELLITES[:managers] = Set.new
+SATELLITES = { :workers => Set.new, :managers => Set.new }
 
 class HQ < Sinatra::Base
   set :server, :thin
@@ -41,13 +39,13 @@ class HQ < Sinatra::Base
   end
 
   promises = {}
-  promise_retvals = {}
 
   ch
   .queue('hq', exclusive: true)
   .bind(exchange, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
     if metadata[:headers]['command'] then
+      # for inbound commands
       if metadata[:headers]['exception'] then
         promises[metadata.correlation_id].call 400, payload
       elsif parsed['cmd'] == 'create' then
@@ -56,44 +54,47 @@ class HQ < Sinatra::Base
         promises[metadata.correlation_id].call 200, payload
       end
     elsif metadata[:headers]['directive'] then
-      parsed = JSON.parse payload
-
+      # for inbound directives
       case metadata[:headers]['directive']
       when 'IDENT'
-        if parsed['workerpool'] then
-          # this is IDENT from a worker.rb process
-          puts "worker.rb process reply: #{parsed['workerpool']}"
-          SATELLITES[:workers].add(parsed['workerpool'])
-
-          host = metadata[:headers]['hostname']
-          workerpool = metadata[:headers]['workerpool']
-          exchange.publish('VERIFY_OBJSTORE',
-                           :routing_key => "workers.#{host}.#{workerpool}",
-                           :type => "directive",
-                           :message_id => SecureRandom.uuid,
-                           :timestamp => Time.now.to_i)
-        else
-          # this is IDENT from a mrmanager.rb process
-          puts "mrmanager.rb process reply: #{parsed['host']}"
-          SATELLITES[:managers].add(parsed['host'])
-        end
-      when 'LIST'
-        yet_to_respond = promise_retvals[metadata.correlation_id][:hosts].length
-        promise_retvals[metadata.correlation_id][:hosts].each do |obj|
-          if obj[:workerpool] == metadata[:headers]['workerpool'] then
-            obj[:servers] = parsed['servers']
-            obj[:timestamp] = metadata[:timestamp]
-            yet_to_respond -= 1
+        parsed = JSON.parse payload
+        unique_name = "#{parsed['workerpool']}@#{parsed['hostname']}"
+        if parsed["workerpool"] then
+          # :workerpool's only exists only from worker satellite
+          if !SATELLITES[:workers].include?(unique_name) then
+            puts "worker.rb process registered: #{unique_name}"
+            SATELLITES[:workers].add(unique_name)
+            # new worker process registration, ask to verify OBJSTORE
+            host = metadata[:headers]['hostname']
+            workerpool = metadata[:headers]['workerpool']
+            exchange.publish('ACK',
+                             :routing_key => "workers.#{host}.#{workerpool}",
+                             :type => "receipt.directive",
+                             :message_id => SecureRandom.uuid,
+                             :correlation_id => metadata[:message_id],
+                             :headers => { directive: 'IDENT' },
+                             :timestamp => Time.now.to_i)
+            exchange.publish('VERIFY_OBJSTORE',
+                             :routing_key => "workers.#{host}.#{workerpool}",
+                             :type => "directive",
+                             :message_id => SecureRandom.uuid,
+                             :timestamp => Time.now.to_i)
+          else
+            # worker already registered
+            puts "worker.rb process heartbeat: #{unique_name}"
           end
-        end
-  
-        if yet_to_respond == 0 then
-          #timeout needs to be added for if server does not respond
-          #this mechanism expected to fail without 100% reply rate
-          promises[metadata.correlation_id].call 200, promise_retvals[metadata.correlation_id].to_json
-        end
+        else
+          # :workerpool's absence implies mrmanager satellite
+          if !SATELLITES[:managers].include?(unique_name) then
+            puts "mrmanager.rb process registered: #{unique_name}"
+            SATELLITES[:managers].add(unique_name)
+          else
+            # mrmanager already registered
+            puts "mrmanager.rb process heartbeat: #{unique_name}"
+          end
+        end #if parsed["workerpool"]
       when 'VERIFY_OBJSTORE'
-        if parsed['AWSCREDS'].nil? then
+        if payload == '' then
           # on receipt of non-true VERIFY_OBJSTORE, send object store creds
           host = metadata[:headers]['hostname']
           workerpool = metadata[:headers]['workerpool']
@@ -106,12 +107,14 @@ class HQ < Sinatra::Base
                            }.to_json,
                            :routing_key => "workers.#{host}.#{workerpool}",
                            :type => "directive",
+                           :headers => { directive: 'VERIFY_OBJSTORE' },
+                           :correlation_id => metadata[:message_id],
                            :message_id => SecureRandom.uuid,
                            :timestamp => Time.now.to_i)
         end
-      end
-    end #if [:headers]['directive']
-  end
+      end #case
+    end #metadata if
+  end #subscribe
 
 ## route handlers
 
@@ -174,11 +177,11 @@ class HQ < Sinatra::Base
                 ws.send(retval)
               }
 
-              if !SATELLITES[:workers].include?(workerpool)
-                puts "worker `#{workerpool}` not found."
+              if !SATELLITES[:workers].include?("#{workerpool}@#{hostname}")
+                puts "worker `#{workerpool}@#{hostname}` not found."
                 #workerpool not found?  ignore.  todo: log me somewhere!
               else
-                puts "sending hostname:workerpool `#{hostname}:#{workerpool}` command:"
+                puts "sending `#{hostname}:#{workerpool}` command:"
                 puts body_parameters
                 exchange.publish(body_parameters.to_json,
                                  :routing_key => "workers.#{hostname}.#{workerpool}",
@@ -223,17 +226,17 @@ class HQ < Sinatra::Base
     end
   end
 
-## startup broadcasts for IDENT
+# startup broadcasts for IDENT
   exchange.publish('IDENT',
                    :routing_key => "workers",
                    :type => "directive",
                    :message_id => SecureRandom.uuid,
                    :timestamp => Time.now.to_i)
-  exchange.publish('IDENT',
-                   :routing_key => "managers",
-                   :type => "directive",
-                   :message_id => SecureRandom.uuid,
-                   :timestamp => Time.now.to_i)
+#  exchange.publish('IDENT',
+#                   :routing_key => "managers",
+#                   :type => "directive",
+#                   :message_id => SecureRandom.uuid,
+#                   :timestamp => Time.now.to_i)
 
   run!
 end

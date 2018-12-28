@@ -88,10 +88,10 @@ EM.run do
     when "IDENT"
       logger.info("Received IDENT directive from HQ.")
       exchange.publish({ hostname: hostname,
-                         workerpool: workerpool}.to_json,
+                         workerpool: workerpool }.to_json,
                        :routing_key => "hq",
                        :timestamp => Time.now.to_i,
-                       :type => 'receipt',
+                       :type => 'receipt.directive',
                        :correlation_id => metadata[:message_id],
                        :headers => { hostname: hostname,
                                      workerpool: workerpool,
@@ -159,10 +159,10 @@ EM.run do
       EM.defer do
         if Aws.config.empty? then
           logger.info("Sending nil ACK back to HQ.")
-          exchange.publish({ AWSCREDS: nil }.to_json,
+          exchange.publish('',
                            :routing_key => "hq",
                            :timestamp => Time.now.to_i,
-                           :type => 'receipt',
+                           :type => 'receipt.directive',
                            :correlation_id => metadata[:message_id],
                            :headers => { hostname: hostname,
                                          workerpool: workerpool,
@@ -389,15 +389,16 @@ EM.run do
       when 'directive'
         directive_handler.call delivery_info, metadata, payload
       end
+    elsif delivery_info[:routing_key] == "workers" && metadata[:type] == "directive" then
+      directive_handler.call delivery_info, metadata, payload
     end
   end
 
-  exchange.publish({ host: hostname,
+  exchange.publish({ hostname: hostname,
                      workerpool: workerpool }.to_json,
                    :routing_key => "hq",
                    :timestamp => Time.now.to_i,
-                   :type => 'receipt',
-                   :correlation_id => nil,
+                   :type => 'init',
                    :headers => { hostname: hostname,
                                  workerpool: workerpool,
                                  directive: 'IDENT' },
