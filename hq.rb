@@ -58,9 +58,9 @@ class HQ < Sinatra::Base
       case metadata[:headers]['directive']
       when 'IDENT'
         parsed = JSON.parse payload
+        unique_name = "#{parsed['workerpool']}@#{parsed['hostname']}"
         if parsed["workerpool"] then
           # :workerpool's only exists only from worker satellite
-          unique_name = "#{parsed['workerpool']}@#{parsed['hostname']}"
           if !SATELLITES[:workers].include?(unique_name) then
             puts "worker.rb process registered: #{unique_name}"
             SATELLITES[:workers].add(unique_name)
@@ -85,7 +85,13 @@ class HQ < Sinatra::Base
           end
         else
           # :workerpool's absence implies mrmanager satellite
-
+          if !SATELLITES[:managers].include?(unique_name) then
+            puts "mrmanager.rb process registered: #{unique_name}"
+            SATELLITES[:managers].add(unique_name)
+          else
+            # mrmanager already registered
+            puts "mrmanager.rb process heartbeat: #{unique_name}"
+          end
         end #if parsed["workerpool"]
       when 'VERIFY_OBJSTORE'
         if payload == '' then

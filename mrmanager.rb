@@ -36,8 +36,13 @@ EM.run do
 
         worker = json_in['MKPOOL']['workerpool']
         pool_inst = Pools.new
+        puts "Creating pool: #{worker}"
         pool_inst.create_pool(worker, 'mypassword')
-        puts "Created pool: #{worker}"
+        if pool_inst.list_pools.include?(worker) then
+          puts "Verified pool: #{worker}"
+        else
+          puts "Attempt to create pool did not succeed: #{worker}"
+        end
       elsif json_in.key?('SPAWN') then
         def as_user(user, script_path, &block)
           require 'etc'
@@ -78,7 +83,7 @@ EM.run do
                            workerpool: worker }.to_json,
                          :routing_key => "hq",
                          :timestamp => Time.now.to_i,
-                         :type => 'receipt',
+                         :type => 'receipt.directive',
                          :correlation_id => metadata[:message_id],
                          :headers => { hostname: hostname,
                                        workerpool: worker, 
@@ -101,16 +106,14 @@ EM.run do
   .bind(exchange, routing_key: "managers.#")
   .subscribe do |delivery_info, metadata, payload|
     if delivery_info[:routing_key] == "managers.#{hostname}" then
-puts delivery_info
       directive_handler.call delivery_info, metadata, payload
     end
   end
 
-  exchange.publish({ host: hostname }.to_json,
+  exchange.publish({ hostname: hostname }.to_json,
                    :routing_key => "hq",
                    :timestamp => Time.now.to_i,
-                   :type => 'directive',
-                   :correlation_id => nil,
+                   :type => 'init',
                    :headers => { hostname: hostname,
                                  directive: 'IDENT' },
                    :message_id => SecureRandom.uuid)
