@@ -39,7 +39,6 @@ class HQ < Sinatra::Base
   end
 
   promises = {}
-  promise_retvals = {}
 
   ch
   .queue('hq', exclusive: true)
@@ -172,11 +171,11 @@ class HQ < Sinatra::Base
                 ws.send(retval)
               }
 
-              if !SATELLITES[:workers].include?(workerpool)
-                puts "worker `#{workerpool}` not found."
+              if !SATELLITES[:workers].include?("#{workerpool}@#{hostname}")
+                puts "worker `#{workerpool}@#{hostname}` not found."
                 #workerpool not found?  ignore.  todo: log me somewhere!
               else
-                puts "sending hostname:workerpool `#{hostname}:#{workerpool}` command:"
+                puts "sending `#{hostname}:#{workerpool}` command:"
                 puts body_parameters
                 exchange.publish(body_parameters.to_json,
                                  :routing_key => "workers.#{hostname}.#{workerpool}",
@@ -222,11 +221,11 @@ class HQ < Sinatra::Base
   end
 
 # startup broadcasts for IDENT
-#  exchange.publish('IDENT',
-#                   :routing_key => "workers",
-#                   :type => "directive",
-#                   :message_id => SecureRandom.uuid,
-#                   :timestamp => Time.now.to_i)
+  exchange.publish('IDENT',
+                   :routing_key => "workers",
+                   :type => "directive",
+                   :message_id => SecureRandom.uuid,
+                   :timestamp => Time.now.to_i)
 #  exchange.publish('IDENT',
 #                   :routing_key => "managers",
 #                   :type => "directive",
