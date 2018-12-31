@@ -100,7 +100,9 @@ class PermissionsTest < Minitest::Test
     assert(!inst.test_permission('mojang:fraudster', :start))
 
     inst.grant('mojang:trustedadmin', :start)
+    assert(inst.test_permission('mojang:hexparrot', :start))
     assert(inst.test_permission('mojang:trustedadmin', :start))
+    assert(!inst.test_permission('mojang:fraudster', :start))
   end
 
   def test_revoke
