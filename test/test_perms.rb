@@ -91,4 +91,26 @@ class PermissionsTest < Minitest::Test
     assert_equal(inst.permissions, inst2.permissions)
   end
 
+  def test_grant
+    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    assert(!inst.test_permission('mojang:hexparrot', :start))
+
+    inst.grant('mojang:hexparrot', :start)
+    assert(inst.test_permission('mojang:hexparrot', :start))
+    assert(!inst.test_permission('mojang:fraudster', :start))
+
+    inst.grant('mojang:trustedadmin', :start)
+    assert(inst.test_permission('mojang:trustedadmin', :start))
+  end
+
+  def test_revoke
+    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    assert(!inst.test_permission('mojang:hexparrot', :start))
+
+    inst.grant('mojang:hexparrot', :start)
+    assert(inst.test_permission('mojang:hexparrot', :start))
+
+    inst.revoke('mojang:hexparrot', :start)
+    assert(!inst.test_permission('mojang:hexparrot', :start))
+  end
 end

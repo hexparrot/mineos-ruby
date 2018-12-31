@@ -4,6 +4,8 @@ class Permissions
   def initialize(server_name, pool_name)
     @name = server_name
     @pool = pool_name
+    @properties = {}
+    @permissions = {}
   end
 
   def load_file(filepath)
@@ -30,5 +32,17 @@ class Permissions
   def save_file!(filepath)
     new_yaml = { 'properties': @properties.transform_keys(&:to_s), 'permissions': @permissions.transform_keys(&:to_s) }.transform_keys(&:to_s)
     File.open(filepath, "w") { |file| file.write(YAML::dump(new_yaml)) }
+  end
+
+  def grant(user, permission)
+    if !@permissions.key?(permission) then
+      @permissions[permission] = [user]
+    else
+      @permissions[permission] << user
+    end
+  end
+
+  def revoke(user, permission)
+    @permissions[permission].delete(user) if @permissions.key?(permission) && @permissions[permission].include?(user)
   end
 end
