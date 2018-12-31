@@ -1,6 +1,8 @@
 ---
 properties:
   creator: "linux:will"
+  grantors:
+  - "linux:will"
   name: "test"
   pool: "user"
   host: "ruby-worker"

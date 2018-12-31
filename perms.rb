@@ -45,4 +45,20 @@ class Permissions
   def revoke(user, permission)
     @permissions[permission].delete(user) if @permissions.key?(permission) && @permissions[permission].include?(user)
   end
+
+  def grantor?(user)
+    if @properties.key?(:grantors) then
+      @properties[:grantors].include?(user)
+    else
+      false
+    end
+  end
+
+  def make_grantor(user)
+    if !@properties.key?(:grantors) then
+      @properties[:grantors] = [user]
+    else
+      @properties[:grantors] << user
+    end
+  end
 end
