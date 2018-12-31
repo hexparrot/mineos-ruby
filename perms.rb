@@ -18,7 +18,9 @@ class Permissions
   end
 
   def test_permission(user, requested_perm)
-    @permissions[:all].include?(user) || @permissions[requested_perm].include?(user)
+    return true if @permissions.key?(:all) && @permissions[:all].include?(user)
+    return true if @permissions.key?(requested_perm) && @permissions[requested_perm].include?(user)
+    false
   end
 
   def get_property(requested_prop)
