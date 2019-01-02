@@ -53,6 +53,19 @@ class PermissionsTest < Minitest::Test
     assert(inst.test_permission('linux:will', :start))
   end
 
+  def test_check_fake_permission
+    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst.load_file('config/owner.yml')
+
+    assert(!inst.test_permission('mojang:hexparrot', :deleteeverything))
+    assert(!inst.test_permission('mojang:fraudster', :dosomethingweird))
+
+    assert(!inst.test_permission('mojang:lessertrustedadmin', :rmrf))
+
+    # test implicit :all
+    assert(inst.test_permission('linux:will', :fakebutworks))
+  end
+
   def test_check_permission_from_dump
     inst = Permissions.new('test', '_throwaway-500@ruby-hq')
     input = YAML::load_file('config/owner.yml')['permissions']
