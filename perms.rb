@@ -30,6 +30,8 @@ class Permissions
   end
 
   def save_file!(filepath)
+    raise RuntimeError.new("cannot save YAML structure as non-yaml file") if !['.yml', '.yaml'].include?(File.extname(filepath))
+
     new_yaml = { 'properties': @properties.transform_keys(&:to_s), 'permissions': @permissions.transform_keys(&:to_s) }.transform_keys(&:to_s)
     File.open(filepath, "w") { |file| file.write(YAML::dump(new_yaml)) }
   end
