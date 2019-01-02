@@ -86,7 +86,7 @@ class PermissionsTest < Minitest::Test
     inst = Permissions.new('test', '_throwaway-500@ruby-hq')
     inst.load_file('config/owner.yml')
 
-    assert_equal('linux:will', inst.get_property(:creator))
+    assert_equal('linux:will', inst.get_property(:owner))
     assert_equal('test', inst.get_property(:name))
     assert_equal('user', inst.get_property(:pool))
     assert_equal('ruby-worker', inst.get_property(:host))
@@ -174,4 +174,5 @@ class PermissionsTest < Minitest::Test
     assert(inst.grantor?('linux:will'))
     assert(inst.grantor?('mojang:hexparrot'))
   end
+
 end

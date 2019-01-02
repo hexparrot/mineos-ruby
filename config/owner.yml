@@ -1,6 +1,6 @@
 ---
 properties:
-  creator: "linux:will"
+  owner: "linux:will"
   grantors:
   - "linux:will"
   name: "test"
