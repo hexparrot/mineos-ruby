@@ -175,4 +175,16 @@ class PermissionsTest < Minitest::Test
     assert(inst.grantor?('mojang:hexparrot'))
   end
 
+  def test_unmake_grantor
+    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+
+    assert(!inst.grantor?('mojang:hexparrot'))
+
+    inst.make_grantor('mojang:hexparrot')
+    assert(inst.grantor?('mojang:hexparrot'))
+
+    inst.unmake_grantor('mojang:hexparrot')
+    assert(!inst.grantor?('mojang:hexparrot'))
+  end
+
 end

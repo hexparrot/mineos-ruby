@@ -63,4 +63,8 @@ class Permissions
       @properties[:grantors] << user
     end
   end
+
+  def unmake_grantor(user)
+    @properties[:grantors].delete(user) if @properties[:grantors].include?(user)
+  end
 end
