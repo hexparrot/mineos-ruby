@@ -187,4 +187,13 @@ class PermissionsTest < Minitest::Test
     assert(!inst.grantor?('mojang:hexparrot'))
   end
 
+  def test_owner_is_grantor
+    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst.load_file('config/owner.yml')
+
+    assert(inst.grantor?('linux:will'))
+    inst.unmake_grantor('linux:will')
+    assert(inst.grantor?('linux:will'))
+  end
+
 end

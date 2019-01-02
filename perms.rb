@@ -49,7 +49,9 @@ class Permissions
   end
 
   def grantor?(user)
-    if @properties.key?(:grantors) then
+    if @properties[:owner] == user then
+      true
+    elsif @properties.key?(:grantors) then
       @properties[:grantors].include?(user)
     else
       false
