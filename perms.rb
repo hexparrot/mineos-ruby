@@ -1,9 +1,7 @@
 class Permissions
-  attr_reader :name, :pool, :permissions
+  attr_reader :permissions
 
-  def initialize(server_name, pool_name)
-    @name = server_name
-    @pool = pool_name
+  def initialize()
     @properties = {}
     @permissions = {}
   end

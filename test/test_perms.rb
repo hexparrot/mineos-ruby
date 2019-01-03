@@ -11,13 +11,11 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_create_perm
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
-    assert_equal('test', inst.name)
-    assert_equal('_throwaway-500@ruby-hq', inst.pool)
+    inst = Permissions.new
   end
 
   def test_load_permission_yaml
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
     inst.load_file('config/owner.yml')
     assert_instance_of(Hash, inst.permissions)
 
@@ -27,7 +25,7 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_load_hash
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
 
     input = YAML::load_file('config/owner.yml')['permissions']
     dump = YAML::dump(input)
@@ -41,7 +39,7 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_check_permission
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
     inst.load_file('config/owner.yml')
 
     assert(inst.test_permission('mojang:hexparrot', :start))
@@ -54,7 +52,7 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_check_fake_permission
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
     inst.load_file('config/owner.yml')
 
     assert(!inst.test_permission('mojang:hexparrot', :deleteeverything))
@@ -67,7 +65,7 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_check_permission_from_dump
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
     input = YAML::load_file('config/owner.yml')['permissions']
     dump = YAML::dump(input)
 
@@ -83,7 +81,7 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_get_property
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
     inst.load_file('config/owner.yml')
 
     assert_equal('linux:will', inst.get_property(:owner))
@@ -93,31 +91,31 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_save_yaml
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
     inst.load_file('config/owner.yml')
 
     inst.save_file!('config/owner_new.yml')
 
-    inst2 = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst2 = Permissions.new
     inst2.load_file('config/owner_new.yml')
 
     assert_equal(inst.permissions, inst2.permissions)
   end
 
   def test_save_yaml_full_ext
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
     inst.load_file('config/owner.yml')
 
     inst.save_file!('config/owner_new.yaml')
 
-    inst2 = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst2 = Permissions.new
     inst2.load_file('config/owner_new.yaml')
 
     assert_equal(inst.permissions, inst2.permissions)
   end
 
   def test_save_yaml_as_nonyaml
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
     inst.load_file('config/owner.yml')
 
     ex = assert_raises(RuntimeError) { inst.save_file!('config/owner_new.txt') }
@@ -129,7 +127,7 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_grant
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
     assert(!inst.test_permission('mojang:hexparrot', :start))
 
     inst.grant('mojang:hexparrot', :start)
@@ -143,7 +141,7 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_revoke
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
     assert(!inst.test_permission('mojang:hexparrot', :start))
 
     inst.grant('mojang:hexparrot', :start)
@@ -154,7 +152,7 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_grantor?
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
     inst.load_file('config/owner.yml')
 
     assert(inst.grantor?('linux:will'))
@@ -162,7 +160,7 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_make_grantor
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
 
     assert(!inst.grantor?('linux:will'))
     assert(!inst.grantor?('mojang:hexparrot'))
@@ -176,7 +174,7 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_unmake_grantor
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
 
     assert(!inst.grantor?('mojang:hexparrot'))
 
@@ -188,7 +186,7 @@ class PermissionsTest < Minitest::Test
   end
 
   def test_owner_is_grantor
-    inst = Permissions.new('test', '_throwaway-500@ruby-hq')
+    inst = Permissions.new
     inst.load_file('config/owner.yml')
 
     assert(inst.grantor?('linux:will'))
