@@ -23,6 +23,11 @@ class Permissions
     @owner = @properties[:owner] if @owner.nil?
   end
 
+  def dump
+    new_yaml = { 'properties': @properties.transform_keys(&:to_s), 'permissions': @permissions.transform_keys(&:to_s) }.transform_keys(&:to_s)
+    YAML::dump(new_yaml)
+  end
+
   def test_permission(user, requested_perm)
     return true if @permissions.key?(:all) && @permissions[:all].include?(user)
     return true if @permissions.key?(requested_perm) && @permissions[requested_perm].include?(user)

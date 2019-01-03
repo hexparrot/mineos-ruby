@@ -49,6 +49,19 @@ class PermissionsTest < Minitest::Test
     assert_equal('linux:will', inst.properties[:grantors].first)
   end
 
+  def test_dump_hash
+    inst = Permissions.new
+    inst.load_file('config/owner.yml')
+
+    input = inst.dump
+
+    inst2 = Permissions.new
+    inst2.load(input)
+
+    assert_equal(inst2.properties, inst.properties)
+    assert_equal(inst2.permissions, inst.permissions)
+  end
+
   def test_check_permission
     inst = Permissions.new
     inst.load_file('config/owner.yml')
@@ -234,4 +247,17 @@ class PermissionsTest < Minitest::Test
 
     assert_equal('mojang:hexparrot', inst.owner)
   end
+
+  def test_dump_hash_uses_inst_owner
+    inst = Permissions.new
+    inst.load_file('config/owner.yml')
+
+    input = inst.dump
+
+    inst2 = Permissions.new(owner: 'mojang:myfavoriteadmin')
+    inst2.load(input)
+
+    assert_equal('mojang:myfavoriteadmin', inst2.owner)
+  end
+
 end
