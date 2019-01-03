@@ -12,6 +12,9 @@ class PermissionsTest < Minitest::Test
 
   def test_create_perm
     inst = Permissions.new
+
+    inst2 = Permissions.new(owner:'linux:will')
+    assert_equal('linux:will', inst2.owner)
   end
 
   def test_load_permission_yaml
@@ -185,7 +188,7 @@ class PermissionsTest < Minitest::Test
     assert(!inst.grantor?('mojang:hexparrot'))
   end
 
-  def test_owner_is_grantor
+  def test_owner_is_grantor_load_file
     inst = Permissions.new
     inst.load_file('config/owner.yml')
 
@@ -194,4 +197,36 @@ class PermissionsTest < Minitest::Test
     assert(inst.grantor?('linux:will'))
   end
 
+  def test_owner_is_grantor
+    inst = Permissions.new(owner:'linux:will')
+
+    assert(inst.grantor?('linux:will'))
+  end
+
+  def test_load_file_sets_inst_owner
+    inst = Permissions.new
+    inst.load_file('config/owner.yml')
+
+    assert_equal('linux:will', inst.owner)
+  end
+
+  def test_load_file_doesnt_override_provided_owner
+    inst = Permissions.new(owner:'mojang:hexparrot')
+    assert_equal('mojang:hexparrot', inst.owner)
+    inst.load_file('config/owner.yml')
+
+    assert_equal('mojang:hexparrot', inst.owner)
+  end
+
+  def test_save_file_uses_inst_owner
+    inst = Permissions.new(owner:'mojang:hexparrot')
+    inst.load_file('config/owner.yml')
+
+    inst.save_file!('config/owner_new.yml')
+
+    inst2 = Permissions.new
+    inst2.load_file('config/owner_new.yml')
+
+    assert_equal('mojang:hexparrot', inst.owner)
+  end
 end

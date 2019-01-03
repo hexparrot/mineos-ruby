@@ -1,7 +1,8 @@
 class Permissions
-  attr_reader :permissions
+  attr_reader :owner, :permissions
 
-  def initialize()
+  def initialize(owner:nil)
+    @owner = owner
     @properties = {}
     @permissions = {}
   end
@@ -11,6 +12,8 @@ class Permissions
     yaml_input = YAML::load_file(filepath)
     @permissions = yaml_input['permissions'].transform_keys(&:to_sym)
     @properties = yaml_input['properties'].transform_keys(&:to_sym)
+
+    @owner = @properties[:owner] if @owner.nil?
   end
 
   def load(dump)
@@ -47,7 +50,9 @@ class Permissions
   end
 
   def grantor?(user)
-    if @properties[:owner] == user then
+    if @owner == user then
+      true
+    elsif @properties[:owner] == user then
       true
     elsif @properties.key?(:grantors) then
       @properties[:grantors].include?(user)
