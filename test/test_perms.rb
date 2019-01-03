@@ -30,15 +30,23 @@ class PermissionsTest < Minitest::Test
   def test_load_hash
     inst = Permissions.new
 
-    input = YAML::load_file('config/owner.yml')['permissions']
+    input = YAML::load_file('config/owner.yml')
     dump = YAML::dump(input)
 
     inst.load(dump)
+    assert_instance_of(Hash, inst.properties)
     assert_instance_of(Hash, inst.permissions)
+
+    inst.properties.each do |k,v|
+      assert_equal(Symbol, k.class)
+    end
 
     inst.permissions.each do |k,v|
       assert_equal(Symbol, k.class)
     end
+
+    assert_equal('linux:will', inst.owner)
+    assert_equal('linux:will', inst.properties[:grantors].first)
   end
 
   def test_check_permission
@@ -69,7 +77,7 @@ class PermissionsTest < Minitest::Test
 
   def test_check_permission_from_dump
     inst = Permissions.new
-    input = YAML::load_file('config/owner.yml')['permissions']
+    input = YAML::load_file('config/owner.yml')
     dump = YAML::dump(input)
 
     inst.load(dump)
@@ -88,9 +96,6 @@ class PermissionsTest < Minitest::Test
     inst.load_file('config/owner.yml')
 
     assert_equal('linux:will', inst.get_property(:owner))
-    assert_equal('test', inst.get_property(:name))
-    assert_equal('user', inst.get_property(:pool))
-    assert_equal('ruby-worker', inst.get_property(:host))
   end
 
   def test_save_yaml

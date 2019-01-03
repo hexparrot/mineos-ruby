@@ -1,5 +1,5 @@
 class Permissions
-  attr_reader :owner, :permissions
+  attr_reader :owner, :permissions, :properties
 
   def initialize(owner:nil)
     @owner = owner
@@ -17,7 +17,10 @@ class Permissions
   end
 
   def load(dump)
-    @permissions = YAML::load(dump).transform_keys(&:to_sym)
+    @properties = YAML::load(dump)['properties'].transform_keys(&:to_sym)
+    @permissions = YAML::load(dump)['permissions'].transform_keys(&:to_sym)
+
+    @owner = @properties[:owner] if @owner.nil?
   end
 
   def test_permission(user, requested_perm)
