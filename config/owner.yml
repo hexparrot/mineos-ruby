@@ -1,0 +1,35 @@
+---
+properties:
+  owner: "linux:will"
+  grantors:
+  - "linux:will"
+
+permissions:
+  all:
+  - "linux:will"
+  - "mojang:someotheradmin"
+  delete:
+  - "mojang:hexparrot"
+  modify_sc:
+  - "mojang:hexparrot"
+  modify_sp:
+  - "mojang:hexparrot"
+  start:
+  - "mojang:hexparrot"
+  start_catch_errors:
+  - "mojang:hexparrot"
+  stop:
+  - "mojang:hexparrot"
+  kill:
+  - "mojang:hexparrot"
+  modify_sp:
+  - "mojang:hexparrot"
+  console:
+  - "mojang:hexparrot"
+  - "mojang:lessertrustedadmin"
+  archive:
+  - "mojang:hexparrot"
+  backup:
+  - "mojang:hexparrot"
+  restore:
+  - "mojang:hexparrot"
