@@ -3,8 +3,10 @@ require 'sinatra-websocket'
 require 'json'
 require 'securerandom'
 require 'set'
+require_relative 'perms'
 
 USERS = []
+SERVERS = []
 SATELLITES = { :workers => Set.new, :managers => Set.new }
 
 class HQ < Sinatra::Base
@@ -118,6 +120,8 @@ class HQ < Sinatra::Base
 
 ## route handlers
 
+  Perms = Struct.new("Perms", :host, :pool, :server, :permissions)
+
   get '/' do
     if !current_user
       send_file File.join('public', 'login.html')
@@ -173,23 +177,58 @@ class HQ < Sinatra::Base
               workerpool = body_parameters.delete('workerpool')
               servername = body_parameters['server_name']
 
-              promises[uuid] = Proc.new { |status_code, retval|
-                ws.send(retval)
-              }
+              target = "#{workerpool}@#{hostname}"
 
-              if !SATELLITES[:workers].include?("#{workerpool}@#{hostname}")
+              if !SATELLITES[:workers].include?(target) then
                 puts "worker `#{workerpool}@#{hostname}` not found."
                 #workerpool not found?  ignore.  todo: log me somewhere!
               else
-                puts "sending `#{hostname}:#{workerpool}` command:"
-                puts body_parameters
-                exchange.publish(body_parameters.to_json,
-                                 :routing_key => "workers.#{hostname}.#{workerpool}",
-                                 :type => "command",
-                                 :message_id => uuid,
-                                 :timestamp => Time.now.to_i)
-              end
-            end
+                user = "#{current_user.authtype}:#{current_user.id}"
+                match = SERVERS.find { |s| s.host == hostname &&
+                                           s.pool == workerpool &&
+                                           s.server == servername }
+
+                if match.nil? then
+                  puts "no permissions for #{servername} on #{target}!"
+                  case body_parameters['cmd']
+                  when 'create'
+                    puts "requesting :create, creating permissions..."
+                    match = Struct::Perms.new(hostname,
+                                              workerpool,
+                                              servername,
+                                              Permissions.new(owner: user))
+                    match.permissions.grant(user, :all)
+                    SERVERS << match
+                  end #case
+                end #match.nil?
+
+                begin
+                  if match.permissions.test_permission(user, body_parameters['cmd']) then
+                    # and permissions granted to user for cmd
+
+                    puts "test #{user} for #{body_parameters['cmd']}: OK"
+
+                    promises[uuid] = Proc.new { |status_code, retval|
+                      ws.send(retval)
+                    }
+
+                    puts "sending `#{hostname}:#{workerpool}` command:"
+                    puts body_parameters
+                    exchange.publish(body_parameters.to_json,
+                                     :routing_key => "workers.#{hostname}.#{workerpool}",
+                                     :type => "command",
+                                     :message_id => uuid,
+                                     :timestamp => Time.now.to_i)
+                  else
+                    puts "test #{user} for #{body_parameters['cmd']}: FAIL"
+                  end #test_permission
+                rescue NoMethodError
+                  # no match, NOOP
+                  puts 'no matching permission screen: NOOP'
+                end #begin
+              end #!SATELLITES
+
+            end #body_parameters
           end # ws.onmessage
 
           ws.onclose do
