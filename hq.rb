@@ -67,8 +67,6 @@ class HQ < Sinatra::Base
             puts "worker.rb process registered: #{routing_key}"
             SATELLITES[:workers].add(routing_key)
             # new worker process registration, ask to verify OBJSTORE
-            host = metadata[:headers]['hostname']
-            workerpool = metadata[:headers]['workerpool']
             exchange.publish('ACK',
                              :routing_key => routing_key,
                              :type => "receipt.directive",
@@ -76,16 +74,16 @@ class HQ < Sinatra::Base
                              :correlation_id => metadata[:message_id],
                              :headers => { directive: 'IDENT' },
                              :timestamp => Time.now.to_i)
-            exchange.publish('VERIFY_OBJSTORE',
-                             :routing_key => routing_key,
-                             :type => "directive",
-                             :message_id => SecureRandom.uuid,
-                             :timestamp => Time.now.to_i)
           else
             # worker already registered
             puts "worker.rb process heartbeat: #{routing_key}"
-            # TODO: if worker fails, but hq persists, restarted worker won't have AWS creds
           end
+
+          exchange.publish('VERIFY_OBJSTORE',
+                           :routing_key => routing_key,
+                           :type => "directive",
+                           :message_id => SecureRandom.uuid,
+                           :timestamp => Time.now.to_i)
         else
           # :workerpool's absence implies mrmanager satellite
           if !SATELLITES[:managers].include?(routing_key) then
