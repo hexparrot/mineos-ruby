@@ -60,46 +60,46 @@ class HQ < Sinatra::Base
       case metadata[:headers]['directive']
       when 'IDENT'
         parsed = JSON.parse payload
-        unique_name = "#{parsed['workerpool']}@#{parsed['hostname']}"
+        routing_key = "workers.#{parsed['hostname']}.#{parsed['workerpool']}"
         if parsed["workerpool"] then
           # :workerpool's only exists only from worker satellite
-          if !SATELLITES[:workers].include?(unique_name) then
-            puts "worker.rb process registered: #{unique_name}"
-            SATELLITES[:workers].add(unique_name)
+          if !SATELLITES[:workers].include?(routing_key) then
+            puts "worker.rb process registered: #{routing_key}"
+            SATELLITES[:workers].add(routing_key)
             # new worker process registration, ask to verify OBJSTORE
             host = metadata[:headers]['hostname']
             workerpool = metadata[:headers]['workerpool']
             exchange.publish('ACK',
-                             :routing_key => "workers.#{host}.#{workerpool}",
+                             :routing_key => routing_key,
                              :type => "receipt.directive",
                              :message_id => SecureRandom.uuid,
                              :correlation_id => metadata[:message_id],
                              :headers => { directive: 'IDENT' },
                              :timestamp => Time.now.to_i)
             exchange.publish('VERIFY_OBJSTORE',
-                             :routing_key => "workers.#{host}.#{workerpool}",
+                             :routing_key => routing_key,
                              :type => "directive",
                              :message_id => SecureRandom.uuid,
                              :timestamp => Time.now.to_i)
           else
             # worker already registered
-            puts "worker.rb process heartbeat: #{unique_name}"
+            puts "worker.rb process heartbeat: #{routing_key}"
+            # TODO: if worker fails, but hq persists, restarted worker won't have AWS creds
           end
         else
           # :workerpool's absence implies mrmanager satellite
-          if !SATELLITES[:managers].include?(unique_name) then
-            puts "mrmanager.rb process registered: #{unique_name}"
-            SATELLITES[:managers].add(unique_name)
+          if !SATELLITES[:managers].include?(routing_key) then
+            puts "mrmanager.rb process registered: #{routing_key}"
+            SATELLITES[:managers].add(routing_key)
           else
             # mrmanager already registered
-            puts "mrmanager.rb process heartbeat: #{unique_name}"
+            puts "mrmanager.rb process heartbeat: #{routing_key}"
           end
         end #if parsed["workerpool"]
       when 'VERIFY_OBJSTORE'
         if payload == '' then
           # on receipt of non-true VERIFY_OBJSTORE, send object store creds
-          host = metadata[:headers]['hostname']
-          workerpool = metadata[:headers]['workerpool']
+          routing_key = "workers.#{metadata[:headers]['hostname']}.#{metadata[:headers]['workerpool']}"
           exchange.publish({ AWSCREDS: {
                                endpoint: s3_config['object_store']['host'],
                                access_key_id: s3_config['object_store']['access_key'],
@@ -107,7 +107,7 @@ class HQ < Sinatra::Base
                                region: 'us-west-1'
                              }
                            }.to_json,
-                           :routing_key => "workers.#{host}.#{workerpool}",
+                           :routing_key => routing_key,
                            :type => "directive",
                            :headers => { directive: 'VERIFY_OBJSTORE' },
                            :correlation_id => metadata[:message_id],
