@@ -19,14 +19,14 @@ EM.run do
     case payload
     when 'IDENT'
       EM::Timer.new(1) do
-        exchange.publish({ host: hostname }.to_json,
-                             :routing_key => "hq",
-                             :timestamp => Time.now.to_i,
-                             :type => 'receipt',
-                             :correlation_id => metadata[:message_id],
-                             :headers => { hostname: hostname,
-                                           directive: 'IDENT' },
-                             :message_id => SecureRandom.uuid)
+        exchange.publish({ hostname: hostname }.to_json,
+                         :routing_key => "hq",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt',
+                         :correlation_id => metadata[:message_id],
+                         :headers => { hostname: hostname,
+                                       directive: 'IDENT' },
+                         :message_id => SecureRandom.uuid)
       end
     else
       json_in = JSON.parse payload
@@ -106,6 +106,8 @@ EM.run do
   .bind(exchange, routing_key: "managers.#")
   .subscribe do |delivery_info, metadata, payload|
     if delivery_info[:routing_key] == "managers.#{hostname}" then
+      directive_handler.call delivery_info, metadata, payload
+    elsif delivery_info[:routing_key] == "managers" then
       directive_handler.call delivery_info, metadata, payload
     end
   end

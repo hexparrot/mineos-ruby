@@ -3,8 +3,10 @@ require 'sinatra-websocket'
 require 'json'
 require 'securerandom'
 require 'set'
+require_relative 'perms'
 
 USERS = []
+SERVERS = []
 SATELLITES = { :workers => Set.new, :managers => Set.new }
 
 class HQ < Sinatra::Base
@@ -58,46 +60,48 @@ class HQ < Sinatra::Base
       case metadata[:headers]['directive']
       when 'IDENT'
         parsed = JSON.parse payload
-        unique_name = "#{parsed['workerpool']}@#{parsed['hostname']}"
+
         if parsed["workerpool"] then
           # :workerpool's only exists only from worker satellite
-          if !SATELLITES[:workers].include?(unique_name) then
-            puts "worker.rb process registered: #{unique_name}"
-            SATELLITES[:workers].add(unique_name)
+          routing_key = "workers.#{parsed['hostname']}.#{parsed['workerpool']}"
+
+          if !SATELLITES[:workers].include?(routing_key) then
+            puts "worker.rb process registered: #{routing_key}"
+            SATELLITES[:workers].add(routing_key)
             # new worker process registration, ask to verify OBJSTORE
-            host = metadata[:headers]['hostname']
-            workerpool = metadata[:headers]['workerpool']
             exchange.publish('ACK',
-                             :routing_key => "workers.#{host}.#{workerpool}",
+                             :routing_key => routing_key,
                              :type => "receipt.directive",
                              :message_id => SecureRandom.uuid,
                              :correlation_id => metadata[:message_id],
                              :headers => { directive: 'IDENT' },
                              :timestamp => Time.now.to_i)
-            exchange.publish('VERIFY_OBJSTORE',
-                             :routing_key => "workers.#{host}.#{workerpool}",
-                             :type => "directive",
-                             :message_id => SecureRandom.uuid,
-                             :timestamp => Time.now.to_i)
           else
             # worker already registered
-            puts "worker.rb process heartbeat: #{unique_name}"
+            puts "worker.rb process heartbeat: #{routing_key}"
           end
+
+          exchange.publish('VERIFY_OBJSTORE',
+                           :routing_key => routing_key,
+                           :type => "directive",
+                           :message_id => SecureRandom.uuid,
+                           :timestamp => Time.now.to_i)
         else
           # :workerpool's absence implies mrmanager satellite
-          if !SATELLITES[:managers].include?(unique_name) then
-            puts "mrmanager.rb process registered: #{unique_name}"
-            SATELLITES[:managers].add(unique_name)
+          routing_key = "managers.#{parsed['hostname']}"
+
+          if !SATELLITES[:managers].include?(routing_key) then
+            puts "mrmanager.rb process registered: #{routing_key}"
+            SATELLITES[:managers].add(routing_key)
           else
             # mrmanager already registered
-            puts "mrmanager.rb process heartbeat: #{unique_name}"
+            puts "mrmanager.rb process heartbeat: #{routing_key}"
           end
         end #if parsed["workerpool"]
       when 'VERIFY_OBJSTORE'
         if payload == '' then
           # on receipt of non-true VERIFY_OBJSTORE, send object store creds
-          host = metadata[:headers]['hostname']
-          workerpool = metadata[:headers]['workerpool']
+          routing_key = "workers.#{metadata[:headers]['hostname']}.#{metadata[:headers]['workerpool']}"
           exchange.publish({ AWSCREDS: {
                                endpoint: s3_config['object_store']['host'],
                                access_key_id: s3_config['object_store']['access_key'],
@@ -105,7 +109,7 @@ class HQ < Sinatra::Base
                                region: 'us-west-1'
                              }
                            }.to_json,
-                           :routing_key => "workers.#{host}.#{workerpool}",
+                           :routing_key => routing_key,
                            :type => "directive",
                            :headers => { directive: 'VERIFY_OBJSTORE' },
                            :correlation_id => metadata[:message_id],
@@ -117,6 +121,8 @@ class HQ < Sinatra::Base
   end #subscribe
 
 ## route handlers
+
+  Perms = Struct.new("Perms", :host, :pool, :server, :permissions)
 
   get '/' do
     if !current_user
@@ -137,35 +143,36 @@ class HQ < Sinatra::Base
             if body_parameters.key?('dir') then
               hostname = body_parameters.delete('hostname')
               workerpool = body_parameters.delete('workerpool')
+              routing_key = "managers.#{hostname}"
 
               promises[uuid] = Proc.new { |status_code, retval|
                 ws.send(retval)
               }
 
-              if !SATELLITES[:managers].include?(hostname)
-                puts "hostname `#{hostname}` not found."
+              if !SATELLITES[:managers].include?(routing_key)
+                puts "manager `#{routing_key}` not found."
               else
-                puts "sending `#{hostname}:#{workerpool}` directive:"
+                puts "sending `#{routing_key}` directive:"
                 puts body_parameters
                 case body_parameters['dir']
                 when 'mkpool'
-                  exchange.publish({MKPOOL: {workerpool: workerpool}}.to_json,
-                                    :routing_key => "managers.#{hostname}",
-                                    :type => "directive",
-                                    :message_id => uuid,
-                                    :timestamp => Time.now.to_i)
+                  exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
+                                   :routing_key => routing_key,
+                                   :type => "directive",
+                                   :message_id => uuid,
+                                   :timestamp => Time.now.to_i)
                 when 'spawn'
-                  exchange.publish({SPAWN: {workerpool: workerpool}}.to_json,
-                                    :routing_key => "managers.#{hostname}",
-                                    :type => "directive",
-                                    :message_id => uuid,
-                                    :timestamp => Time.now.to_i)
+                  exchange.publish({ SPAWN: {workerpool: workerpool} }.to_json,
+                                   :routing_key => routing_key,
+                                   :type => "directive",
+                                   :message_id => uuid,
+                                   :timestamp => Time.now.to_i)
                 when 'remove'
-                  exchange.publish({REMOVE: {workerpool: workerpool}}.to_json,
-                                    :routing_key => "managers.#{hostname}",
-                                    :type => "directive",
-                                    :message_id => uuid,
-                                    :timestamp => Time.now.to_i)
+                  exchange.publish({ REMOVE: {workerpool: workerpool} }.to_json,
+                                   :routing_key => routing_key,
+                                   :type => "directive",
+                                   :message_id => uuid,
+                                   :timestamp => Time.now.to_i)
                 end
               end
             elsif body_parameters.key?('cmd') then
@@ -173,23 +180,58 @@ class HQ < Sinatra::Base
               workerpool = body_parameters.delete('workerpool')
               servername = body_parameters['server_name']
 
-              promises[uuid] = Proc.new { |status_code, retval|
-                ws.send(retval)
-              }
+              routing_key = "workers.#{hostname}.#{workerpool}"
 
-              if !SATELLITES[:workers].include?("#{workerpool}@#{hostname}")
-                puts "worker `#{workerpool}@#{hostname}` not found."
+              if !SATELLITES[:workers].include?(routing_key) then
+                puts "`#{routing_key}` not found."
                 #workerpool not found?  ignore.  todo: log me somewhere!
               else
-                puts "sending `#{hostname}:#{workerpool}` command:"
-                puts body_parameters
-                exchange.publish(body_parameters.to_json,
-                                 :routing_key => "workers.#{hostname}.#{workerpool}",
-                                 :type => "command",
-                                 :message_id => uuid,
-                                 :timestamp => Time.now.to_i)
-              end
-            end
+                user = "#{current_user.authtype}:#{current_user.id}"
+                match = SERVERS.find { |s| s.host == hostname &&
+                                           s.pool == workerpool &&
+                                           s.server == servername }
+
+                if match.nil? then
+                  puts "no permissions for #{servername} on #{routing_key}!"
+                  case body_parameters['cmd']
+                  when 'create'
+                    puts "requesting :create, creating permissions..."
+                    match = Struct::Perms.new(hostname,
+                                              workerpool,
+                                              servername,
+                                              Permissions.new(owner: user))
+                    match.permissions.grant(user, :all)
+                    SERVERS << match
+                  end #case
+                end #match.nil?
+
+                begin
+                  if match.permissions.test_permission(user, body_parameters['cmd']) then
+                    # and permissions granted to user for cmd
+
+                    puts "test #{user} for #{body_parameters['cmd']}: OK"
+
+                    promises[uuid] = Proc.new { |status_code, retval|
+                      ws.send(retval)
+                    }
+
+                    puts "sending `#{routing_key}` command:"
+                    puts body_parameters
+                    exchange.publish(body_parameters.to_json,
+                                     :routing_key => routing_key,
+                                     :type => "command",
+                                     :message_id => uuid,
+                                     :timestamp => Time.now.to_i)
+                  else
+                    puts "test #{user} for #{body_parameters['cmd']}: FAIL"
+                  end #test_permission
+                rescue NoMethodError
+                  # no match, NOOP
+                  puts 'no matching permission screen: NOOP'
+                end #begin
+              end #!SATELLITES
+
+            end #body_parameters
           end # ws.onmessage
 
           ws.onclose do
@@ -232,11 +274,11 @@ class HQ < Sinatra::Base
                    :type => "directive",
                    :message_id => SecureRandom.uuid,
                    :timestamp => Time.now.to_i)
-#  exchange.publish('IDENT',
-#                   :routing_key => "managers",
-#                   :type => "directive",
-#                   :message_id => SecureRandom.uuid,
-#                   :timestamp => Time.now.to_i)
+  exchange.publish('IDENT',
+                   :routing_key => "managers",
+                   :type => "directive",
+                   :message_id => SecureRandom.uuid,
+                   :timestamp => Time.now.to_i)
 
   run!
 end
