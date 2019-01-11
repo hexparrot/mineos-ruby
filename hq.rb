@@ -60,9 +60,11 @@ class HQ < Sinatra::Base
       case metadata[:headers]['directive']
       when 'IDENT'
         parsed = JSON.parse payload
-        routing_key = "workers.#{parsed['hostname']}.#{parsed['workerpool']}"
+
         if parsed["workerpool"] then
           # :workerpool's only exists only from worker satellite
+          routing_key = "workers.#{parsed['hostname']}.#{parsed['workerpool']}"
+
           if !SATELLITES[:workers].include?(routing_key) then
             puts "worker.rb process registered: #{routing_key}"
             SATELLITES[:workers].add(routing_key)
@@ -86,6 +88,8 @@ class HQ < Sinatra::Base
                            :timestamp => Time.now.to_i)
         else
           # :workerpool's absence implies mrmanager satellite
+          routing_key = "managers.#{parsed['hostname']}"
+
           if !SATELLITES[:managers].include?(routing_key) then
             puts "mrmanager.rb process registered: #{routing_key}"
             SATELLITES[:managers].add(routing_key)
@@ -139,35 +143,36 @@ class HQ < Sinatra::Base
             if body_parameters.key?('dir') then
               hostname = body_parameters.delete('hostname')
               workerpool = body_parameters.delete('workerpool')
+              routing_key = "managers.#{hostname}"
 
               promises[uuid] = Proc.new { |status_code, retval|
                 ws.send(retval)
               }
 
-              if !SATELLITES[:managers].include?(hostname)
-                puts "manager `#{hostname}` not found."
+              if !SATELLITES[:managers].include?(routing_key)
+                puts "manager `#{routing_key}` not found."
               else
-                puts "sending `#{hostname}:#{workerpool}` directive:"
+                puts "sending `#{routing_key}` directive:"
                 puts body_parameters
                 case body_parameters['dir']
                 when 'mkpool'
-                  exchange.publish({MKPOOL: {workerpool: workerpool}}.to_json,
-                                    :routing_key => "managers.#{hostname}",
-                                    :type => "directive",
-                                    :message_id => uuid,
-                                    :timestamp => Time.now.to_i)
+                  exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
+                                   :routing_key => routing_key,
+                                   :type => "directive",
+                                   :message_id => uuid,
+                                   :timestamp => Time.now.to_i)
                 when 'spawn'
-                  exchange.publish({SPAWN: {workerpool: workerpool}}.to_json,
-                                    :routing_key => "managers.#{hostname}",
-                                    :type => "directive",
-                                    :message_id => uuid,
-                                    :timestamp => Time.now.to_i)
+                  exchange.publish({ SPAWN: {workerpool: workerpool} }.to_json,
+                                   :routing_key => routing_key,
+                                   :type => "directive",
+                                   :message_id => uuid,
+                                   :timestamp => Time.now.to_i)
                 when 'remove'
-                  exchange.publish({REMOVE: {workerpool: workerpool}}.to_json,
-                                    :routing_key => "managers.#{hostname}",
-                                    :type => "directive",
-                                    :message_id => uuid,
-                                    :timestamp => Time.now.to_i)
+                  exchange.publish({ REMOVE: {workerpool: workerpool} }.to_json,
+                                   :routing_key => routing_key,
+                                   :type => "directive",
+                                   :message_id => uuid,
+                                   :timestamp => Time.now.to_i)
                 end
               end
             elsif body_parameters.key?('cmd') then
@@ -269,11 +274,11 @@ class HQ < Sinatra::Base
                    :type => "directive",
                    :message_id => SecureRandom.uuid,
                    :timestamp => Time.now.to_i)
-#  exchange.publish('IDENT',
-#                   :routing_key => "managers",
-#                   :type => "directive",
-#                   :message_id => SecureRandom.uuid,
-#                   :timestamp => Time.now.to_i)
+  exchange.publish('IDENT',
+                   :routing_key => "managers",
+                   :type => "directive",
+                   :message_id => SecureRandom.uuid,
+                   :timestamp => Time.now.to_i)
 
   run!
 end
