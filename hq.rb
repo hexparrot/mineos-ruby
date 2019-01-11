@@ -145,7 +145,7 @@ class HQ < Sinatra::Base
               }
 
               if !SATELLITES[:managers].include?(hostname)
-                puts "hostname `#{hostname}` not found."
+                puts "manager `#{hostname}` not found."
               else
                 puts "sending `#{hostname}:#{workerpool}` directive:"
                 puts body_parameters
@@ -175,10 +175,10 @@ class HQ < Sinatra::Base
               workerpool = body_parameters.delete('workerpool')
               servername = body_parameters['server_name']
 
-              target = "#{workerpool}@#{hostname}"
+              routing_key = "workers.#{hostname}.#{workerpool}"
 
-              if !SATELLITES[:workers].include?(target) then
-                puts "worker `#{workerpool}@#{hostname}` not found."
+              if !SATELLITES[:workers].include?(routing_key) then
+                puts "`#{routing_key}` not found."
                 #workerpool not found?  ignore.  todo: log me somewhere!
               else
                 user = "#{current_user.authtype}:#{current_user.id}"
@@ -187,7 +187,7 @@ class HQ < Sinatra::Base
                                            s.server == servername }
 
                 if match.nil? then
-                  puts "no permissions for #{servername} on #{target}!"
+                  puts "no permissions for #{servername} on #{routing_key}!"
                   case body_parameters['cmd']
                   when 'create'
                     puts "requesting :create, creating permissions..."
@@ -210,10 +210,10 @@ class HQ < Sinatra::Base
                       ws.send(retval)
                     }
 
-                    puts "sending `#{hostname}:#{workerpool}` command:"
+                    puts "sending `#{routing_key}` command:"
                     puts body_parameters
                     exchange.publish(body_parameters.to_json,
-                                     :routing_key => "workers.#{hostname}.#{workerpool}",
+                                     :routing_key => routing_key,
                                      :type => "command",
                                      :message_id => uuid,
                                      :timestamp => Time.now.to_i)
