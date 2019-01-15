@@ -249,7 +249,8 @@ EM.run do
                                   :timestamp => Time.now.to_i,
                                   :type => 'stdout',
                                   :correlation_id => metadata[:message_id],
-                                  :headers => {hostname: hostname},
+                                  :headers => { hostname: hostname,
+                                                workerpool: workerpool },
                                   :message_id => SecureRandom.uuid)
         end # loop
       end # Thread.new

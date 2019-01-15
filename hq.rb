@@ -39,7 +39,13 @@ class HQ < Sinatra::Base
   .bind(exchange_stdout, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
     settings.sockets.each { |ws|
-      ws.websocket.send(payload)
+      parsed = JSON.parse payload
+      match = SERVERS.find { |s| s.host == metadata[:headers]['hostname'] &&
+                                 s.pool == metadata[:headers]['workerpool'] &&
+                                 s.server == parsed["server_name"] }
+
+      user = "#{ws.user.authtype}:#{ws.user.id}"
+      ws.websocket.send(payload) if match && match.permissions.test_permission(user, :console)
     }
   end
 
