@@ -8,6 +8,7 @@ require_relative 'perms'
 USERS = []
 SERVERS = []
 SATELLITES = { :workers => Set.new, :managers => Set.new }
+SOCKET = Struct.new("Socket", :websocket, :user)
 
 class HQ < Sinatra::Base
   set :server, :thin
@@ -37,7 +38,9 @@ class HQ < Sinatra::Base
   .queue('', exclusive: true)
   .bind(exchange_stdout, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
-    settings.sockets.each { |ws| ws.send(payload) }
+    settings.sockets.each { |ws|
+      ws.websocket.send(payload)
+    }
   end
 
   promises = {}
@@ -133,7 +136,7 @@ class HQ < Sinatra::Base
       else
         request.websocket do |ws|
           ws.onopen do
-            settings.sockets << ws
+            settings.sockets << Struct::Socket.new(ws, current_user)
           end #end ws.onopen
 
           ws.onmessage do |msg|
@@ -236,8 +239,10 @@ class HQ < Sinatra::Base
 
           ws.onclose do
             warn("websocket closed")
-            settings.sockets.delete(ws)
-          end
+            settings.sockets.each do |sock|
+              settings.sockets.delete(sock) if sock.websocket == ws
+            end #each
+          end #ws.onclose
         end # request.websocket
       end # if/else
     end # current user
