@@ -8,6 +8,18 @@ require_relative 'perms'
 USERS = []
 SERVERS = []
 SATELLITES = { :workers => Set.new, :managers => Set.new }
+SOCKET = Struct.new("Socket", :websocket, :user)
+
+def test_access(user, action, host, worker, server)
+  match = SERVERS.find { |s| s.host == host &&
+                             s.pool == worker &&
+                             s.server == server }
+  if match.nil? then
+    nil #no match is found, action is irrelevant, return nil
+  else
+    match.permissions.test_permission(user, action) #match found, return true/false
+  end
+end
 
 class HQ < Sinatra::Base
   set :server, :thin
@@ -37,7 +49,16 @@ class HQ < Sinatra::Base
   .queue('', exclusive: true)
   .bind(exchange_stdout, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
-    settings.sockets.each { |ws| ws.send(payload) }
+    settings.sockets.each { |ws|
+      parsed = JSON.parse payload
+      user = "#{ws.user.authtype}:#{ws.user.id}"
+
+      ws.websocket.send(payload) if test_access(user,
+                                                :console,
+                                                metadata[:headers]['hostname'],
+                                                metadata[:headers]['workerpool'],
+                                                parsed["server_name"])
+    }
   end
 
   promises = {}
@@ -133,7 +154,7 @@ class HQ < Sinatra::Base
       else
         request.websocket do |ws|
           ws.onopen do
-            settings.sockets << ws
+            settings.sockets << Struct::Socket.new(ws, current_user)
           end #end ws.onopen
 
           ws.onmessage do |msg|
@@ -187,11 +208,9 @@ class HQ < Sinatra::Base
                 #workerpool not found?  ignore.  todo: log me somewhere!
               else
                 user = "#{current_user.authtype}:#{current_user.id}"
-                match = SERVERS.find { |s| s.host == hostname &&
-                                           s.pool == workerpool &&
-                                           s.server == servername }
 
-                if match.nil? then
+                if test_access(user, :all, hostname, workerpool, servername).nil? then
+                  #okay to test for all, because .nil? implies server not found, see func at top
                   puts "no permissions for #{servername} on #{routing_key}!"
                   case body_parameters['cmd']
                   when 'create'
@@ -206,7 +225,11 @@ class HQ < Sinatra::Base
                 end #match.nil?
 
                 begin
-                  if match.permissions.test_permission(user, body_parameters['cmd']) then
+                  if test_access(user,
+                                 body_parameters['cmd'],
+                                 hostname,
+                                 workerpool,
+                                 servername) then
                     # and permissions granted to user for cmd
 
                     puts "test #{user} for #{body_parameters['cmd']}: OK"
@@ -236,8 +259,10 @@ class HQ < Sinatra::Base
 
           ws.onclose do
             warn("websocket closed")
-            settings.sockets.delete(ws)
-          end
+            settings.sockets.each do |sock|
+              settings.sockets.delete(sock) if sock.websocket == ws
+            end #each
+          end #ws.onclose
         end # request.websocket
       end # if/else
     end # current user
