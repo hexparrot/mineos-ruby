@@ -15,12 +15,11 @@ def test_access(user, action, host, worker, server)
                              s.pool == worker &&
                              s.server == server }
   if match.nil? then
-    false
+    nil #no match is found, action is irrelevant, return nil
   else
-    match.permissions.test_permission(user, action)
+    match.permissions.test_permission(user, action) #match found, return true/false
   end
 end
-
 
 class HQ < Sinatra::Base
   set :server, :thin
@@ -209,11 +208,9 @@ class HQ < Sinatra::Base
                 #workerpool not found?  ignore.  todo: log me somewhere!
               else
                 user = "#{current_user.authtype}:#{current_user.id}"
-                match = SERVERS.find { |s| s.host == hostname &&
-                                           s.pool == workerpool &&
-                                           s.server == servername }
 
-                if match.nil? then
+                if test_access(user, :all, hostname, workerpool, servername).nil? then
+                  #okay to test for all, because .nil? implies server not found, see func at top
                   puts "no permissions for #{servername} on #{routing_key}!"
                   case body_parameters['cmd']
                   when 'create'
@@ -228,7 +225,11 @@ class HQ < Sinatra::Base
                 end #match.nil?
 
                 begin
-                  if match.permissions.test_permission(user, body_parameters['cmd']) then
+                  if test_access(user,
+                                 body_parameters['cmd'],
+                                 hostname,
+                                 workerpool,
+                                 servername) then
                     # and permissions granted to user for cmd
 
                     puts "test #{user} for #{body_parameters['cmd']}: OK"
