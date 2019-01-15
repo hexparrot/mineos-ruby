@@ -10,6 +10,18 @@ SERVERS = []
 SATELLITES = { :workers => Set.new, :managers => Set.new }
 SOCKET = Struct.new("Socket", :websocket, :user)
 
+def test_access(user, action, host, worker, server)
+  match = SERVERS.find { |s| s.host == host &&
+                             s.pool == worker &&
+                             s.server == server }
+  if match.nil? then
+    false
+  else
+    match.permissions.test_permission(user, action)
+  end
+end
+
+
 class HQ < Sinatra::Base
   set :server, :thin
   set :sockets, []
@@ -40,12 +52,13 @@ class HQ < Sinatra::Base
   .subscribe do |delivery_info, metadata, payload|
     settings.sockets.each { |ws|
       parsed = JSON.parse payload
-      match = SERVERS.find { |s| s.host == metadata[:headers]['hostname'] &&
-                                 s.pool == metadata[:headers]['workerpool'] &&
-                                 s.server == parsed["server_name"] }
-
       user = "#{ws.user.authtype}:#{ws.user.id}"
-      ws.websocket.send(payload) if match && match.permissions.test_permission(user, :console)
+
+      ws.websocket.send(payload) if test_access(user,
+                                                :console,
+                                                metadata[:headers]['hostname'],
+                                                metadata[:headers]['workerpool'],
+                                                parsed["server_name"])
     }
   end
 
