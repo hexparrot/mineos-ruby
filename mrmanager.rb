@@ -2,18 +2,26 @@ require 'json'
 require 'eventmachine'
 require 'securerandom'
 
+require 'logger'
+logger = Logger.new(STDOUT)
+logger.datetime_format = '%Y-%m-%d %H:%M:%S'
+logger.level = Logger::DEBUG
+
 EM.run do
   hostname = Socket.gethostname
 
   require 'yaml'
   amqp_creds = YAML::load_file('config/amqp.yml')['rabbitmq'].transform_keys(&:to_sym)
+  logger.info("AMQP: Using credentials from location `config/amqp.yml`")
 
   require 'bunny'
   conn = Bunny.new(amqp_creds)
   conn.start
+  logger.debug("AMQP: Connection to AMQP service successful")
 
   ch = conn.create_channel
   exchange = ch.topic("backend")
+  logger.debug("AMQP: Attached to exchange: `backend`")
 
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
@@ -27,6 +35,7 @@ EM.run do
                          :headers => { hostname: hostname,
                                        directive: 'IDENT' },
                          :message_id => SecureRandom.uuid)
+        logger.info("IDENT: Received and returned to HQ")
       end
     else
       json_in = JSON.parse payload
@@ -36,12 +45,13 @@ EM.run do
 
         worker = json_in['MKPOOL']['workerpool']
         pool_inst = Pools.new
-        puts "Creating pool: #{worker}"
         pool_inst.create_pool(worker, 'mypassword')
+        logger.info("POOLS: Created pool `#{worker}`")
+        # whoa whoa whoa, what's this hardcoded password doing here? TODO.
         if pool_inst.list_pools.include?(worker) then
-          puts "Verified pool: #{worker}"
+          logger.info("POOLS: Verified pool `#{worker}`")
         else
-          puts "Attempt to create pool did not succeed: #{worker}"
+          logger.error("POOLS: Create pool failed for `#{worker}`")
         end
       elsif json_in.key?('SPAWN') then
         def as_user(user, script_path, &block)
@@ -89,6 +99,7 @@ EM.run do
                                        workerpool: worker, 
                                        directive: 'SPAWN' },
                          :message_id => SecureRandom.uuid)
+        logger.info("WORKER: Spawned worker process for `#{worker}`")
 
       elsif json_in.key?('REMOVE') then
         require_relative 'pools'
@@ -96,7 +107,7 @@ EM.run do
         worker = json_in['REMOVE']['workerpool']
         pool_inst = Pools.new
         pool_inst.remove_pool(worker)
-        puts "Removed pool: #{worker}"
+        logger.info("POOLS: Removed pool `#{worker}`")
       end #if
     end #case
   } #end directive_handler
@@ -119,6 +130,7 @@ EM.run do
                    :headers => { hostname: hostname,
                                  directive: 'IDENT' },
                    :message_id => SecureRandom.uuid)
+  logger.info("IDENT: Alerting HQ of startup")
 
 end #EM::Run
 
