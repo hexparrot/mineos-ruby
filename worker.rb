@@ -20,15 +20,19 @@ end.parse!
 if options[:basedir] then
   require 'pathname'
   BASEDIR = Pathname.new(options[:basedir]).cleanpath
+  logger.info("STARTUP: Using command-line provided BASEDIR `#{BASEDIR}`")
 else
   BASEDIR = '/var/games/minecraft'
+  logger.info("STARTUP: Using default BASEDIR `#{BASEDIR}`")
 end
 
 if options[:workerpool] then
   WHOAMI = options[:workerpool]
+  logger.info("STARTUP: Using command-line provided poolname `#{WHOAMI}`")
 else
   require 'etc'
   WHOAMI = Etc.getpwuid(Process.uid).name
+  logger.info("STARTUP: Using default poolname `#{WHOAMI}`")
 end
 
 require 'yaml'
@@ -58,9 +62,9 @@ EM.run do
   server_loggers = {}
   hostname = Socket.gethostname
   workerpool = WHOAMI
-  logger.info("Starting up worker pool: `workers.#{hostname}.#{workerpool}`")
+  logger.info("STARTUP: `workers.#{hostname}.#{workerpool}`")
 
-  logger.info("Scanning servers from BASEDIR: #{BASEDIR}")
+  logger.info("STARTUP: Detecting servers in BASEDIR: #{BASEDIR}")
   server_dirs = Enumerator.new do |enum|
     Dir["#{BASEDIR}/servers/*"].each { |d|
       server_name = d[0..-1].match(/.*\/(.*)/)[1]
@@ -71,22 +75,28 @@ EM.run do
   server_dirs.each do |sn|
     #register existing servers upon startup
     servers[sn] = Server.new(sn, basedir:BASEDIR)
-    logger.info("Finished setting up server instance: `#{sn}`")
+    logger.info("STARTUP: Finished setting up server instance: `#{sn}`")
   end
 
   require 'bunny'
   conn = Bunny.new(amqp_creds)
   conn.start
-  logger.info("Finished creating AMQP connection.")
+  logger.debug("AMQP: Connection to AMQP service successful")
 
   ch = conn.create_channel
+
+  # exchange for directives (hostname specific)
   exchange = ch.topic("backend")
-  exchange_stdout = ch.direct("stdout")
+  logger.debug("AMQP: Attached to exchange: `backend`")
+
+  # exchange for stdout
+  exchange_stdout = ch.direct('stdout')
+  logger.debug("AMQP: Attached to exchange: `stdout`")
 
   directive_handler = lambda { |delivery_info, metadata, payload|
     case payload
     when "IDENT"
-      logger.info("Received IDENT directive from HQ.")
+      logger.info("IDENT: Received directive from HQ.")
       exchange.publish({ hostname: hostname,
                          workerpool: workerpool }.to_json,
                        :routing_key => "hq",
@@ -97,9 +107,9 @@ EM.run do
                                      workerpool: workerpool,
                                      directive: 'IDENT' },
                        :message_id => SecureRandom.uuid)
-      logger.info("Sent IDENT receipt to HQ.")
+      logger.info("IDENT: Sent receipt to HQ.")
     when "LIST"
-      logger.info("Received LIST directive from HQ.")
+      logger.info("LIST: Received directive from HQ.")
       exchange.publish({ servers: server_dirs.to_a }.to_json,
                        :routing_key => "hq",
                        :timestamp => Time.now.to_i,
@@ -109,10 +119,12 @@ EM.run do
                                      workerpool: workerpool,
                                      directive: 'LIST' },
                        :message_id => SecureRandom.uuid)
-      logger.info("Sent LIST receipt to HQ.")
+      logger.info("LIST: Sent receipt to HQ.")
       logger.debug({servers: server_dirs.to_a})
     when "USAGE"
       require 'usagewatch'
+
+      logger.info("USAGE: Received directive from HQ.")
 
       EM.defer do
         usw = Usagewatch
@@ -132,11 +144,13 @@ EM.run do
                                        workerpool: workerpool,
                                        directive: 'USAGE' },
                          :message_id => SecureRandom.uuid)
-        logger.info("Received USAGE directive from HQ.")
+        logger.info("USAGE: Sent receipt to HQ.")
         logger.debug({usage: retval})
       end
     when /(uw_\w+)/
       require 'usagewatch'
+
+      logger.info("USAGE: Received uw_ directive from HQ.")
 
       EM.defer do
         usw = Usagewatch
@@ -149,16 +163,15 @@ EM.run do
                                        workerpool: workerpool,
                                        directive: 'REQUEST_USAGE' },
                          :message_id => SecureRandom.uuid)
-        logger.info("Received USAGE directive from HQ.")
+        logger.info("USAGE: Sent receipt to HQ.")
         logger.debug({usage: {$1 =>  usw.public_send($1)}})
       end
     when "VERIFY_OBJSTORE"
       require 'aws-sdk-s3'
 
-      logger.info("Received VERIFY_OBJSTORE directive from HQ.")
+      logger.info("VERIFY_OBJSTORE: Received directive from HQ.")
       EM.defer do
         if Aws.config.empty? then
-          logger.info("Sending nil ACK back to HQ.")
           exchange.publish('',
                            :routing_key => "hq",
                            :timestamp => Time.now.to_i,
@@ -168,6 +181,7 @@ EM.run do
                                          workerpool: workerpool,
                                          directive: 'VERIFY_OBJSTORE' },
                            :message_id => SecureRandom.uuid)
+          logger.info("VERIFY_OBJSTORE: Sent nil ACK back to HQ.")
         end
       end
     else
@@ -175,7 +189,7 @@ EM.run do
       if json_in.key?('AWSCREDS') then
         require 'aws-sdk-s3'
 
-        logger.info("Received AWSCREDS directive from HQ.")
+        logger.info("AWSCREDS: Received directive from HQ.")
 
         parsed = json_in['AWSCREDS']
         Aws.config.update({
@@ -190,10 +204,10 @@ EM.run do
           c = Aws::S3::Client.new
         rescue ArgumentError => e
           retval = false
-          logger.error("Endpoint invalid and Aws::S3::Client.new failed. Returning:")
+          logger.error("AWSCREDS: Endpoint invalid and Aws::S3::Client.new failed.")
         else
           retval = true
-          logger.info("Endpoint valid and Aws::S3::Client.new returned no error")
+          logger.info("AWSCREDS: Endpoint valid and Aws::S3::Client.new returned no error")
         end
   
         exchange.publish(retval.to_json,
@@ -205,6 +219,7 @@ EM.run do
                                        workerpool: workerpool,
                                        directive: 'AWSCREDS' },
                          :message_id => SecureRandom.uuid)
+        logger.info("AWSCREDS: Alerting HQ of connection status of `#{retval}`")
       else #if unknown directive
         exchange.publish({}.to_json,
                          :routing_key => "hq",
@@ -215,9 +230,9 @@ EM.run do
                                        workerpool: workerpool,
                                        directive: 'BOGUS' }, #changing directive
                          :message_id => SecureRandom.uuid)
-        logger.warn("Received bogus directive from HQ. Received:")
+        logger.warn("DIRECTIVE: Received bogus directive from HQ.")
         logger.warn(payload)
-        logger.warn("Ignored as BOGUS. Returned: {}")
+        logger.warn("DIRECTIVE: Ignored, Returned: {}")
 
       end # json_in.key
     end
@@ -228,7 +243,7 @@ EM.run do
     server_name = parsed.delete("server_name")
     cmd = parsed.delete("cmd")
 
-    logger.info("Received #{cmd} for server `#{server_name}")
+    logger.info("CMD: Received #{cmd} for server `#{server_name}")
     logger.info(parsed)
 
     if servers[server_name].is_a? Server then
@@ -242,7 +257,6 @@ EM.run do
       server_loggers[server_name] = Thread.new do
         loop do
           line = inst.console_log.shift.strip
-          puts line
           exchange_stdout.publish({ msg: line,
                                     server_name: server_name }.to_json,
                                   :routing_key => "hq",
@@ -252,6 +266,7 @@ EM.run do
                                   :headers => { hostname: hostname,
                                                 workerpool: workerpool },
                                   :message_id => SecureRandom.uuid)
+          #logger.debug(line)
         end # loop
       end # Thread.new
     end
@@ -287,7 +302,7 @@ EM.run do
           end
           return_object[:retval] = retval
         rescue Seahorse::Client::NetworkingError => e
-          logger.error("Networking error caught with s3 client!")
+          logger.error("S3: Networking error caught with s3 client!")
           logger.debug(e)
           exchange.publish(return_object.to_json,
                            :routing_key => "hq",
@@ -300,9 +315,10 @@ EM.run do
                                                       detail: e.to_s }
                                        },
                            :message_id => SecureRandom.uuid)
+          logger.error("S3: Sent exception information to HQ")
         rescue IOError => e
-          logger.error("IOError caught!")
-          logger.error("Worker process may no longer be attached to child process?")
+          logger.error("WORKER: IOError caught!")
+          logger.error("WORKER: Worker process may no longer be attached to child process?")
           exchange.publish(return_object.to_json,
                            :routing_key => "hq",
                            :timestamp => Time.now.to_i,
@@ -314,9 +330,10 @@ EM.run do
                                                       detail: e.to_s }
                                        },
                            :message_id => SecureRandom.uuid)
+          logger.error("WORKER: Sent exception information to HQ")
         rescue ArgumentError => e
           # e.g., too few arguments
-          logger.error("ArgumentError caught!")
+          logger.error("WORKER: ArgumentError caught!")
           exchange.publish(return_object.to_json,
                            :routing_key => "hq",
                            :timestamp => Time.now.to_i,
@@ -328,8 +345,9 @@ EM.run do
                                                       detail: e.to_s }
                                        },
                            :message_id => SecureRandom.uuid)
+          logger.error("WORKER: Sent exception information to HQ")
         rescue RuntimeError => e
-          logger.error("RuntimeError caught!")
+          logger.error("WORKER: RuntimeError caught!")
           logger.debug(e)
           logger.debug(return_object)
           exchange.publish(return_object.to_json,
@@ -343,9 +361,9 @@ EM.run do
                                                       detail: e.to_s }
                                        },
                            :message_id => SecureRandom.uuid)
+          logger.error("WORKER: Sent exception information to HQ")
         else
           return_object[:success] = true
-          logger.debug(return_object)
           exchange.publish(return_object.to_json,
                            :routing_key => "hq",
                            :timestamp => Time.now.to_i,
@@ -355,6 +373,8 @@ EM.run do
                                          workerpool: workerpool,
                                          exception: false },
                            :message_id => SecureRandom.uuid)
+          logger.debug("WORKER: Command accepted and executed")
+          logger.debug(return_object)
         end
       end #to_call
 
@@ -373,6 +393,7 @@ EM.run do
                                      },
                          :message_id => SecureRandom.uuid)
       }
+        logger.warn("WORKER: Method not defined in api `#{cmd}`")
       EM.defer cb
     end #inst.respond_to
 
@@ -404,7 +425,7 @@ EM.run do
                                  workerpool: workerpool,
                                  directive: 'IDENT' },
                    :message_id => SecureRandom.uuid)
-  logger.info("Sent IDENT message.")
-  logger.info("Worker node set up and listening.")
+  logger.info("IDENT: Sent startup identification")
+  logger.info("STARTUP: Worker node set up and listening.")
 
 end #EM::Run
