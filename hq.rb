@@ -29,6 +29,9 @@ class HQ < Sinatra::Base
   enable :show_exceptions
   enable :sessions
 
+  require 'openssl'
+  rsa_key = OpenSSL::PKey::RSA.generate(2048)
+
   require 'logger'
   logger = Logger.new(STDOUT)
   logger.datetime_format = '%Y-%m-%d %H:%M:%S'
@@ -151,6 +154,15 @@ class HQ < Sinatra::Base
         else
           logger.info("VERIFY_OBJSTORE: returned, creds present. NOOP `#{routing_key}`")
         end
+      when 'READY_SHUTDOWN'
+        routing_key = "managers.#{metadata[:headers]['hostname']}"
+        # send back received rsa_time variable, decrypted and plaintext
+        exchange.publish({ CONFIRM_SHUTDOWN: rsa_key.private_decrypt(payload) }.to_json,
+                         :routing_key => routing_key,
+                         :type => "directive",
+                         :message_id => SecureRandom.uuid,
+                         :timestamp => Time.now.to_i)
+        logger.info("MANAGER: CONFIRM_SHUTDOWN sent to `#{routing_key}`")
       end #case
     end #metadata if
   end #subscribe
@@ -191,12 +203,13 @@ class HQ < Sinatra::Base
                 logger.info("MANAGER: Forwarding directive from `#{user}`")
                 case body_parameters['dir']
                 when 'shutdown'
-                  exchange.publish({ SHUTDOWN: {manager: routing_key} }.to_json,
+                  # send hq public key to worker
+                  exchange.publish({ READY_SHUTDOWN: OpenSSL::PKey::RSA.new(rsa_key.public_key) }.to_json,
                                    :routing_key => routing_key,
                                    :type => "directive",
                                    :message_id => uuid,
                                    :timestamp => Time.now.to_i)
-                  logger.info("MANAGER: MKPOOL `#{workerpool} => #{routing_key}`")
+                  logger.info("MANAGER: READY_SHUTDOWN `#{workerpool} => #{routing_key}`")
                 when 'mkpool'
                   exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
                                    :routing_key => routing_key,

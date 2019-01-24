@@ -9,6 +9,7 @@ logger.level = Logger::DEBUG
 
 EM.run do
   hostname = Socket.gethostname
+  rsa_time = nil
 
   require 'yaml'
   amqp_creds = YAML::load_file('config/amqp.yml')['rabbitmq'].transform_keys(&:to_sym)
@@ -40,11 +41,40 @@ EM.run do
     else
       json_in = JSON.parse payload
 
-      if json_in.key?('SHUTDOWN') then
-        routing_key = json_in['SHUTDOWN']['manager']
-        logger.info("SHUTDOWN: Shutting down this process on `#{routing_key}`")
-        logger.info("SHUTDOWN: Any worker processes will be left untouched (running)")
-        EM.stop_event_loop
+      if json_in.key?('READY_SHUTDOWN') then
+        require 'openssl'
+
+        # create RSA object from received hq pubkey
+        hq_pubkey = OpenSSL::PKey::RSA.new(json_in['READY_SHUTDOWN'])
+        logger.debug('SHUTDOWN: Received HQ-generated pubkey')
+
+        # remembering when request was received (global)
+        rsa_time = Time.now.to_f
+
+        # send hq-encrypted rsa_time var (only hq should be able to receive/read this)
+        exchange.publish(hq_pubkey.public_encrypt(rsa_time.to_s),
+                         :routing_key => "hq",
+                         :timestamp => Time.now.to_i,
+                         :type => 'receipt.directive',
+                         :correlation_id => metadata[:message_id],
+                         :headers => { hostname: hostname,
+                                       directive: 'READY_SHUTDOWN' },
+                         :message_id => SecureRandom.uuid)
+        logger.warn("SHUTDOWN: Received directive to down this process on `#{hostname}`")
+        logger.warn("SHUTDOWN: Requesting verification from HQ.")
+      elsif json_in.key?('CONFIRM_SHUTDOWN')
+        if json_in['CONFIRM_SHUTDOWN'].to_f === rsa_time then
+          logger.warn("SHUTDOWN: Verification received from HQ.")
+          logger.warn("SHUTDOWN: Any worker processes will be left untouched (running)")
+          logger.warn("SHUTDOWN: Closing this process")
+          EM.stop_event_loop #this closes the manager process!
+        else
+          logger.error("SHUTDOWN: CONFIRM_SHUTDOWN failed rsa key test.")
+          # if attempt failed, ignore all further attempts until resent from hq
+          # since it's possible to spam 'CONFIRM_SHUTDOWN' with every precision
+          # of a second.
+          rsa_time = nil
+        end
       elsif json_in.key?('MKPOOL') then
         require_relative 'pools'
 
