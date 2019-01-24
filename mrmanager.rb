@@ -40,7 +40,12 @@ EM.run do
     else
       json_in = JSON.parse payload
 
-      if json_in.key?('MKPOOL') then
+      if json_in.key?('SHUTDOWN') then
+        routing_key = json_in['SHUTDOWN']['manager']
+        logger.info("SHUTDOWN: Shutting down this process on `#{routing_key}`")
+        logger.info("SHUTDOWN: Any worker processes will be left untouched (running)")
+        EM.stop_event_loop
+      elsif json_in.key?('MKPOOL') then
         require_relative 'pools'
 
         worker = json_in['MKPOOL']['workerpool']

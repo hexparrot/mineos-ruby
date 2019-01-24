@@ -190,6 +190,13 @@ class HQ < Sinatra::Base
               else
                 logger.info("MANAGER: Forwarding directive from `#{user}`")
                 case body_parameters['dir']
+                when 'shutdown'
+                  exchange.publish({ SHUTDOWN: {manager: routing_key} }.to_json,
+                                   :routing_key => routing_key,
+                                   :type => "directive",
+                                   :message_id => uuid,
+                                   :timestamp => Time.now.to_i)
+                  logger.info("MANAGER: MKPOOL `#{workerpool} => #{routing_key}`")
                 when 'mkpool'
                   exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
                                    :routing_key => routing_key,
