@@ -10,7 +10,7 @@ SOCKET = Struct.new("Socket", :websocket, :user)
 USERS = []
 SERVERS = []
 
-def test_access(user, action, host, worker, server)
+def test_access_worker(user, action, host, worker, server)
   match = SERVERS.find { |s| s.host == host &&
                              s.pool == worker &&
                              s.server == server }
@@ -66,11 +66,13 @@ class HQ < Sinatra::Base
       parsed = JSON.parse payload
       user = "#{ws.user.authtype}:#{ws.user.id}"
 
-      ws.websocket.send(payload) if test_access(user,
-                                                :console,
-                                                metadata[:headers]['hostname'],
-                                                metadata[:headers]['workerpool'],
-                                                parsed["server_name"])
+      if test_access_worker(user,
+                            :console,
+                            metadata[:headers]['hostname'],
+                            metadata[:headers]['workerpool'],
+                            parsed["server_name"]) then
+        ws.websocket.send(payload)
+      end
     }
   end
 
@@ -243,7 +245,7 @@ class HQ < Sinatra::Base
               if !SATELLITES[:workers].include?(routing_key) then
                 logger.error("WORKER: Invalid worker addressed `#{user} => #{routing_key}`")
               else
-                if test_access(user, :all, hostname, workerpool, servername).nil? then
+                if test_access_worker(user, :all, hostname, workerpool, servername).nil? then
                   #okay to test for all, because .nil? implies server not found, see func at top
                   logger.warn("PERMS: None set for `#{servername} => #{routing_key}`")
                   case body_parameters['cmd']
@@ -259,11 +261,11 @@ class HQ < Sinatra::Base
                 end #match.nil?
 
                 begin
-                  if test_access(user,
-                                 body_parameters['cmd'],
-                                 hostname,
-                                 workerpool,
-                                 servername) then
+                  if test_access_worker(user,
+                                        body_parameters['cmd'],
+                                        hostname,
+                                        workerpool,
+                                        servername) then
                     # and permissions granted to user for cmd
 
                     logger.info("PERMS: #{user} for #{body_parameters['cmd']}: OK")
