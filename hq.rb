@@ -171,8 +171,6 @@ class HQ < Sinatra::Base
 
 ## route handlers
 
-  Perms = Struct.new("Perms", :host, :pool, :server, :permissions)
-
   get '/' do
     if !current_user
       send_file File.join('public', 'login.html')
@@ -251,10 +249,10 @@ class HQ < Sinatra::Base
                   case body_parameters['cmd']
                   when 'create'
                     logger.info("PERMS: :create requested, making default permissions `#{servername} => #{routing_key}`")
-                    match = Struct::Perms.new(hostname,
-                                              workerpool,
-                                              servername,
-                                              Permissions.new(owner: user))
+                    match = Struct::Worker_Perms.new(hostname,
+                                                     workerpool,
+                                                     servername,
+                                                     Permissions.new(owner: user))
                     match.permissions.grant(user, :all)
                     SERVERS << match
                   end #case
