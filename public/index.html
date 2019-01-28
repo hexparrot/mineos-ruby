@@ -4,6 +4,12 @@
      <form id="form">
        <input type="text" id="hostname" value="ruby-worker" />
        <hr>
+       <input type="text" id="user" value="plain:will" />
+       <button type="button" data-type="perms" data-string='{"perm": "mkgrantor"}'>grant: grantor</button>
+       <button type="button" data-type="perms" data-string='{"perm": "rmgrantor"}'>revoke: grantor</button>
+       <button type="button" data-type="perms" data-string='{"perm": "grantall"}'>grant: all</button>
+       <button type="button" data-type="perms" data-string='{"perm": "revokeall"}'>revoke: all</button>
+       <hr>
        <input type="text" id="workerpool" value="_throwaway-500" />
        <button type="button" data-type="directive" data-string='{"dir": "mkpool"}'>mkpool</button>
        <button type="button" data-type="directive" data-string='{"dir": "spawn"}'>spawn</button>
@@ -61,6 +67,11 @@
               payload['hostname'] = document.getElementById('hostname').value
               payload['workerpool'] = document.getElementById('workerpool').value
               payload['server_name'] = document.getElementById('servername').value
+              console.log(payload);
+              ws.send(JSON.stringify(payload));
+            } else if (type == 'perms') {
+              payload['hostname'] = document.getElementById('hostname').value
+              payload['user'] = document.getElementById('user').value
               console.log(payload);
               ws.send(JSON.stringify(payload));
             }

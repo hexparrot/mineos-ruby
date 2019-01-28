@@ -261,6 +261,52 @@ class HQ < Sinatra::Base
                   end #test_access_manager
                 end #begin
               end #managers.include?
+            elsif body_parameters.key?('perm') then
+              logger.info("MANAGER: Forwarding permission-change from `#{user}`")
+              hostname = body_parameters.delete('hostname')
+              routing_key = "managers.#{hostname}"
+
+              if test_access_manager(user, :all, hostname).nil? then
+                #testing if manager has a corresponding entry, which will return non-nil (t/f)
+                logger.warn("PERMS: None set for #{hostname} => #{routing_key}")
+                logger.warn("PERMS: Creating a default perm manifest for #{user}")
+
+                match = Struct::Manager_Perms.new(hostname, Permissions.new(owner: user))
+                match.permissions.grant(user, :all)
+                MANAGERS << match
+              end
+
+              target_user = body_parameters.delete('user')
+              target_perm = body_parameters.delete('perm')
+              begin
+                if test_access_manager(user, target_perm, hostname) then
+                  logger.info("PERMS: #{user} for #{target_perm}: OK")
+
+                  match = MANAGERS.find { |s| s.host == hostname }
+                  if match.nil? then
+                    logger.error("PERMS: Attempting change to nonexistent manager: NOOP")
+                  else
+                    if match.permissions.test_permission(user, target_perm) then
+                      case target_perm
+                      when 'mkgrantor'
+                        match.permissions.make_grantor(target_user)
+                        logger.info("PERMS: Making mrmanager grantor of #{target_user}")
+                      when 'rmgrantor'
+                        match.permissions.unmake_grantor(target_user)
+                        logger.info("PERMS: Unmaking mrmanager grantor of #{target_user}")
+                      when 'grantall'
+                        match.permissions.grant(target_user, :all)
+                        logger.info("PERMS: Granting :all perms to #{target_user}")
+                      when 'revokeall'
+                        match.permissions.revoke(target_user, :all)
+                        logger.info("PERMS: Revoking :all perms from #{target_user}")
+                      end #case
+                    end #match.permissions.test_permission
+                  end #match.nil?
+                else
+                  logger.warn("PERMS: #{user} for #{target_perm}: FAIL")
+                end #test_access_manager
+              end #begin
             elsif body_parameters.key?('cmd') then
               hostname = body_parameters.delete('hostname')
               workerpool = body_parameters.delete('workerpool')
