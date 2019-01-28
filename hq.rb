@@ -9,11 +9,21 @@ SATELLITES = { :workers => Set.new, :managers => Set.new }
 SOCKET = Struct.new("Socket", :websocket, :user)
 USERS = []
 SERVERS = []
+MANAGERS = []
 
 def test_access_worker(user, action, host, worker, server)
   match = SERVERS.find { |s| s.host == host &&
                              s.pool == worker &&
                              s.server == server }
+  if match.nil? then
+    nil #no match is found, action is irrelevant, return nil
+  else
+    match.permissions.test_permission(user, action) #match found, return true/false
+  end
+end
+
+def test_access_manager(user, action, host)
+  match = MANAGERS.find { |s| s.host == host }
   if match.nil? then
     nil #no match is found, action is irrelevant, return nil
   else
@@ -201,38 +211,56 @@ class HQ < Sinatra::Base
                 logger.error("MANAGER: Invalid manager addressed `#{user} => #{routing_key}`")
               else
                 logger.info("MANAGER: Forwarding directive from `#{user}`")
-                case body_parameters['dir']
-                when 'shutdown'
-                  # send hq public key to worker
-                  exchange.publish({ READY_SHUTDOWN: OpenSSL::PKey::RSA.new(rsa_key.public_key) }.to_json,
-                                   :routing_key => routing_key,
-                                   :type => "directive",
-                                   :message_id => uuid,
-                                   :timestamp => Time.now.to_i)
-                  logger.info("MANAGER: READY_SHUTDOWN `#{workerpool} => #{routing_key}`")
-                when 'mkpool'
-                  exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
-                                   :routing_key => routing_key,
-                                   :type => "directive",
-                                   :message_id => uuid,
-                                   :timestamp => Time.now.to_i)
-                  logger.info("MANAGER: MKPOOL `#{workerpool} => #{routing_key}`")
-                when 'spawn'
-                  exchange.publish({ SPAWN: {workerpool: workerpool} }.to_json,
-                                   :routing_key => routing_key,
-                                   :type => "directive",
-                                   :message_id => uuid,
-                                   :timestamp => Time.now.to_i)
-                  logger.info("MANAGER: SPAWN `#{workerpool} => #{routing_key}`")
-                when 'remove'
-                  exchange.publish({ REMOVE: {workerpool: workerpool} }.to_json,
-                                   :routing_key => routing_key,
-                                   :type => "directive",
-                                   :message_id => uuid,
-                                   :timestamp => Time.now.to_i)
-                  logger.info("MANAGER: REMOVE `#{workerpool} => #{routing_key}`")
+
+                if test_access_manager(user, :all, hostname).nil? then
+                  #testing if manager has a corresponding entry, which will return non-nil (t/f)
+                  logger.warn("PERMS: None set for #{hostname} => #{routing_key}")
+                  logger.warn("PERMS: Creating a default perm manifest for #{user}")
+
+                  match = Struct::Manager_Perms.new(hostname, Permissions.new(owner: user))
+                  match.permissions.grant(user, :all)
+                  MANAGERS << match
                 end
-              end
+
+                begin
+                  if test_access_manager(user, body_parameters['dir'], hostname) then
+                    logger.info("PERMS: #{user} for #{body_parameters['dir']}: OK")
+                    case body_parameters['dir']
+                    when 'shutdown'
+                      # send hq public key to worker
+                      exchange.publish({ READY_SHUTDOWN: OpenSSL::PKey::RSA.new(rsa_key.public_key) }.to_json,
+                                       :routing_key => routing_key,
+                                       :type => "directive",
+                                       :message_id => uuid,
+                                       :timestamp => Time.now.to_i)
+                      logger.info("MANAGER: READY_SHUTDOWN `#{workerpool} => #{routing_key}`")
+                    when 'mkpool'
+                      exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
+                                       :routing_key => routing_key,
+                                       :type => "directive",
+                                       :message_id => uuid,
+                                       :timestamp => Time.now.to_i)
+                      logger.info("MANAGER: MKPOOL `#{workerpool} => #{routing_key}`")
+                    when 'spawn'
+                      exchange.publish({ SPAWN: {workerpool: workerpool} }.to_json,
+                                       :routing_key => routing_key,
+                                       :type => "directive",
+                                       :message_id => uuid,
+                                       :timestamp => Time.now.to_i)
+                      logger.info("MANAGER: SPAWN `#{workerpool} => #{routing_key}`")
+                    when 'remove'
+                      exchange.publish({ REMOVE: {workerpool: workerpool} }.to_json,
+                                       :routing_key => routing_key,
+                                       :type => "directive",
+                                       :message_id => uuid,
+                                       :timestamp => Time.now.to_i)
+                      logger.info("MANAGER: REMOVE `#{workerpool} => #{routing_key}`")
+                    end #case
+                  else
+                    logger.warn("PERMS: #{user} for #{body_parameters['dir']}: FAIL")
+                  end #test_access_manager
+                end #begin
+              end #managers.include?
             elsif body_parameters.key?('cmd') then
               hostname = body_parameters.delete('hostname')
               workerpool = body_parameters.delete('workerpool')

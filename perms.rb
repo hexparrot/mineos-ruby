@@ -1,4 +1,5 @@
 Worker_Perms = Struct.new("Worker_Perms", :host, :pool, :server, :permissions)
+Manager_Perms = Struct.new("Manager_Perms", :host, :permissions)
 
 class Permissions
   attr_reader :owner, :permissions, :properties
