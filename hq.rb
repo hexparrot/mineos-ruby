@@ -203,12 +203,12 @@ class HQ < Sinatra::Base
   get '/' do
     if !current_user then
       send_file File.join('public', 'login.html')
-      return
+      next
     end
 
     if !request.websocket? then
       send_file File.join('public', 'index.html')
-      return
+      next
     end
 
     request.websocket do |ws|
@@ -219,77 +219,20 @@ class HQ < Sinatra::Base
 
       # WEBSOCKET ON-RECEIVE
       ws.onmessage do |msg|
-        uuid = SecureRandom.uuid
         user = "#{current_user.authtype}:#{current_user.id}"
 
-        body_parameters = JSON.parse msg
-        if body_parameters.key?('dir') then
-          hostname = body_parameters.delete('hostname')
-          workerpool = body_parameters.delete('workerpool')
+        inbound_directive = Proc.new do |params|
+          hostname = params.delete('hostname')
+          workerpool = params.delete('workerpool')
           routing_key = "managers.#{hostname}"
+          directive = params.delete('dir')
 
-          promises[uuid] = Proc.new { |status_code, retval|
-            ws.send(retval)
-          }
-
-          if !@@satellites[:managers].include?(routing_key)
+          if !@@satellites[:managers].include?(routing_key) then
             logger.error("MANAGER: Invalid manager addressed `#{user} => #{routing_key}`")
-          else
-            logger.info("MANAGER: Forwarding directive from `#{user}`")
+            next
+          end
 
-            if test_access_manager(user, :all, hostname, @@managers).nil? then
-              #testing if manager has a corresponding entry, which will return non-nil (t/f)
-              logger.warn("PERMS: None set for #{hostname} => #{routing_key}")
-              logger.warn("PERMS: Creating a default perm manifest for #{user}")
-
-              match = Struct::Manager_Perms.new(hostname, Permissions.new(owner: user))
-              match.permissions.grant(user, :all)
-              @@managers << match
-            end
-
-            begin
-              if test_access_manager(user, body_parameters['dir'], hostname, @@managers) then
-                logger.info("PERMS: #{user} for #{body_parameters['dir']}: OK")
-                case body_parameters['dir']
-                when 'shutdown'
-                  # send hq public key to worker
-                  exchange.publish({ READY_SHUTDOWN: OpenSSL::PKey::RSA.new(rsa_key.public_key) }.to_json,
-                                   :routing_key => routing_key,
-                                   :type => "directive",
-                                   :message_id => uuid,
-                                   :timestamp => Time.now.to_i)
-                  logger.info("MANAGER: READY_SHUTDOWN `#{workerpool} => #{routing_key}`")
-                when 'mkpool'
-                  exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
-                                   :routing_key => routing_key,
-                                   :type => "directive",
-                                   :message_id => uuid,
-                                   :timestamp => Time.now.to_i)
-                  logger.info("MANAGER: MKPOOL `#{workerpool} => #{routing_key}`")
-                when 'spawn'
-                  exchange.publish({ SPAWN: {workerpool: workerpool} }.to_json,
-                                   :routing_key => routing_key,
-                                   :type => "directive",
-                                   :message_id => uuid,
-                                   :timestamp => Time.now.to_i)
-                  logger.info("MANAGER: SPAWN `#{workerpool} => #{routing_key}`")
-                when 'remove'
-                  exchange.publish({ REMOVE: {workerpool: workerpool} }.to_json,
-                                   :routing_key => routing_key,
-                                   :type => "directive",
-                                   :message_id => uuid,
-                                   :timestamp => Time.now.to_i)
-                  logger.info("MANAGER: REMOVE `#{workerpool} => #{routing_key}`")
-                end #case
-              else
-                logger.warn("PERMS: #{user} for #{body_parameters['dir']}: FAIL")
-              end #test_access_manager
-            end #begin
-          end #managers.include?
-        elsif body_parameters.key?('perm') then
-          logger.info("MANAGER: Forwarding permission-change from `#{user}`")
-          hostname = body_parameters.delete('hostname')
-          routing_key = "managers.#{hostname}"
+          logger.debug("MANAGER: Forwarding directive from `#{user}`")
 
           if test_access_manager(user, :all, hostname, @@managers).nil? then
             #testing if manager has a corresponding entry, which will return non-nil (t/f)
@@ -301,99 +244,172 @@ class HQ < Sinatra::Base
             @@managers << match
           end
 
-          target_user = body_parameters.delete('user')
-          target_perm = body_parameters.delete('perm')
-          begin
-            if test_access_manager(user, target_perm, hostname, @@managers) then
-              logger.info("PERMS: #{user} for #{target_perm}: OK")
+          if test_access_manager(user, directive, hostname, @@managers) then
+            logger.info("PERMS: #{user} for #{directive}: OK")
 
-              match = @@managers.find { |s| s.host == hostname }
-              if match.nil? then
-                logger.error("PERMS: Attempting change to nonexistent manager: NOOP")
-              else
-                if match.permissions.test_permission(user, target_perm) then
-                  case target_perm
-                  when 'mkgrantor'
-                    match.permissions.make_grantor(target_user)
-                    logger.info("PERMS: Making mrmanager grantor of #{target_user}")
-                  when 'rmgrantor'
-                    match.permissions.unmake_grantor(target_user)
-                    logger.info("PERMS: Unmaking mrmanager grantor of #{target_user}")
-                  when 'grantall'
-                    match.permissions.grant(target_user, :all)
-                    logger.info("PERMS: Granting :all perms to #{target_user}")
-                  when 'revokeall'
-                    match.permissions.revoke(target_user, :all)
-                    logger.info("PERMS: Revoking :all perms from #{target_user}")
-                  end #case
-                end #match.permissions.test_permission
-              end #match.nil?
-            else
-              logger.warn("PERMS: #{user} for #{target_perm}: FAIL")
-            end #test_access_manager
-          end #begin
-        elsif body_parameters.key?('cmd') then
-          hostname = body_parameters.delete('hostname')
-          workerpool = body_parameters.delete('workerpool')
-          servername = body_parameters['server_name']
+            uuid = SecureRandom.uuid
+            promises[uuid] = Proc.new { |status_code, retval|
+              ws.send(retval)
+            }
 
+            case directive
+            when 'shutdown'
+              # send hq public key to worker; special sequence to protect from unauth shutdown
+              exchange.publish({ READY_SHUTDOWN: OpenSSL::PKey::RSA.new(rsa_key.public_key) }.to_json,
+                               :routing_key => routing_key,
+                               :type => "directive",
+                               :message_id => uuid,
+                               :timestamp => Time.now.to_i)
+              logger.info("MANAGER: READY_SHUTDOWN `#{workerpool} => #{routing_key}`")
+            when 'mkpool'
+              exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
+                               :routing_key => routing_key,
+                               :type => "directive",
+                               :message_id => uuid,
+                               :timestamp => Time.now.to_i)
+              logger.info("MANAGER: MKPOOL `#{workerpool} => #{routing_key}`")
+            when 'spawn'
+              exchange.publish({ SPAWN: {workerpool: workerpool} }.to_json,
+                               :routing_key => routing_key,
+                               :type => "directive",
+                               :message_id => uuid,
+                               :timestamp => Time.now.to_i)
+              logger.info("MANAGER: SPAWN `#{workerpool} => #{routing_key}`")
+            when 'remove'
+              exchange.publish({ REMOVE: {workerpool: workerpool} }.to_json,
+                               :routing_key => routing_key,
+                               :type => "directive",
+                               :message_id => uuid,
+                               :timestamp => Time.now.to_i)
+              logger.info("MANAGER: REMOVE `#{workerpool} => #{routing_key}`")
+            end #case
+          else
+            logger.warn("PERMS: #{user} for #{directive}: FAIL")
+            next
+          end #test_access_manager
+        end
+
+        inbound_permission = Proc.new do |params|
+          hostname = params.delete('hostname')
+          routing_key = "managers.#{hostname}"
+
+          logger.info("MANAGER: Forwarding permission-change from `#{user}`")
+
+          if !@@satellites[:managers].include?(routing_key) then
+            logger.error("MANAGER: Invalid manager addressed `#{user} => #{routing_key}`")
+            next
+          end
+
+          if test_access_manager(user, :all, hostname, @@managers).nil? then
+            # testing if manager has a corresponding entry, which will return non-nil (t/f)
+            # this will eventually be removed when the stateful information is saved
+            # via yaml+disk or database.
+            logger.warn("PERMS: None set for #{hostname} => #{routing_key}")
+            logger.warn("PERMS: Creating a default perm manifest for #{user}")
+
+            match = Struct::Manager_Perms.new(hostname, Permissions.new(owner: user))
+            match.permissions.grant(user, :all)
+            match.permissions.make_grantor(user)
+            @@managers << match
+          end
+
+          target_user = params.delete('user')
+          target_perm = params.delete('perm')
+
+          if test_access_manager(user, target_perm, hostname, @@managers) then
+            # TODO; check if this is broken. target_perm should be grantor? check maybe
+            # right now passes because first user is granted :all
+            logger.info("PERMS: #{user} able to cast #{target_perm}: OK")
+
+            match = @@managers.find { |s| s.host == hostname }
+
+            if match.permissions.grantor?(user) then
+              case target_perm
+              when 'mkgrantor'
+                match.permissions.make_grantor(target_user)
+                logger.info("PERMS: Elevating #{target_user} to grantor for #{hostname}")
+              when 'rmgrantor'
+                match.permissions.unmake_grantor(target_user)
+                logger.info("PERMS: Revoking #{target_user} grantor privileges on #{hostname}")
+              when 'grantall'
+                match.permissions.grant(target_user, :all)
+                logger.info("PERMS: Granting :all perms to #{target_user}")
+              when 'revokeall'
+                match.permissions.revoke(target_user, :all)
+                logger.info("PERMS: Revoking :all perms from #{target_user}")
+              end #case
+            end #match.permissions.test_permission
+          else
+            logger.warn("PERMS: #{user} able to cast #{target_perm}: FAIL")
+            next
+          end #test_access_manager
+        end #inbound_permission
+
+        inbound_command = Proc.new do |params|
+          hostname = params.delete('hostname')
+          workerpool = params.delete('workerpool')
+          servername = params['server_name']
           routing_key = "workers.#{hostname}.#{workerpool}"
+          command = params['cmd']
 
           if !@@satellites[:workers].include?(routing_key) then
             logger.error("WORKER: Invalid worker addressed `#{user} => #{routing_key}`")
-          else
-            if test_access_worker(user, :all, hostname, workerpool, servername, @@servers).nil? then
-              #okay to test for all, because .nil? implies server not found, see func at top
-              logger.warn("PERMS: None set for `#{servername} => #{routing_key}`")
-              case body_parameters['cmd']
-              when 'create'
-                logger.info("PERMS: :create requested, making default permissions `#{servername} => #{routing_key}`")
-                match = Struct::Worker_Perms.new(hostname,
-                                                 workerpool,
-                                                 servername,
-                                                 Permissions.new(owner: user))
-                match.permissions.grant(user, :all)
-                @@servers << match
-              end #case
-            end #match.nil?
+            next
+          end
 
-            begin
-              if test_access_worker(user,
-                                    body_parameters['cmd'],
-                                    hostname,
-                                    workerpool,
-                                    servername,
-                                    @@servers) then
-                # and permissions granted to user for cmd
+          if test_access_worker(user, :all, hostname, workerpool, servername, @@servers).nil? then
+            #okay to test for all, because .nil? implies server not found, see func at top
+            logger.warn("PERMS: None set for `#{servername} => #{routing_key}`")
+            case command
+            when 'create'
+              logger.info("PERMS: :create requested, making default permissions `#{servername} => #{routing_key}`")
+              match = Struct::Worker_Perms.new(hostname,
+                                               workerpool,
+                                               servername,
+                                               Permissions.new(owner: user))
+              match.permissions.grant(user, :all)
+              @@servers << match
+            end
+          end
 
-                logger.info("PERMS: #{user} for #{body_parameters['cmd']}: OK")
+          begin
+            if test_access_worker(user, command, hostname, workerpool, servername, @@servers) then
+              logger.info("PERMS: #{user} for #{command}: OK")
 
-                promises[uuid] = Proc.new { |status_code, retval|
-                  ws.send(retval)
-                }
+              uuid = SecureRandom.uuid
+              promises[uuid] = Proc.new { |status_code, retval|
+                ws.send(retval)
+              }
 
-                exchange.publish(body_parameters.to_json,
-                                 :routing_key => routing_key,
-                                 :type => "command",
-                                 :message_id => uuid,
-                                 :timestamp => Time.now.to_i)
-                logger.info("PERMS: Forwarded command `#{routing_key}`")
-                logger.debug(body_parameters)
-              else
-                logger.warn("PERMS: #{user} for #{body_parameters['cmd']}: FAIL")
-              end #test_permission
-            rescue NoMethodError
-              # no match, NOOP
-              logger.error("PERMS: no matching permission screen: NOOP")
-            end #begin
-          end #!@@satellites
+              exchange.publish(params.to_json,
+                               :routing_key => routing_key,
+                               :type => "command",
+                               :message_id => uuid,
+                               :timestamp => Time.now.to_i)
+              logger.info("PERMS: Forwarded command `#{routing_key}`")
+              logger.debug(params)
+            else
+              logger.warn("PERMS: #{user} for #{params['cmd']}: FAIL")
+            end #test_permission
+          rescue NoMethodError
+            # no match, NOOP
+            logger.error("PERMS: no matching permission screen: NOOP")
+          end #begin
+        end
 
-        end #body_parameters
+        body_parameters = JSON.parse msg
+        if body_parameters.key?('dir') then
+          inbound_directive.call(body_parameters)
+        elsif body_parameters.key?('perm') then
+          inbound_permission.call(body_parameters)
+        elsif body_parameters.key?('cmd') then
+          inbound_command.call(body_parameters)
+        end
       end # ws.onmessage
 
       # WEBSOCKET CLOSE
       ws.onclose do
-        warn("websocket closed")
+        logger.warn("websocket closed")
         settings.sockets.each do |sock|
           settings.sockets.delete(sock) if sock.websocket == ws
         end #each
@@ -407,9 +423,12 @@ class HQ < Sinatra::Base
     auth_inst = Auth.new
     login_token = auth_inst.login_plain(params[:username], params[:password])
     if login_token
+      logger.info("#{params[:username]} validated")
       @@users << login_token
       session.clear
       session[:user_id] = login_token[:uuid]
+    else
+      logger.warn("#{params[:username]} rejected")
     end
     redirect '/'
   end
