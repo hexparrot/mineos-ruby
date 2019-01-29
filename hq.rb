@@ -316,33 +316,30 @@ class HQ < Sinatra::Base
           target_user = params.delete('user')
           target_perm = params.delete('perm')
 
-          if test_access_manager(user, target_perm, hostname, @@managers) then
-            # TODO; check if this is broken. target_perm should be grantor? check maybe
-            # right now passes because first user is granted :all
-            logger.info("PERMS: #{user} able to cast #{target_perm}: OK")
+          match = @@managers.find { |s| s.host == hostname }
+          if match && match.permissions.grantor?(user) then
+            logger.info("PERMS: #{user} able to cast #{target_perm}: TRUE")
 
-            match = @@managers.find { |s| s.host == hostname }
-
-            if match.permissions.grantor?(user) then
-              case target_perm
-              when 'mkgrantor'
-                match.permissions.make_grantor(target_user)
-                logger.info("PERMS: Elevating #{target_user} to grantor for #{hostname}")
-              when 'rmgrantor'
-                match.permissions.unmake_grantor(target_user)
-                logger.info("PERMS: Revoking #{target_user} grantor privileges on #{hostname}")
-              when 'grantall'
-                match.permissions.grant(target_user, :all)
-                logger.info("PERMS: Granting :all perms to #{target_user}")
-              when 'revokeall'
-                match.permissions.revoke(target_user, :all)
-                logger.info("PERMS: Revoking :all perms from #{target_user}")
-              end #case
-            end #match.permissions.test_permission
+            case target_perm
+            when 'mkgrantor'
+              match.permissions.make_grantor(target_user)
+              logger.info("PERMS: Elevating #{target_user} to grantor for #{hostname}")
+            when 'rmgrantor'
+              match.permissions.unmake_grantor(target_user)
+              logger.info("PERMS: Revoking #{target_user} grantor privileges on #{hostname}")
+            when 'grantall'
+              # remember, this is granting to Manager_Perms, not Worker_Perms!
+              match.permissions.grant(target_user, :all)
+              logger.info("PERMS: Granting :all perms to #{target_user}")
+            when 'revokeall'
+              # remember, this is revoking Manager_Perms, not Worker_Perms!
+              match.permissions.revoke(target_user, :all)
+              logger.info("PERMS: Revoking :all perms from #{target_user}")
+            end #case
           else
-            logger.warn("PERMS: #{user} able to cast #{target_perm}: FAIL")
+            logger.warn("PERMS: #{user} able to cast #{target_perm}: FALSE")
             next
-          end #test_access_manager
+          end
         end #inbound_permission
 
         inbound_command = Proc.new do |params|
