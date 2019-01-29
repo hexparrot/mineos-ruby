@@ -40,6 +40,7 @@ class HQ < Sinatra::Base
   @@users = []
   @@servers = []
   @@managers = []
+  promises = {}
 
   require 'openssl'
   rsa_key = OpenSSL::PKey::RSA.generate(2048)
@@ -75,8 +76,9 @@ class HQ < Sinatra::Base
   .queue('', exclusive: true)
   .bind(exchange_stdout, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
+    parsed = JSON.parse payload
+
     settings.sockets.each { |ws|
-      parsed = JSON.parse payload
       user = "#{ws.user.authtype}:#{ws.user.id}"
 
       if test_access_worker(user,
@@ -90,14 +92,12 @@ class HQ < Sinatra::Base
     }
   end
 
-  promises = {}
-
   ch
   .queue('hq', exclusive: true)
   .bind(exchange, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
-    if metadata[:headers]['command'] then
-      # for inbound commands
+
+    inbound_command = Proc.new do |delivery_info, metadata, payload|
       if metadata[:headers]['exception'] then
         promises[metadata.correlation_id].call 400, payload
       elsif parsed['cmd'] == 'create' then
@@ -105,20 +105,26 @@ class HQ < Sinatra::Base
       else
         promises[metadata.correlation_id].call 200, payload
       end
-    elsif metadata[:headers]['directive'] then
-      # for inbound directives
+    end
+
+    inbound_directive = Proc.new do |delivery_info, metadata, payload|
       case metadata[:headers]['directive']
       when 'IDENT'
         parsed = JSON.parse payload
 
-        if parsed["workerpool"] then
+        if parsed.key?("workerpool") then
           # :workerpool's only exists only from worker satellite
           routing_key = "workers.#{parsed['hostname']}.#{parsed['workerpool']}"
 
-          if !@@satellites[:workers].include?(routing_key) then
-            logger.info("IDENT: Worker registered `#{routing_key}`")
-            @@satellites[:workers].add(routing_key)
+          if @@satellites[:workers].include?(routing_key) then
+            # worker already registered
+
+            logger.debug("IDENT: Worker heartbeat `#{routing_key}`")
+          else
             # new worker process registration, ask to verify OBJSTORE
+
+            @@satellites[:workers].add(routing_key)
+            logger.info("IDENT: Worker registered `#{routing_key}`")
             exchange.publish('ACK',
                              :routing_key => routing_key,
                              :type => "receipt.directive",
@@ -126,11 +132,9 @@ class HQ < Sinatra::Base
                              :correlation_id => metadata[:message_id],
                              :headers => { directive: 'IDENT' },
                              :timestamp => Time.now.to_i)
-          else
-            # worker already registered
-            logger.info("IDENT: Worker heartbeat `#{routing_key}`")
           end
 
+          # every hq-received IDENT should come with verification of OBJSTORE
           exchange.publish('VERIFY_OBJSTORE',
                            :routing_key => routing_key,
                            :type => "directive",
@@ -138,21 +142,23 @@ class HQ < Sinatra::Base
                            :timestamp => Time.now.to_i)
           logger.info("VERIFY_OBJSTORE: Request sent to `#{routing_key}`")
         else
-          # :workerpool's absence implies mrmanager satellite
+          # workerpool key absence implies mrmanager satellite
           routing_key = "managers.#{parsed['hostname']}"
 
-          if !@@satellites[:managers].include?(routing_key) then
-            logger.info("IDENT: Manager registered `#{routing_key}`")
-            @@satellites[:managers].add(routing_key)
-          else
+          if @@satellites[:managers].include?(routing_key) then
             # mrmanager already registered
-            logger.info("IDENT: Manager heartbeat `#{routing_key}`")
+            logger.debug("IDENT: Manager heartbeat `#{routing_key}`")
+          else
+            @@satellites[:managers].add(routing_key)
+            logger.info("IDENT: Manager registered `#{routing_key}`")
           end
-        end #if parsed["workerpool"]
+        end # if parsed.key?("workerpool")
+
       when 'VERIFY_OBJSTORE'
         routing_key = "workers.#{metadata[:headers]['hostname']}.#{metadata[:headers]['workerpool']}"
+
         if payload == '' then
-          logger.info("VERIFY_OBJSTORE: returned, creds absent. AWSCREDS to `#{routing_key}`")
+          logger.info("VERIFY_OBJSTORE: returned, creds absent. Sending AWSCREDS to `#{routing_key}`")
           # on receipt of non-true VERIFY_OBJSTORE, send object store creds
           exchange.publish({ AWSCREDS: {
                                endpoint: s3_config['object_store']['host'],
@@ -168,10 +174,13 @@ class HQ < Sinatra::Base
                            :message_id => SecureRandom.uuid,
                            :timestamp => Time.now.to_i)
         else
-          logger.info("VERIFY_OBJSTORE: returned, creds present. NOOP `#{routing_key}`")
+          # truthy responses do not need follow up
+          logger.debug("VERIFY_OBJSTORE: returned, creds present. NOOP `#{routing_key}`")
         end
+
       when 'READY_SHUTDOWN'
         routing_key = "managers.#{metadata[:headers]['hostname']}"
+
         # send back received rsa_time variable, decrypted and plaintext
         exchange.publish({ CONFIRM_SHUTDOWN: rsa_key.private_decrypt(payload) }.to_json,
                          :routing_key => routing_key,
@@ -179,9 +188,15 @@ class HQ < Sinatra::Base
                          :message_id => SecureRandom.uuid,
                          :timestamp => Time.now.to_i)
         logger.info("MANAGER: CONFIRM_SHUTDOWN sent to `#{routing_key}`")
-      end #case
-    end #metadata if
-  end #subscribe
+      end # case
+    end # inbound_directive
+
+    if metadata[:headers]['command'] then
+      inbound_command.call(delivery_info, metadata, payload)
+    elsif metadata[:headers]['directive'] then
+      inbound_directive.call(delivery_info, metadata, payload)
+    end
+  end # subscribe
 
 ## route handlers
 
