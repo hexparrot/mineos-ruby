@@ -262,4 +262,15 @@ class PermissionsTest < Minitest::Test
     assert_equal('mojang:myfavoriteadmin', inst2.owner)
   end
 
+  def test_attributes
+    inst = Permissions.new('plain:user')
+
+    inst.hostname = 'myhost'
+    assert_equal('myhost', inst.hostname)
+    inst.workerpool = 'mypool'
+    assert_equal('mypool', inst.workerpool)
+    inst.servername = 'myserver'
+    assert_equal('myserver', inst.servername)
+  end
+
 end
