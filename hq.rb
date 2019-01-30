@@ -7,23 +7,23 @@ require_relative 'perms'
 SOCKET = Struct.new("Socket", :websocket, :user)
 
 # helper functions
-def test_access_worker(user, action, host, worker, server, dataset)
-  match = dataset.find { |s| s.host == host &&
-                             s.pool == worker &&
-                             s.server == server }
+def test_access_worker(user, action, hostname, worker, server, dataset)
+  match = dataset.detect { |s| s.hostname == hostname &&
+                             s.workerpool == worker &&
+                             s.servername == server }
   if match.nil? then
     nil #no match is found, action is irrelevant, return nil
   else
-    match.permissions.test_permission(user, action) #match found, return true/false
+    match.test_permission(user, action) #match found, return true/false
   end
 end
 
-def test_access_manager(user, action, host, dataset)
-  match = dataset.find { |s| s.host == host }
+def test_access_manager(user, action, hostname, dataset)
+  match = dataset.detect { |s| s.hostname == hostname }
   if match.nil? then
     nil #no match is found, action is irrelevant, return nil
   else
-    match.permissions.test_permission(user, action) #match found, return true/false
+    match.test_permission(user, action) #match found, return true/false
   end
 end
 
@@ -228,9 +228,10 @@ class HQ < Sinatra::Base
             logger.warn("PERMS: None set for #{hostname} => #{routing_key}")
             logger.warn("PERMS: Creating a default perm manifest for #{user}")
 
-            match = Struct::Manager_Perms.new(hostname, Permissions.new(user))
-            match.permissions.grant(user, :all)
-            @@managers << match
+            perm_obj = Permissions.new(user)
+            perm_obj.hostname = hostname
+            perm_obj.grant(user, :all)
+            @@managers.push(perm_obj)
           end
 
           if test_access_manager(user, directive, hostname, @@managers) then
@@ -288,25 +289,26 @@ class HQ < Sinatra::Base
             logger.warn("PERMS: None set for #{hostname} => #{routing_key}")
             logger.warn("PERMS: Creating a default perm manifest for #{user}")
 
-            match = Struct::Manager_Perms.new(hostname, Permissions.new(user))
-            match.permissions.grant(user, :all)
-            match.permissions.make_grantor(user)
-            @@managers << match
+            perm_obj = Permissions.new(user)
+            perm_obj.hostname = hostname
+            perm_obj.grant(user, :all)
+            perm_obj.make_grantor(user)
+            @@managers.push(perm_obj)
           end
 
           target_user = params.delete('user')
           target_perm = params.delete('perm')
 
-          match = @@managers.find { |s| s.host == hostname }
-          if match && match.permissions.grantor?(user) then
+          match = @@managers.find { |s| s.hostname == hostname }
+          if match && match.grantor?(user) then
             logger.info("PERMS: #{user} able to cast #{target_perm}: TRUE")
 
             case target_perm
             when 'mkgrantor'
-              match.permissions.make_grantor(target_user)
+              match.make_grantor(target_user)
               logger.info("PERMS: Elevating #{target_user} to grantor for #{hostname}")
             when 'rmgrantor'
-              match.permissions.unmake_grantor(target_user)
+              match.unmake_grantor(target_user)
               logger.info("PERMS: Revoking #{target_user} grantor privileges on #{hostname}")
             else
               logger.error("PERMS: Requested #{target_perm} not applicable to managers.")
@@ -335,30 +337,30 @@ class HQ < Sinatra::Base
             case command
             when 'create'
               logger.info("PERMS: :create requested, making default permissions `#{servername} => #{routing_key}`")
-              match = Struct::Worker_Perms.new(hostname,
-                                               workerpool,
-                                               servername,
-                                               Permissions.new(user))
-              match.permissions.grant(user, :all)
-              @@servers << match
+              perm_obj = Permissions.new(user)
+              perm_obj.hostname = hostname
+              perm_obj.workerpool = workerpool
+              perm_obj.servername = servername
+              perm_obj.grant(user, :all)
+              @@servers << perm_obj
             end
           end
 
           target_user = params.delete('user')
           target_perm = params.delete('perm')
 
-          match = @@servers.find { |s| s.host == hostname &&
-                                       s.pool == workerpool &&
-                                       s.server == servername }
-          if match && match.permissions.grantor?(user) then
+          match = @@servers.find { |s| s.hostname == hostname &&
+                                       s.workerpool == workerpool &&
+                                       s.servername == servername }
+          if match && match.grantor?(user) then
             logger.info("PERMS: #{user} able to cast #{target_perm}: TRUE")
 
             case target_perm
             when 'grantall'
-              match.permissions.grant(target_user, :all)
+              match.grant(target_user, :all)
               logger.info("PERMS: Providing #{target_user} with :all on #{servername} => #{routing_key}")
             when 'revokeall'
-              match.permissions.revoke(target_user, :all)
+              match.revoke(target_user, :all)
               logger.info("PERMS: Revoking :all from #{target_user} for #{servername} => #{routing_key}")
             else
               logger.error("PERMS: Requested #{target_perm} not applicable to workers.")
@@ -387,12 +389,12 @@ class HQ < Sinatra::Base
             case command
             when 'create'
               logger.info("PERMS: :create requested, making default permissions `#{servername} => #{routing_key}`")
-              match = Struct::Worker_Perms.new(hostname,
-                                               workerpool,
-                                               servername,
-                                               Permissions.new(user))
-              match.permissions.grant(user, :all)
-              @@servers << match
+              perm_obj = Permissions.new(user)
+              perm_obj.hostname = hostname
+              perm_obj.workerpool = workerpool
+              perm_obj.servername = servername
+              perm_obj.grant(user, :all)
+              @@servers << perm_obj
             end
           end
 
