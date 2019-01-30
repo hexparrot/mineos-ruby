@@ -2,28 +2,31 @@ Worker_Perms = Struct.new("Worker_Perms", :host, :pool, :server, :permissions)
 Manager_Perms = Struct.new("Manager_Perms", :host, :permissions)
 
 class Permissions
-  attr_reader :owner, :permissions, :properties
+  attr_reader :permissions, :properties
 
-  def initialize(owner:nil)
-    @owner = owner
+  def initialize(owner)
     @properties = {}
     @permissions = {}
+
+    @properties[:owner] = owner
+    make_grantor(owner)
   end
 
   def load_file(filepath)
     require 'yaml'
     yaml_input = YAML::load_file(filepath)
+
+    owner = @properties[:owner]
     @permissions = yaml_input['permissions'].transform_keys(&:to_sym)
     @properties = yaml_input['properties'].transform_keys(&:to_sym)
-
-    @owner = @properties[:owner] if @owner.nil?
+    @properties[:owner] = owner if owner
   end
 
   def load(dump)
+    owner = @properties[:owner]
     @properties = YAML::load(dump)['properties'].transform_keys(&:to_sym)
     @permissions = YAML::load(dump)['permissions'].transform_keys(&:to_sym)
-
-    @owner = @properties[:owner] if @owner.nil?
+    @properties[:owner] = owner if owner
   end
 
   def dump
@@ -37,8 +40,12 @@ class Permissions
     false
   end
 
-  def get_property(requested_prop)
-    @properties[requested_prop]
+  def owner
+    @properties[:owner]
+  end
+
+  def grantors
+    @properties[:grantors]
   end
 
   def save_file!(filepath)
@@ -61,9 +68,7 @@ class Permissions
   end
 
   def grantor?(user)
-    if @owner == user then
-      true
-    elsif @properties[:owner] == user then
+    if @properties[:owner] == user then
       true
     elsif @properties.key?(:grantors) then
       @properties[:grantors].include?(user)
