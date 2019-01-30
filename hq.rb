@@ -228,7 +228,7 @@ class HQ < Sinatra::Base
             logger.warn("PERMS: None set for #{hostname} => #{routing_key}")
             logger.warn("PERMS: Creating a default perm manifest for #{user}")
 
-            match = Struct::Manager_Perms.new(hostname, Permissions.new(owner: user))
+            match = Struct::Manager_Perms.new(hostname, Permissions.new(user))
             match.permissions.grant(user, :all)
             @@managers << match
           end
@@ -288,7 +288,7 @@ class HQ < Sinatra::Base
             logger.warn("PERMS: None set for #{hostname} => #{routing_key}")
             logger.warn("PERMS: Creating a default perm manifest for #{user}")
 
-            match = Struct::Manager_Perms.new(hostname, Permissions.new(owner: user))
+            match = Struct::Manager_Perms.new(hostname, Permissions.new(user))
             match.permissions.grant(user, :all)
             match.permissions.make_grantor(user)
             @@managers << match
@@ -338,7 +338,7 @@ class HQ < Sinatra::Base
               match = Struct::Worker_Perms.new(hostname,
                                                workerpool,
                                                servername,
-                                               Permissions.new(owner: user))
+                                               Permissions.new(user))
               match.permissions.grant(user, :all)
               @@servers << match
             end
@@ -390,7 +390,7 @@ class HQ < Sinatra::Base
               match = Struct::Worker_Perms.new(hostname,
                                                workerpool,
                                                servername,
-                                               Permissions.new(owner: user))
+                                               Permissions.new(user))
               match.permissions.grant(user, :all)
               @@servers << match
             end
