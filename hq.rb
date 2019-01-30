@@ -177,17 +177,6 @@ class HQ < Sinatra::Base
           # truthy responses do not need follow up
           logger.debug("VERIFY_OBJSTORE: returned, creds present. NOOP `#{routing_key}`")
         end
-
-      when 'READY_SHUTDOWN'
-        routing_key = "managers.#{metadata[:headers]['hostname']}"
-
-        # send back received rsa_time variable, decrypted and plaintext
-        exchange.publish({ CONFIRM_SHUTDOWN: rsa_key.private_decrypt(payload) }.to_json,
-                         :routing_key => routing_key,
-                         :type => "directive",
-                         :message_id => SecureRandom.uuid,
-                         :timestamp => Time.now.to_i)
-        logger.info("MANAGER: CONFIRM_SHUTDOWN sent to `#{routing_key}`")
       end # case
     end # inbound_directive
 
@@ -253,14 +242,6 @@ class HQ < Sinatra::Base
             }
 
             case directive
-            when 'shutdown'
-              # send hq public key to worker; special sequence to protect from unauth shutdown
-              exchange.publish({ READY_SHUTDOWN: OpenSSL::PKey::RSA.new(rsa_key.public_key) }.to_json,
-                               :routing_key => routing_key,
-                               :type => "directive",
-                               :message_id => uuid,
-                               :timestamp => Time.now.to_i)
-              logger.info("MANAGER: READY_SHUTDOWN `#{workerpool} => #{routing_key}`")
             when 'mkpool'
               exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
                                :routing_key => routing_key,
