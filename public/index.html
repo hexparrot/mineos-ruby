@@ -5,15 +5,14 @@
        <input type="text" id="hostname" value="ruby-worker" />
        <hr>
        <input type="text" id="user" value="plain:will" />
-       <button type="button" data-type="perms" data-string='{"perm": "mkgrantor"}'>grant: grantor</button>
-       <button type="button" data-type="perms" data-string='{"perm": "rmgrantor"}'>revoke: grantor</button>
-       <button type="button" data-type="perms" data-string='{"perm": "grantall"}'>grant: all</button>
-       <button type="button" data-type="perms" data-string='{"perm": "revokeall"}'>revoke: all</button>
+       <button type="button" data-type="perms_manager" data-string='{"perm": "mkgrantor"}'>grant: grantor</button>
+       <button type="button" data-type="perms_manager" data-string='{"perm": "rmgrantor"}'>revoke: grantor</button>
+       <button type="button" data-type="perms_worker" data-string='{"perm": "grantall"}'>grant: all</button>
+       <button type="button" data-type="perms_worker" data-string='{"perm": "revokeall"}'>revoke: all</button>
        <hr>
        <input type="text" id="workerpool" value="_throwaway-500" />
        <button type="button" data-type="directive" data-string='{"dir": "mkpool"}'>mkpool</button>
        <button type="button" data-type="directive" data-string='{"dir": "spawn"}'>spawn</button>
-       <button type="button" data-type="directive" data-string='{"dir": "shutdown"}'>shutdown</button>
        <button type="button" data-type="directive" data-string='{"dir": "remove"}'>remove</button>
        <hr>
        <input type="text" id="servername" value="test" />
@@ -69,8 +68,15 @@
               payload['server_name'] = document.getElementById('servername').value
               console.log(payload);
               ws.send(JSON.stringify(payload));
-            } else if (type == 'perms') {
+            } else if (type == 'perms_manager') {
               payload['hostname'] = document.getElementById('hostname').value
+              payload['user'] = document.getElementById('user').value
+              console.log(payload);
+              ws.send(JSON.stringify(payload));
+            } else if (type == 'perms_worker') {
+              payload['hostname'] = document.getElementById('hostname').value
+              payload['workerpool'] = document.getElementById('workerpool').value
+              payload['server_name'] = document.getElementById('servername').value
               payload['user'] = document.getElementById('user').value
               console.log(payload);
               ws.send(JSON.stringify(payload));
