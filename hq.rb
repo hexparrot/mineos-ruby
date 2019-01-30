@@ -270,14 +270,14 @@ class HQ < Sinatra::Base
           end #test_access_manager
         end
 
-        inbound_permission = Proc.new do |params|
+        inbound_permission_manager = Proc.new do |params|
           hostname = params.delete('hostname')
           routing_key = "managers.#{hostname}"
 
-          logger.info("MANAGER: Forwarding permission-change from `#{user}`")
+          logger.info("PERMS: Forwarding permission-change from `#{user}`")
 
           if !@@satellites[:managers].include?(routing_key) then
-            logger.error("MANAGER: Invalid manager addressed `#{user} => #{routing_key}`")
+            logger.error("PERMS: Invalid manager addressed `#{user} => #{routing_key}`")
             next
           end
 
@@ -308,20 +308,66 @@ class HQ < Sinatra::Base
             when 'rmgrantor'
               match.permissions.unmake_grantor(target_user)
               logger.info("PERMS: Revoking #{target_user} grantor privileges on #{hostname}")
-            when 'grantall'
-              # remember, this is granting to Manager_Perms, not Worker_Perms!
-              match.permissions.grant(target_user, :all)
-              logger.info("PERMS: Granting :all perms to #{target_user}")
-            when 'revokeall'
-              # remember, this is revoking Manager_Perms, not Worker_Perms!
-              match.permissions.revoke(target_user, :all)
-              logger.info("PERMS: Revoking :all perms from #{target_user}")
+            else
+              logger.error("PERMS: Requested #{target_perm} not applicable to managers.")
             end #case
           else
             logger.warn("PERMS: #{user} able to cast #{target_perm}: FALSE")
             next
           end
         end #inbound_permission
+
+        inbound_permission_worker = Proc.new do |params|
+          hostname = params.delete('hostname')
+          workerpool = params.delete('workerpool')
+          servername = params['server_name']
+          routing_key = "workers.#{hostname}.#{workerpool}"
+          command = params['cmd']
+
+          if !@@satellites[:workers].include?(routing_key) then
+            logger.error("WORKER: Invalid worker addressed `#{user} => #{routing_key}`")
+            next
+          end
+
+          if test_access_worker(user, :all, hostname, workerpool, servername, @@servers).nil? then
+            #okay to test for all, because .nil? implies server not found, see func at top
+            logger.warn("PERMS: None set for `#{servername} => #{routing_key}`")
+            case command
+            when 'create'
+              logger.info("PERMS: :create requested, making default permissions `#{servername} => #{routing_key}`")
+              match = Struct::Worker_Perms.new(hostname,
+                                               workerpool,
+                                               servername,
+                                               Permissions.new(owner: user))
+              match.permissions.grant(user, :all)
+              @@servers << match
+            end
+          end
+
+          target_user = params.delete('user')
+          target_perm = params.delete('perm')
+
+          match = @@servers.find { |s| s.host == hostname &&
+                                       s.pool == workerpool &&
+                                       s.server == servername }
+          if match && match.permissions.grantor?(user) then
+            logger.info("PERMS: #{user} able to cast #{target_perm}: TRUE")
+
+            case target_perm
+            when 'grantall'
+              match.permissions.grant(target_user, :all)
+              logger.info("PERMS: Providing #{target_user} with :all on #{servername} => #{routing_key}")
+            when 'revokeall'
+              match.permissions.revoke(target_user, :all)
+              logger.info("PERMS: Revoking :all from #{target_user} for #{servername} => #{routing_key}")
+            else
+              logger.error("PERMS: Requested #{target_perm} not applicable to workers.")
+            end #case
+          else
+            logger.warn("PERMS: #{user} able to cast #{target_perm}: FALSE")
+            next
+          end
+        end
 
         inbound_command = Proc.new do |params|
           hostname = params.delete('hostname')
@@ -379,7 +425,11 @@ class HQ < Sinatra::Base
         if body_parameters.key?('dir') then
           inbound_directive.call(body_parameters)
         elsif body_parameters.key?('perm') then
-          inbound_permission.call(body_parameters)
+          if body_parameters.key?('server_name') then
+            inbound_permission_worker.call(body_parameters)
+          else #manager permissions if 'server' absent
+            inbound_permission_manager.call(body_parameters)
+          end
         elsif body_parameters.key?('cmd') then
           inbound_command.call(body_parameters)
         end
