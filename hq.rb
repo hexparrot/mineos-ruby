@@ -314,9 +314,11 @@ class HQ < Sinatra::Base
             case target_perm
             when 'mkgrantor'
               match.make_grantor(target_user)
+              match.grant(target_user, :all)
               logger.info("PERMS: Elevating #{target_user} to grantor for #{hostname}")
             when 'rmgrantor'
               match.unmake_grantor(target_user)
+              match.revoke(target_user, :all)
               logger.info("PERMS: Revoking #{target_user} grantor privileges on #{hostname}")
             else
               logger.error("PERMS: Requested #{target_perm} not applicable to managers.")
@@ -362,18 +364,19 @@ class HQ < Sinatra::Base
           target_user = params.delete('user')
           target_perm = params.delete('perm')
 
-          match = @@servers.find { |s| s.hostname == hostname &&
-                                       s.workerpool == workerpool &&
-                                       s.servername == servername }
-          if match && match.grantor?(user) then
+          host_match = @@managers.find { |s| s.hostname == hostname }
+          tgt_match = @@servers.find { |s| s.hostname == hostname &&
+                                         s.workerpool == workerpool &&
+                                         s.servername == servername }
+          if host_match && tgt_match && (host_match.grantor?(user) || tgt_match.grantor?(user)) then
             logger.info("PERMS: #{user} able to cast #{target_perm}: TRUE")
 
             case target_perm
             when 'grantall'
-              match.grant(target_user, :all)
+              tgt_match.grant(target_user, :all)
               logger.info("PERMS: Providing #{target_user} with :all on #{servername} => #{routing_key}")
             when 'revokeall'
-              match.revoke(target_user, :all)
+              tgt_match.revoke(target_user, :all)
               logger.info("PERMS: Revoking :all from #{target_user} for #{servername} => #{routing_key}")
             else
               logger.error("PERMS: Requested #{target_perm} not applicable to workers.")
