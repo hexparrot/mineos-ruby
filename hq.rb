@@ -231,9 +231,15 @@ class HQ < Sinatra::Base
           # * delete server
           # * grantor: can grant create/delete to other users
 
-          if !@@permissions[:pool][poolname].grantor?(user) then
-            logger.warn("PERMS: Insufficient permissions for #{user} to cast #{permission} on #{affected_user}")
-            next #early exit if user is not a grantor!
+          begin
+            if !@@permissions[:pool][poolname].grantor?(user) then
+              logger.warn("PERMS: Insufficient permissions for #{user} to cast #{permission} on #{affected_user}")
+              next #early exit if user is not a grantor!
+            end
+          rescue NoMethodError
+            # pool-grantall executed by non-admin before being granted
+            logger.warn("PERMS: Non-existent pool cannot be modified by #{user} casting #{permission} on #{affected_user}")
+            next
           end
 
           case permission
@@ -263,9 +269,15 @@ class HQ < Sinatra::Base
           # * modify_sc, modify_sp, start, stop, eula, etc.
           # * grantor: can grant server-commands to users
 
-          if !@@permissions[:server][servername].grantor?(user) then
-            logger.warn("PERMS: Insufficient permissions for #{user} to cast #{permission} on #{affected_user}")
-            next #early exit if user is not a grantor!
+          begin
+            if !@@permissions[:server][servername].grantor?(user) then
+              logger.warn("PERMS: Insufficient permissions for #{user} to cast #{permission} on #{affected_user}")
+              next #early exit if user is not a grantor!
+            end
+          rescue NoMethodError
+            # server-grantall executed by non-admin before being granted
+            logger.warn("PERMS: Non-existent server cannot be modified by #{user} casting #{permission} on #{affected_user}")
+            next
           end
 
           case permission
