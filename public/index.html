@@ -1,32 +1,39 @@
 <html>
   <body>
      <form id="form">
-       <h1>root</h1>
+       <h1>webui</h1>
        <input type="text" id="hostname" value="ruby-worker" />
-       <hr>
-       <input type="text" id="affected_user" value="plain:mc" />
-       <button type="button" data-type="root_perms" data-string='{"permission": "grantall"}'>grantall: mkpool/rmpool</button>
-       <button type="button" data-type="root_perms" data-string='{"permission": "revokeall"}'>revokeall: mkpool/rmpool</button>
-       <hr>
-       <input type="text" id="workerpool" value="_throwaway-500" />
-       <button type="button" data-type="pool_perms" data-string='{"permission": "grantall"}'>grantall</button>
-       <button type="button" data-type="pool_perms" data-string='{"permission": "revokeall"}'>revokeall</button>
-       <button type="button" data-type="root_cmd" data-string='{"root_cmd": "mkpool"}'>mkpool</button>
-       <button type="button" data-type="root_cmd" data-string='{"root_cmd": "rmpool"}'>rmpool</button>
-       <button type="button" data-type="root_cmd" data-string='{"root_cmd": "spawnpool"}'>spawnpool</button>
-       <hr>
        <button type="button" data-type="command" data-string='{"cmd": "get_external_profile",
 "url": "https://launcher.mojang.com/v1/objects/b58b2ceb36e01bcd8dbf49c8fb66c55a9f0676cd/server.jar",
 "group": "mojang",
 "version": "1.8.9",
-"dest_filename": "minecraft_server.1.8.9.jar" }'>get_prof</button>
+"dest_filename": "minecraft_server.1.8.9.jar" }'>get profile from internet</button>
        <hr>
-       <input type="text" id="server_name" value="test" />
+       <h2>root abilities</h2>
+       <input type="text" id="affected_user" value="plain:mc" />
+       <button type="button" data-type="root_perms" data-string='{"permission": "grantall"}'>grant root abilities (mkpool/rmpool/spawnpool)</button>
+       <button type="button" data-type="root_perms" data-string='{"permission": "revokeall"}'>revoke root abilities</button>
+       <br>
+       <br>
+       <button type="button" data-type="root_cmd" data-string='{"root_cmd": "mkpool"}'>mkpool</button>
+       <button type="button" data-type="root_cmd" data-string='{"root_cmd": "rmpool"}'>rmpool</button>
+       <button type="button" data-type="root_cmd" data-string='{"root_cmd": "spawnpool"}'>spawnpool</button>
+       <hr>
+       <h2>pool abilities</h2>
+       <input type="text" id="workerpool" value="_throwaway-500" />
+       <button type="button" data-type="pool_perms" data-string='{"permission": "grantall"}'>grant pool abilities: create/delete</button>
+       <button type="button" data-type="pool_perms" data-string='{"permission": "revokeall"}'>revoke pool abilities</button>
+       <br>
+       <br>
        <button type="button" data-type="pool_cmd" data-string='{"pool_cmd": "create"}'>create</button>
        <button type="button" data-type="pool_cmd" data-string='{"pool_cmd": "delete"}'>delete</button>
-       <button type="button" data-type="server_perms" data-string='{"permission": "grantall"}'>grantall</button>
-       <button type="button" data-type="server_perms" data-string='{"permission": "revokeall"}'>revokeall</button>
        <hr>
+       <h2>server abilities</h2>
+       <input type="text" id="server_name" value="test" />
+       <button type="button" data-type="server_perms" data-string='{"permission": "grantall"}'>grant server abilities: start/stop/etc</button>
+       <button type="button" data-type="server_perms" data-string='{"permission": "revokeall"}'>revoke server abilities</button>
+       <br>
+       <br>
        <button type="button" data-type="server_cmd" data-string='{"server_cmd": "modify_sc", "section": "java", "attr": "java_xmx", "value": 512}'>xmx</button>
        <button type="button" data-type="server_cmd" data-string='{"server_cmd": "modify_sc", "section": "java", "attr": "java_xms", "value": 512}'>xms</button>
        <button type="button" data-type="server_cmd" data-string='{"server_cmd": "modify_sc", "section": "java", "attr": "jarfile", "value": "minecraft_server.1.8.9.jar"}'>jarfile</button>
@@ -37,6 +44,7 @@
        <button type="button" data-type="server_cmd" data-string='{"server_cmd": "start"}'>start</button>
        <button type="button" data-type="server_cmd" data-string='{"server_cmd": "stop"}'>stop</button>
        <button type="button" data-type="server_cmd" data-string='{"server_cmd": "kill"}'>kill</button>
+       <hr>
      </form>
      <div id="msgs"></div>
   </body>
