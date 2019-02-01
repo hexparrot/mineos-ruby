@@ -185,35 +185,34 @@ class HQ < Sinatra::Base
       ws.onmessage do |msg|
         user = "#{current_user.authtype}:#{current_user.id}"
 
-
         ### PERMISSION FUNCTIONS
         root_perms = Proc.new do |permission, affected_user|
           # TODO: master user is assigned at startup (@permissions declaration)
 
           if !@@permissions[:root].grantor?(user) then
-            logger.warn("PERMS: Insufficient permissions for #{user} to cast #{permission} on #{affected_user}")
+            logger.warn("PERMS: Insufficient permissions for #{user} to cast root:#{permission} on #{affected_user}")
             next #early exit if user is not a grantor!
           end
 
           case permission
           when 'mkgrantor'
             @@permissions[:root].make_grantor(affected_user)
-            logger.info("PERMS: #{user} promoting #{affected_user} to root grantor")
+            logger.info("PERMS: #{user} promoting #{affected_user} to `root`:grantor")
             logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) grantall, revokeall")
             # effectively makes #affected_user as powerful as #user in regards to
             # full administration of the hq
           when 'rmgrantor'
             @@permissions[:root].unmake_grantor(affected_user)
-            logger.info("PERMS: #{user} revoking root grantor from #{affected_user}")
+            logger.info("PERMS: #{user} revoking `root`:grantor from #{affected_user}")
             logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) grantall, revokeall")
           when 'grantall'
             @@permissions[:root].grant(affected_user, :all)
-            logger.info("PERMS: #{user} granting :all to #{affected_user} on root")
+            logger.info("PERMS: #{user} granting `root`:all to #{affected_user}")
             logger.info("PERMS: (:all) mkpool, rmpool, spawn, despawn")
             # allows #affected_user to create and destroy pools (remote users on all hosts)
           when 'revokeall'
             @@permissions[:root].revoke(affected_user, :all)
-            logger.info("PERMS: #{user} revoking :all from #{affected_user} on root")
+            logger.info("PERMS: #{user} revoking `root`:all from #{affected_user}")
             logger.info("PERMS: (:all) mkpool, rmpool, spawn, despawn")
           end
         end
@@ -226,11 +225,11 @@ class HQ < Sinatra::Base
 
           begin
             if !@@permissions.fetch(fqdn).grantor?(user) then
-              logger.warn("PERMS: Insufficient permissions for #{user} to cast #{permission} on #{affected_user}")
+              logger.warn("PERMS: Insufficient permissions for #{user} to cast `#{fqdn}`:#{permission} on #{affected_user}")
               next #early exit if user is not a grantor!
             end
           rescue KeyError
-            logger.warn("PERMS: #{user} cannot perform #{permission} on non-existent pool")
+            logger.warn("PERMS: #{user} cannot perform #{permission} on non-existent pool `#{fqdn}`")
             next
           end
 
@@ -238,21 +237,21 @@ class HQ < Sinatra::Base
           case permission
           when 'mkgrantor'
             @@permissions[fqdn].make_grantor(affected_user)
-            logger.info("PERMS: #{user} promoting #{affected_user} to grantor on `#{fqdn}`")
+            logger.info("PERMS: #{user} promoting #{affected_user} to `#{fqdn}`:grantor")
             logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete")
             # allows #affected user to give ability to create/delete to others
           when 'rmgrantor'
             @@permissions[fqdn].unmake_grantor(affected_user)
-            logger.info("PERMS: #{user} revoking grantor from #{affected_user} on `#{fqdn}`")
+            logger.info("PERMS: #{user} revoking from #{affected_user} `#{fqdn}`:grantor")
             logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete")
           when 'grantall'
             @@permissions[fqdn].grant(affected_user, :all)
-            logger.info("PERMS: #{user} granting :all to #{affected_user} on `#{fqdn}`")
+            logger.info("PERMS: #{user} granting #{affected_user} `#{fqdn}`:all")
             logger.info("PERMS: (:all) create, delete")
             # allows #affected_user to create and destroy servers
           when 'revokeall'
             @@permissions[fqdn].revoke(affected_user, :all)
-            logger.info("PERMS: #{user} revoking :all from #{affected_user} on `#{fqdn}`")
+            logger.info("PERMS: #{user} revoking from #{affected_user} on `#{fqdn}`:all")
             logger.info("PERMS: (:all) create, delete")
           end
         end
@@ -264,11 +263,11 @@ class HQ < Sinatra::Base
 
           begin
             if !@@permissions.fetch(fqdn).grantor?(user) then
-              logger.warn("PERMS: Insufficient permissions for #{user} to cast #{permission} on #{affected_user}")
+              logger.warn("PERMS: Insufficient permissions for #{user} to cast `#{fqdn}`:#{permission} on #{affected_user}")
               next #early exit if user is not a grantor!
             end
           rescue KeyError
-            logger.warn("PERMS: #{user} cannot perform #{permission} on non-existent server")
+            logger.warn("PERMS: #{user} cannot perform #{permission} on non-existent server `#{fqdn}`")
             next
           end
 
@@ -276,21 +275,21 @@ class HQ < Sinatra::Base
           case permission
           when 'mkgrantor'
             @@permissions[fqdn].make_grantor(affected_user)
-            logger.info("PERMS: #{user} promoting #{affected_user} to grantor on `#{fqdn}`")
+            logger.info("PERMS: #{user} promoting #{affected_user} to grantor `#{fqdn}`:grantor")
             logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) start, stop, etc.")
             # allows #affected user to give ability to start/stop servers
           when 'rmgrantor'
             @@permissions[fqdn].unmake_grantor(affected_user)
-            logger.info("PERMS: #{user} revoking grantor from #{affected_user} on `#{fqdn}`")
+            logger.info("PERMS: #{user} revoking from #{affected_user} `#{fqdn}`:grantor")
             logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete")
           when 'grantall'
             @@permissions[fqdn].grant(affected_user, :all)
-            logger.info("PERMS: #{user} granting :all to #{affected_user} on `#{fqdn}`")
+            logger.info("PERMS: #{user} granting #{affected_user} on `#{fqdn}`:all")
             logger.info("PERMS: (:all) start, stop, etc.")
             # allows #affected_user to create and destroy servers
           when 'revokeall'
             @@permissions[fqdn].revoke(affected_user, :all)
-            logger.info("PERMS: #{user} revoking :all from #{affected_user} on `#{fqdn}`")
+            logger.info("PERMS: #{user} revoking from #{affected_user} on `#{fqdn}`:all")
             logger.info("PERMS: (:all) start, stop, etc.")
           end
         end
@@ -314,7 +313,7 @@ class HQ < Sinatra::Base
           begin
             @@permissions.fetch(fqdn)
           rescue KeyError
-            logger.error("POOL: Cannot execute #{command} on a non-existent server #{fqdn}")
+            logger.error("POOL: Cannot execute #{command} on a non-existent server `#{fqdn}`")
             next
           end
 
@@ -355,7 +354,7 @@ class HQ < Sinatra::Base
           begin
             @@permissions.fetch(fqdn)
           rescue KeyError
-            logger.error("POOL: Cannot create server in a non-existent pool")
+            logger.error("POOL: Cannot create server in a non-existent pool `#{fqdn}`")
             next
           end
 
@@ -375,7 +374,7 @@ class HQ < Sinatra::Base
             case command
             when 'create'
               if @@permissions[server_fqdn] then #early exit
-                logger.error("POOL: Server already exists, #{command} ignored: #{server_fqdn}")
+                logger.error("POOL: Server already exists, #{command} ignored: `#{server_fqdn}`")
                 next
               end
 
@@ -394,7 +393,7 @@ class HQ < Sinatra::Base
               logger.info("POOL: CREATE SERVER `#{servername} => #{worker_routing_key}`")
             when 'delete'
               if !@@permissions[server_fqdn] then #early exit
-                logger.error("POOL: Server doesn't exist, #{command} ignored: #{server_fqdn}")
+                logger.error("POOL: Server doesn't exist, #{command} ignored: `#{server_fqdn}`")
                 next
               end
               @@permissions.delete(server_fqdn)
@@ -438,7 +437,7 @@ class HQ < Sinatra::Base
           when 'mkpool'
             begin
               if @@permissions.fetch(pool_fqdn) then
-                logger.error("POOL: Pool already exists: #{command} ignored")
+                logger.error("POOL: Pool already exists: #{command} ignored `#{pool_fqdn}`")
                 next
               end
             rescue KeyError
@@ -477,7 +476,7 @@ class HQ < Sinatra::Base
             begin
               @@permissions.fetch(pool_fqdn)
             rescue KeyError
-              logger.error("POOL: Cannot spawn worker in non-existent pool")
+              logger.error("POOL: Cannot spawn worker in non-existent pool `#{pool_fqdn}`")
               next
             end
 
