@@ -6,26 +6,6 @@ require_relative 'perms'
 
 SOCKET = Struct.new("Socket", :websocket, :user)
 
-# helper functions
-def test_access(dataset, user, action, hostname:nil, poolname:nil, servername:nil)
-
-  if hostname and poolname and servername then # worker function
-    match = dataset.detect { |s| s.hostname == hostname &&
-                               s.workerpool == poolname &&
-                               s.servername == servername }
-  elsif hostname and !poolname and !servername then # manager access
-    match = dataset.detect { |s| s.hostname == hostname }
-  else
-    raise ArgumentError.new("Incorrect combination of arguments to search for.")
-  end
-
-  if match.nil? then
-    nil #no match is found, action is irrelevant, return nil
-  else
-    match.test_permission(user, action) #match found, return true/false
-  end
-end
-
 class HQ < Sinatra::Base
   set :server, :thin
   set :sockets, []
@@ -36,9 +16,9 @@ class HQ < Sinatra::Base
 
   require 'set'
   @@satellites = { :workers => Set.new, :managers => Set.new }
+  @@permissions = { root: Permissions.new('plain:mc') }
   @@users = []
-  @@servers = []
-  @@managers = []
+
   promises = {}
 
   require 'openssl'
@@ -79,13 +59,9 @@ class HQ < Sinatra::Base
 
     settings.sockets.each { |ws|
       user = "#{ws.user.authtype}:#{ws.user.id}"
+      fqdn = "#{metadata[:headers]['hostname']}.#{metadata[:headers]['workerpool']}.#{parsed['server_name']}"
 
-      if test_access(@@servers,
-                     user,
-                     :console,
-                     hostname: metadata[:headers]['hostname'],
-                     poolname: metadata[:headers]['workerpool'],
-                     servername: parsed["server_name"]) then
+      if @@permissions[fqdn].test_permission(user, :console) then
         ws.websocket.send(payload)
       end
     }
@@ -209,257 +185,344 @@ class HQ < Sinatra::Base
       ws.onmessage do |msg|
         user = "#{current_user.authtype}:#{current_user.id}"
 
-        inbound_directive = Proc.new do |params|
-          hostname = params.delete('hostname')
-          workerpool = params.delete('workerpool')
-          routing_key = "managers.#{hostname}"
-          directive = params.delete('dir')
+        ### PERMISSION FUNCTIONS
+        root_perms = Proc.new do |permission, affected_user|
+          # TODO: master user is assigned at startup (@permissions declaration)
 
-          if !@@satellites[:managers].include?(routing_key) then
-            logger.error("MANAGER: Invalid manager addressed `#{user} => #{routing_key}`")
+          if !@@permissions[:root].grantor?(user) then
+            logger.warn("PERMS: Insufficient permissions for #{user} to cast root:#{permission} on #{affected_user}")
+            next #early exit if user is not a grantor!
+          end
+
+          case permission
+          when 'mkgrantor'
+            @@permissions[:root].make_grantor(affected_user)
+            logger.info("PERMS: #{user} promoting #{affected_user} to `root`:grantor")
+            logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) grantall, revokeall")
+            # effectively makes #affected_user as powerful as #user in regards to
+            # full administration of the hq
+          when 'rmgrantor'
+            @@permissions[:root].unmake_grantor(affected_user)
+            logger.info("PERMS: #{user} revoking `root`:grantor from #{affected_user}")
+            logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) grantall, revokeall")
+          when 'grantall'
+            @@permissions[:root].grant(affected_user, :all)
+            logger.info("PERMS: #{user} granting `root`:all to #{affected_user}")
+            logger.info("PERMS: (:all) mkpool, rmpool, spawn, despawn")
+            # allows #affected_user to create and destroy pools (remote users on all hosts)
+          when 'revokeall'
+            @@permissions[:root].revoke(affected_user, :all)
+            logger.info("PERMS: #{user} revoking `root`:all from #{affected_user}")
+            logger.info("PERMS: (:all) mkpool, rmpool, spawn, despawn")
+          end
+        end
+
+        pool_perms = Proc.new do |permission, affected_user, fqdn|
+          # Permissions within:
+          # * create server
+          # * delete server
+          # * grantor: can grant create/delete to other users
+
+          begin
+            if !@@permissions.fetch(fqdn).grantor?(user) then
+              logger.warn("PERMS: Insufficient permissions for #{user} to cast `#{fqdn}`:#{permission} on #{affected_user}")
+              next #early exit if user is not a grantor!
+            end
+          rescue KeyError
+            logger.warn("PERMS: #{user} cannot perform #{permission} on non-existent pool `#{fqdn}`")
             next
           end
 
-          logger.debug("MANAGER: Forwarding directive from `#{user}`")
+          # now, assuming @@permissions[fqdn] exists
+          case permission
+          when 'mkgrantor'
+            @@permissions[fqdn].make_grantor(affected_user)
+            logger.info("PERMS: #{user} promoting #{affected_user} to `#{fqdn}`:grantor")
+            logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete")
+            # allows #affected user to give ability to create/delete to others
+          when 'rmgrantor'
+            @@permissions[fqdn].unmake_grantor(affected_user)
+            logger.info("PERMS: #{user} revoking from #{affected_user} `#{fqdn}`:grantor")
+            logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete")
+          when 'grantall'
+            @@permissions[fqdn].grant(affected_user, :all)
+            logger.info("PERMS: #{user} granting #{affected_user} `#{fqdn}`:all")
+            logger.info("PERMS: (:all) create, delete")
+            # allows #affected_user to create and destroy servers
+          when 'revokeall'
+            @@permissions[fqdn].revoke(affected_user, :all)
+            logger.info("PERMS: #{user} revoking from #{affected_user} on `#{fqdn}`:all")
+            logger.info("PERMS: (:all) create, delete")
+          end
+        end
 
-          if test_access(@@managers,
-                         user,
-                         :all,
-                         hostname: hostname).nil? then
-            #testing if manager has a corresponding entry, which will return non-nil (t/f)
-            logger.warn("PERMS: None set for #{hostname} => #{routing_key}")
-            logger.warn("PERMS: Creating a default perm manifest for #{user}")
+        server_perms = Proc.new do |permission, affected_user, fqdn|
+          # Permissions within:
+          # * modify_sc, modify_sp, start, stop, eula, etc.
+          # * grantor: can grant server-commands to users
 
-            perm_obj = Permissions.new(user)
-            perm_obj.hostname = hostname
-            perm_obj.grant(user, :all)
-            @@managers.push(perm_obj)
+          begin
+            if !@@permissions.fetch(fqdn).grantor?(user) then
+              logger.warn("PERMS: Insufficient permissions for #{user} to cast `#{fqdn}`:#{permission} on #{affected_user}")
+              next #early exit if user is not a grantor!
+            end
+          rescue KeyError
+            logger.warn("PERMS: #{user} cannot perform #{permission} on non-existent server `#{fqdn}`")
+            next
           end
 
-          if test_access(@@managers,
-                         user,
-                         directive,
-                         hostname: hostname) then
-            logger.info("PERMS: #{user} for #{directive}: OK")
+          # and assuming @@permission[fqdn] has a server
+          case permission
+          when 'mkgrantor'
+            @@permissions[fqdn].make_grantor(affected_user)
+            logger.info("PERMS: #{user} promoting #{affected_user} to grantor `#{fqdn}`:grantor")
+            logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) start, stop, etc.")
+            # allows #affected user to give ability to start/stop servers
+          when 'rmgrantor'
+            @@permissions[fqdn].unmake_grantor(affected_user)
+            logger.info("PERMS: #{user} revoking from #{affected_user} `#{fqdn}`:grantor")
+            logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete")
+          when 'grantall'
+            @@permissions[fqdn].grant(affected_user, :all)
+            logger.info("PERMS: #{user} granting #{affected_user} on `#{fqdn}`:all")
+            logger.info("PERMS: (:all) start, stop, etc.")
+            # allows #affected_user to create and destroy servers
+          when 'revokeall'
+            @@permissions[fqdn].revoke(affected_user, :all)
+            logger.info("PERMS: #{user} revoking from #{affected_user} on `#{fqdn}`:all")
+            logger.info("PERMS: (:all) start, stop, etc.")
+          end
+        end
+        ### END PERMISSION FUNCTIONS
+
+        ### DIRECTIVE PROCESSING
+        server_command = Proc.new do |params|
+          hostname = params.delete('hostname')
+          workerpool = params.delete('workerpool')
+          worker_routing_key = "workers.#{hostname}.#{workerpool}"
+
+          command = params.fetch('server_cmd')
+          servername = params.fetch('server_name')
+          fqdn = "#{hostname}.#{workerpool}.#{servername}"
+
+          if !@@satellites[:workers].include?(worker_routing_key) then
+            logger.error("WORKER: Unregistered worker addressed `#{user} => #{worker_routing_key}`")
+            next
+          end
+
+          begin
+            @@permissions.fetch(fqdn)
+          rescue KeyError
+            logger.error("POOL: Cannot execute #{command} on a non-existent server `#{fqdn}`")
+            next
+          end
+
+          if @@permissions[fqdn].test_permission(user, command) then
+            params['cmd'] = params.delete('server_cmd')
+            logger.info("PERMS: #{command} by #{user}@#{fqdn}: OK")
 
             uuid = SecureRandom.uuid
             promises[uuid] = Proc.new { |status_code, retval|
               ws.send(retval)
             }
 
-            case directive
-            when 'mkpool'
-              exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
-                               :routing_key => routing_key,
-                               :type => "directive",
-                               :message_id => uuid,
-                               :timestamp => Time.now.to_i)
-              logger.info("MANAGER: MKPOOL `#{workerpool} => #{routing_key}`")
-            when 'spawn'
-              exchange.publish({ SPAWN: {workerpool: workerpool} }.to_json,
-                               :routing_key => routing_key,
-                               :type => "directive",
-                               :message_id => uuid,
-                               :timestamp => Time.now.to_i)
-              logger.info("MANAGER: SPAWN `#{workerpool} => #{routing_key}`")
-            when 'remove'
-              exchange.publish({ REMOVE: {workerpool: workerpool} }.to_json,
-                               :routing_key => routing_key,
-                               :type => "directive",
-                               :message_id => uuid,
-                               :timestamp => Time.now.to_i)
-              logger.info("MANAGER: REMOVE `#{workerpool} => #{routing_key}`")
-            end #case
+            exchange.publish(params.to_json,
+                             :routing_key => worker_routing_key,
+                             :type => "command",
+                             :message_id => uuid,
+                             :timestamp => Time.now.to_i)
+            logger.info("PERMS: Forwarded command `#{worker_routing_key}`")
+            logger.debug(params)
           else
-            logger.warn("PERMS: #{user} for #{directive}: FAIL")
-            next
-          end #test_access
-        end
-
-        inbound_permission_manager = Proc.new do |params|
-          hostname = params.delete('hostname')
-          routing_key = "managers.#{hostname}"
-
-          logger.info("PERMS: Forwarding permission-change from `#{user}`")
-
-          if !@@satellites[:managers].include?(routing_key) then
-            logger.error("PERMS: Invalid manager addressed `#{user} => #{routing_key}`")
-            next
-          end
-
-          if test_access(@@managers,
-                         user,
-                         :all,
-                         hostname: hostname).nil? then
-            # testing if manager has a corresponding entry, which will return non-nil (t/f)
-            # this will eventually be removed when the stateful information is saved
-            # via yaml+disk or database.
-            logger.warn("PERMS: None set for #{hostname} => #{routing_key}")
-            logger.warn("PERMS: Creating a default perm manifest for #{user}")
-
-            perm_obj = Permissions.new(user)
-            perm_obj.hostname = hostname
-            perm_obj.grant(user, :all)
-            perm_obj.make_grantor(user)
-            @@managers.push(perm_obj)
-          end
-
-          target_user = params.delete('user')
-          target_perm = params.delete('perm')
-
-          match = @@managers.find { |s| s.hostname == hostname }
-          if match && match.grantor?(user) then
-            logger.info("PERMS: #{user} able to cast #{target_perm}: TRUE")
-
-            case target_perm
-            when 'mkgrantor'
-              match.make_grantor(target_user)
-              match.grant(target_user, :all)
-              logger.info("PERMS: Elevating #{target_user} to grantor for #{hostname}")
-            when 'rmgrantor'
-              match.unmake_grantor(target_user)
-              match.revoke(target_user, :all)
-              logger.info("PERMS: Revoking #{target_user} grantor privileges on #{hostname}")
-            else
-              logger.error("PERMS: Requested #{target_perm} not applicable to managers.")
-            end #case
-          else
-            logger.warn("PERMS: #{user} able to cast #{target_perm}: FALSE")
-            next
-          end
-        end #inbound_permission
-
-        inbound_permission_worker = Proc.new do |params|
-          hostname = params.delete('hostname')
-          workerpool = params.delete('workerpool')
-          servername = params['server_name']
-          routing_key = "workers.#{hostname}.#{workerpool}"
-          command = params['cmd']
-
-          if !@@satellites[:workers].include?(routing_key) then
-            logger.error("WORKER: Invalid worker addressed `#{user} => #{routing_key}`")
-            next
-          end
-
-          if test_access(@@servers,
-                         user,
-                         :all,
-                         hostname: hostname,
-                         poolname: workerpool,
-                         servername: servername).nil? then
-            #okay to test for all, because .nil? implies server not found, see func at top
-            logger.warn("PERMS: None set for `#{servername} => #{routing_key}`")
-            case command
-            when 'create'
-              logger.info("PERMS: :create requested, making default permissions `#{servername} => #{routing_key}`")
-              perm_obj = Permissions.new(user)
-              perm_obj.hostname = hostname
-              perm_obj.workerpool = workerpool
-              perm_obj.servername = servername
-              perm_obj.grant(user, :all)
-              @@servers << perm_obj
-            end
-          end
-
-          target_user = params.delete('user')
-          target_perm = params.delete('perm')
-
-          host_match = @@managers.find { |s| s.hostname == hostname }
-          tgt_match = @@servers.find { |s| s.hostname == hostname &&
-                                         s.workerpool == workerpool &&
-                                         s.servername == servername }
-          if host_match && tgt_match && (host_match.grantor?(user) || tgt_match.grantor?(user)) then
-            logger.info("PERMS: #{user} able to cast #{target_perm}: TRUE")
-
-            case target_perm
-            when 'grantall'
-              tgt_match.grant(target_user, :all)
-              logger.info("PERMS: Providing #{target_user} with :all on #{servername} => #{routing_key}")
-            when 'revokeall'
-              tgt_match.revoke(target_user, :all)
-              logger.info("PERMS: Revoking :all from #{target_user} for #{servername} => #{routing_key}")
-            else
-              logger.error("PERMS: Requested #{target_perm} not applicable to workers.")
-            end #case
-          else
-            logger.warn("PERMS: #{user} able to cast #{target_perm}: FALSE")
-            next
+            logger.warn("PERMS: #{command} by #{user}@#{fqdn}: FAIL")
           end
         end
 
-        inbound_command = Proc.new do |params|
+        pool_command = Proc.new do |params|
           hostname = params.delete('hostname')
           workerpool = params.delete('workerpool')
-          servername = params['server_name']
-          routing_key = "workers.#{hostname}.#{workerpool}"
-          command = params['cmd']
+          manager_routing_key = "managers.#{hostname}"
+          fqdn = "#{hostname}.#{workerpool}"
 
-          if !@@satellites[:workers].include?(routing_key) then
-            logger.error("WORKER: Invalid worker addressed `#{user} => #{routing_key}`")
+          command = params.fetch('pool_cmd')
+
+          if !@@satellites[:managers].include?(manager_routing_key) then
+            logger.error("MANAGER: Unregistered manager addressed `#{user} => #{manager_routing_key}`")
             next
-          end
-
-          if test_access(@@servers,
-                         user,
-                         :all,
-                         hostname: hostname,
-                         poolname: workerpool,
-                         servername: servername).nil? then
-            #okay to test for all, because .nil? implies server not found, see func at top
-            logger.warn("PERMS: None set for `#{servername} => #{routing_key}`")
-            case command
-            when 'create'
-              logger.info("PERMS: :create requested, making default permissions `#{servername} => #{routing_key}`")
-              perm_obj = Permissions.new(user)
-              perm_obj.hostname = hostname
-              perm_obj.workerpool = workerpool
-              perm_obj.servername = servername
-              perm_obj.grant(user, :all)
-              @@servers << perm_obj
-            end
           end
 
           begin
-            if test_access(@@servers,
-                           user,
-                           command,
-                           hostname: hostname,
-                           poolname: workerpool,
-                           servername: servername) then
-              logger.info("PERMS: #{user} for #{command}: OK")
+            @@permissions.fetch(fqdn)
+          rescue KeyError
+            logger.error("POOL: Cannot create server in a non-existent pool `#{fqdn}`")
+            next
+          end
 
-              uuid = SecureRandom.uuid
-              promises[uuid] = Proc.new { |status_code, retval|
-                ws.send(retval)
-              }
+          if @@permissions[fqdn].test_permission(user, command) then
+            logger.info("PERMS: #{command} by #{user}@#{fqdn}: OK")
+
+            uuid = SecureRandom.uuid
+            promises[uuid] = Proc.new { |status_code, retval|
+              ws.send(retval)
+            }
+
+            worker_routing_key = "workers.#{hostname}.#{workerpool}"
+            servername = params.fetch('server_name')
+            params['cmd'] = params.delete('pool_cmd')
+            server_fqdn = "#{hostname}.#{workerpool}.#{servername}"
+
+            case command
+            when 'create'
+              if @@permissions[server_fqdn] then #early exit
+                logger.error("POOL: Server already exists, #{command} ignored: `#{server_fqdn}`")
+                next
+              end
+
+              perm_obj = Permissions.new(user)
+              perm_obj.hostname = hostname
+              perm_obj.workerpool = workerpool
+              perm_obj.servername = servername
+              perm_obj.grant(user, :all)
+              @@permissions[server_fqdn] = perm_obj
 
               exchange.publish(params.to_json,
-                               :routing_key => routing_key,
+                               :routing_key => worker_routing_key,
                                :type => "command",
                                :message_id => uuid,
                                :timestamp => Time.now.to_i)
-              logger.info("PERMS: Forwarded command `#{routing_key}`")
-              logger.debug(params)
-            else
-              logger.warn("PERMS: #{user} for #{params['cmd']}: FAIL")
-            end #test_permission
-          rescue NoMethodError
-            # no match, NOOP
-            logger.error("PERMS: no matching permission screen: NOOP")
-          end #begin
+              logger.info("POOL: CREATE SERVER `#{servername} => #{worker_routing_key}`")
+            when 'delete'
+              if !@@permissions[server_fqdn] then #early exit
+                logger.error("POOL: Server doesn't exist, #{command} ignored: `#{server_fqdn}`")
+                next
+              end
+              @@permissions.delete(server_fqdn)
+
+              exchange.publish(params.to_json,
+                               :routing_key => worker_routing_key,
+                               :type => "command",
+                               :message_id => uuid,
+                               :timestamp => Time.now.to_i)
+              logger.info("POOL: DELETE SERVER `#{servername} => #{worker_routing_key}`")
+            end
+          else
+            logger.info("PERMS: #{command} by #{user}@#{fqdn}: FAIL")
+          end
+        end
+
+        root_command = Proc.new do |params|
+          hostname = params.delete('hostname')
+          manager_routing_key = "managers.#{hostname}"
+
+          workerpool = params.fetch('workerpool')
+          command = params.fetch('root_cmd')
+          pool_fqdn = "#{hostname}.#{workerpool}"
+
+          if !@@satellites[:managers].include?(manager_routing_key) then
+            logger.error("MANAGER: Unregistered manager addressed `#{user} => #{manager_routing_key}`")
+            next
+          end
+
+          if !@@permissions[:root].test_permission(user, command) then
+            logger.warn("PERMS: #{command} by #{user}@#{workerpool}: FAIL")
+            next
+          end
+
+          uuid = SecureRandom.uuid
+          promises[uuid] = Proc.new { |status_code, retval|
+            ws.send(retval)
+          }
+
+          case command
+          when 'mkpool'
+            begin
+              if @@permissions.fetch(pool_fqdn) then
+                logger.error("POOL: Pool already exists: #{command} ignored `#{pool_fqdn}`")
+                next
+              end
+            rescue KeyError
+              perm_obj = Permissions.new(user)
+              perm_obj.hostname = hostname
+              perm_obj.workerpool = workerpool
+              perm_obj.grant(user, :all)
+              @@permissions[pool_fqdn] = perm_obj
+              logger.info("PERMS: CREATED PERMSCREEN `#{workerpool} => #{manager_routing_key}`")
+            end
+
+            exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
+                             :routing_key => manager_routing_key,
+                             :type => "directive",
+                             :message_id => uuid,
+                             :timestamp => Time.now.to_i)
+            logger.info("MANAGER: MKPOOL `#{workerpool} => #{manager_routing_key}`")
+          when 'rmpool'
+            begin
+              @@permissions.fetch(pool_fqdn)
+            rescue KeyError
+              logger.warn("PERMS: NO EXISTING PERMSCREEN `#{workerpool} => #{manager_routing_key}` - NOOP")
+              next
+            end
+
+            @@permissions.delete(pool_fqdn)
+            logger.info("POOL: DELETED PERMSCREEN`#{workerpool} => #{manager_routing_key}`")
+
+            exchange.publish({ REMOVE: {workerpool: workerpool} }.to_json,
+                             :routing_key => manager_routing_key,
+                             :type => "directive",
+                             :message_id => uuid,
+                             :timestamp => Time.now.to_i)
+            logger.info("POOL: DELETED `#{workerpool} => #{manager_routing_key}`")
+          when 'spawnpool'
+            begin
+              @@permissions.fetch(pool_fqdn)
+            rescue KeyError
+              logger.error("POOL: Cannot spawn worker in non-existent pool `#{pool_fqdn}`")
+              next
+            end
+
+            exchange.publish({ SPAWN: {workerpool: workerpool} }.to_json,
+                             :routing_key => manager_routing_key,
+                             :type => "directive",
+                             :message_id => uuid,
+                             :timestamp => Time.now.to_i)
+            logger.info("MANAGER: SPAWNED POOL `#{workerpool} => #{manager_routing_key}`")
+          when 'despawnpool'
+            #not yet implemented
+          end
         end
 
         body_parameters = JSON.parse msg
-        if body_parameters.key?('dir') then
-          inbound_directive.call(body_parameters)
-        elsif body_parameters.key?('perm') then
+        if body_parameters.key?('permission') then
+          # permissions route
           if body_parameters.key?('server_name') then
-            inbound_permission_worker.call(body_parameters)
-          else #manager permissions if 'server' absent
-            inbound_permission_manager.call(body_parameters)
+            permission = body_parameters.delete('permission')
+            affected_user = body_parameters.delete('affected_user')
+            hostname = body_parameters.delete('hostname')
+            workerpool = body_parameters.delete('workerpool')
+            servername = body_parameters.delete('server_name')
+            fqdn = "#{hostname}.#{workerpool}.#{servername}"
+
+            server_perms.call(permission, affected_user, fqdn)
+          elsif body_parameters.key?('workerpool') then
+            permission = body_parameters.delete('permission')
+            affected_user = body_parameters.delete('affected_user')
+            hostname = body_parameters.delete('hostname')
+            workerpool = body_parameters.delete('workerpool')
+            fqdn = "#{hostname}.#{workerpool}"
+
+            pool_perms.call(permission, affected_user, fqdn)
+          else # root
+            permission = body_parameters.delete('permission')
+            affected_user = body_parameters.delete('affected_user')
+
+            root_perms.call(permission, affected_user)
           end
-        elsif body_parameters.key?('cmd') then
-          inbound_command.call(body_parameters)
+        elsif body_parameters.key?('root_cmd') then
+          root_command.call(body_parameters)
+        elsif body_parameters.key?('pool_cmd') then
+          pool_command.call(body_parameters)
+        elsif body_parameters.key?('server_cmd') then
+          server_command.call(body_parameters)
         end
       end # ws.onmessage
 
