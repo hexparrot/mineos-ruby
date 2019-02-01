@@ -9,27 +9,27 @@
 "version": "1.8.9",
 "dest_filename": "minecraft_server.1.8.9.jar" }'>get profile from internet</button>
        <hr>
-       <h2>root abilities</h2>
        <input type="text" id="affected_user" value="plain:mc" />
+       <h2>root abilities</h2>
        <button type="button" data-type="root_perms" data-string='{"permission": "grantall"}'>grant root abilities (mkpool/rmpool/spawnpool)</button>
        <button type="button" data-type="root_perms" data-string='{"permission": "revokeall"}'>revoke root abilities</button>
        <br>
        <br>
+       <input type="text" id="workerpool" value="_throwaway-500" />
        <button type="button" data-type="root_cmd" data-string='{"root_cmd": "mkpool"}'>mkpool</button>
        <button type="button" data-type="root_cmd" data-string='{"root_cmd": "rmpool"}'>rmpool</button>
        <button type="button" data-type="root_cmd" data-string='{"root_cmd": "spawnpool"}'>spawnpool</button>
        <hr>
        <h2>pool abilities</h2>
-       <input type="text" id="workerpool" value="_throwaway-500" />
        <button type="button" data-type="pool_perms" data-string='{"permission": "grantall"}'>grant pool abilities: create/delete</button>
        <button type="button" data-type="pool_perms" data-string='{"permission": "revokeall"}'>revoke pool abilities</button>
        <br>
        <br>
-       <button type="button" data-type="pool_cmd" data-string='{"pool_cmd": "create"}'>create</button>
-       <button type="button" data-type="pool_cmd" data-string='{"pool_cmd": "delete"}'>delete</button>
+       <input type="text" id="server_name" value="test" />
+       <button type="button" data-type="pool_cmd" data-string='{"pool_cmd": "create"}'>create server</button>
+       <button type="button" data-type="pool_cmd" data-string='{"pool_cmd": "delete"}'>delete server</button>
        <hr>
        <h2>server abilities</h2>
-       <input type="text" id="server_name" value="test" />
        <button type="button" data-type="server_perms" data-string='{"permission": "grantall"}'>grant server abilities: start/stop/etc</button>
        <button type="button" data-type="server_perms" data-string='{"permission": "revokeall"}'>revoke server abilities</button>
        <br>
