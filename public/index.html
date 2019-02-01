@@ -70,34 +70,34 @@
           btns[i].addEventListener('click', function (event) {
             var payload = JSON.parse(this.getAttribute('data-string'));
             var type = this.getAttribute('data-type');
+
+            payload['hostname'] = document.getElementById('hostname').value
+
             if (type == 'root_perms') {
               payload['affected_user'] = document.getElementById('affected_user').value
               console.log(payload);
               ws.send(JSON.stringify(payload));
             } else if (type == 'pool_perms') {
-              payload['hostname'] = document.getElementById('hostname').value
               payload['workerpool'] = document.getElementById('workerpool').value
               payload['affected_user'] = document.getElementById('affected_user').value
               console.log(payload);
               ws.send(JSON.stringify(payload));
             } else if (type == 'server_perms') {
+              payload['workerpool'] = document.getElementById('workerpool').value
               payload['server_name'] = document.getElementById('server_name').value
               payload['affected_user'] = document.getElementById('affected_user').value
               console.log(payload);
               ws.send(JSON.stringify(payload));
             } else if (type == 'root_cmd') {
-              payload['hostname'] = document.getElementById('hostname').value
               payload['workerpool'] = document.getElementById('workerpool').value
               console.log(payload);
               ws.send(JSON.stringify(payload));
             } else if (type == 'pool_cmd') {
-              payload['hostname'] = document.getElementById('hostname').value
               payload['workerpool'] = document.getElementById('workerpool').value
               payload['server_name'] = document.getElementById('server_name').value
               console.log(payload);
               ws.send(JSON.stringify(payload));
             } else if (type == 'server_cmd') {
-              payload['hostname'] = document.getElementById('hostname').value
               payload['workerpool'] = document.getElementById('workerpool').value
               payload['server_name'] = document.getElementById('server_name').value
               console.log(payload);

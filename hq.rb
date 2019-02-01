@@ -16,16 +16,9 @@ class HQ < Sinatra::Base
 
   require 'set'
   @@satellites = { :workers => Set.new, :managers => Set.new }
-
-  @@permissions = {
-    root: Permissions.new('plain:mc'),
-    pool: {},
-    server: {}
-  }
-
+  @@permissions = { root: Permissions.new('plain:mc') }
   @@users = []
-  @@servers = []
-  @@managers = []
+
   promises = {}
 
   require 'openssl'
@@ -66,8 +59,9 @@ class HQ < Sinatra::Base
 
     settings.sockets.each { |ws|
       user = "#{ws.user.authtype}:#{ws.user.id}"
+      fqdn = "#{metadata[:headers]['hostname']}.#{metadata[:headers]['workerpool']}.#{parsed['server_name']}"
 
-      if @@permissions[:server][parsed["server_name"]].test_permission(user, :console) then
+      if @@permissions[fqdn].test_permission(user, :console) then
         ws.websocket.send(payload)
       end
     }
@@ -194,8 +188,7 @@ class HQ < Sinatra::Base
 
         ### PERMISSION FUNCTIONS
         root_perms = Proc.new do |permission, affected_user|
-          # TODO: has to be assigned either at startup via cli arg, or through loading
-          # of a specific value recognizing the one and only neo
+          # TODO: master user is assigned at startup (@permissions declaration)
 
           if !@@permissions[:root].grantor?(user) then
             logger.warn("PERMS: Insufficient permissions for #{user} to cast #{permission} on #{affected_user}")
@@ -225,79 +218,79 @@ class HQ < Sinatra::Base
           end
         end
 
-        pool_perms = Proc.new do |permission, affected_user, poolname|
+        pool_perms = Proc.new do |permission, affected_user, fqdn|
           # Permissions within:
           # * create server
           # * delete server
           # * grantor: can grant create/delete to other users
 
           begin
-            if !@@permissions[:pool][poolname].grantor?(user) then
+            if !@@permissions.fetch(fqdn).grantor?(user) then
               logger.warn("PERMS: Insufficient permissions for #{user} to cast #{permission} on #{affected_user}")
               next #early exit if user is not a grantor!
             end
-          rescue NoMethodError
-            # pool-grantall executed by non-admin before being granted
-            logger.warn("PERMS: Non-existent pool cannot be modified by #{user} casting #{permission} on #{affected_user}")
+          rescue KeyError
+            logger.warn("PERMS: #{user} cannot perform #{permission} on non-existent pool")
             next
           end
 
+          # now, assuming @@permissions[fqdn] exists
           case permission
           when 'mkgrantor'
-            @@permissions[:pool][poolname].make_grantor(affected_user)
-            logger.info("PERMS: #{user} promoting #{affected_user} to grantor on `#{poolname}`")
+            @@permissions[fqdn].make_grantor(affected_user)
+            logger.info("PERMS: #{user} promoting #{affected_user} to grantor on `#{fqdn}`")
             logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete")
             # allows #affected user to give ability to create/delete to others
           when 'rmgrantor'
-            @@permissions[:pool][poolname].unmake_grantor(affected_user)
-            logger.info("PERMS: #{user} revoking grantor from #{affected_user} on `#{poolname}`")
+            @@permissions[fqdn].unmake_grantor(affected_user)
+            logger.info("PERMS: #{user} revoking grantor from #{affected_user} on `#{fqdn}`")
             logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete")
           when 'grantall'
-            @@permissions[:pool][poolname].grant(affected_user, :all)
-            logger.info("PERMS: #{user} granting :all to #{affected_user} on `#{poolname}`")
+            @@permissions[fqdn].grant(affected_user, :all)
+            logger.info("PERMS: #{user} granting :all to #{affected_user} on `#{fqdn}`")
             logger.info("PERMS: (:all) create, delete")
             # allows #affected_user to create and destroy servers
           when 'revokeall'
-            @@permissions[:pool].revoke(affected_user, :all)
-            logger.info("PERMS: #{user} revoking :all from #{affected_user} on `#{poolname}`")
+            @@permissions[fqdn].revoke(affected_user, :all)
+            logger.info("PERMS: #{user} revoking :all from #{affected_user} on `#{fqdn}`")
             logger.info("PERMS: (:all) create, delete")
           end
         end
 
-        server_perms = Proc.new do |permission, affected_user, servername|
+        server_perms = Proc.new do |permission, affected_user, fqdn|
           # Permissions within:
           # * modify_sc, modify_sp, start, stop, eula, etc.
           # * grantor: can grant server-commands to users
 
           begin
-            if !@@permissions[:server][servername].grantor?(user) then
+            if !@@permissions.fetch(fqdn).grantor?(user) then
               logger.warn("PERMS: Insufficient permissions for #{user} to cast #{permission} on #{affected_user}")
               next #early exit if user is not a grantor!
             end
-          rescue NoMethodError
-            # server-grantall executed by non-admin before being granted
-            logger.warn("PERMS: Non-existent server cannot be modified by #{user} casting #{permission} on #{affected_user}")
+          rescue KeyError
+            logger.warn("PERMS: #{user} cannot perform #{permission} on non-existent server")
             next
           end
 
+          # and assuming @@permission[fqdn] has a server
           case permission
           when 'mkgrantor'
-            @@permissions[:server][servername].make_grantor(affected_user)
-            logger.info("PERMS: #{user} promoting #{affected_user} to grantor on `#{servername}`")
+            @@permissions[fqdn].make_grantor(affected_user)
+            logger.info("PERMS: #{user} promoting #{affected_user} to grantor on `#{fqdn}`")
             logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) start, stop, etc.")
             # allows #affected user to give ability to start/stop servers
           when 'rmgrantor'
-            @@permissions[:server][servername].unmake_grantor(affected_user)
-            logger.info("PERMS: #{user} revoking grantor from #{affected_user} on `#{servername}`")
+            @@permissions[fqdn].unmake_grantor(affected_user)
+            logger.info("PERMS: #{user} revoking grantor from #{affected_user} on `#{fqdn}`")
             logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete")
           when 'grantall'
-            @@permissions[:server][servername].grant(affected_user, :all)
-            logger.info("PERMS: #{user} granting :all to #{affected_user} on `#{servername}`")
+            @@permissions[fqdn].grant(affected_user, :all)
+            logger.info("PERMS: #{user} granting :all to #{affected_user} on `#{fqdn}`")
             logger.info("PERMS: (:all) start, stop, etc.")
             # allows #affected_user to create and destroy servers
           when 'revokeall'
-            @@permissions[:server][servername].revoke(affected_user, :all)
-            logger.info("PERMS: #{user} revoking :all from #{affected_user} on `#{servername}`")
+            @@permissions[fqdn].revoke(affected_user, :all)
+            logger.info("PERMS: #{user} revoking :all from #{affected_user} on `#{fqdn}`")
             logger.info("PERMS: (:all) start, stop, etc.")
           end
         end
@@ -307,31 +300,27 @@ class HQ < Sinatra::Base
         server_command = Proc.new do |params|
           hostname = params.delete('hostname')
           workerpool = params.delete('workerpool')
-          routing_key = "workers.#{hostname}.#{workerpool}"
+          worker_routing_key = "workers.#{hostname}.#{workerpool}"
 
-          servername = params.fetch('server_name')
           command = params.fetch('server_cmd')
+          servername = params.fetch('server_name')
+          fqdn = "#{hostname}.#{workerpool}.#{servername}"
 
-          if !@@satellites[:workers].include?(routing_key) then
-            logger.error("WORKER: Invalid worker addressed `#{user} => #{routing_key}`")
+          if !@@satellites[:workers].include?(worker_routing_key) then
+            logger.error("WORKER: Unregistered worker addressed `#{user} => #{worker_routing_key}`")
             next
           end
 
-          # TODO: Review--when should this be created?
           begin
-            @@permissions[:server].fetch(servername)
+            @@permissions.fetch(fqdn)
           rescue KeyError
-            perm_obj = Permissions.new(user)
-            perm_obj.hostname = hostname
-            perm_obj.workerpool = workerpool
-            perm_obj.servername = servername
-            perm_obj.grant(user, :all)
-            @@permissions[:server][servername] = perm_obj if !@@permissions[:server][servername]
+            logger.error("POOL: Cannot execute #{command} on a non-existent server #{fqdn}")
+            next
           end
 
-          if @@permissions[:server][servername].test_permission(user, command) then
+          if @@permissions[fqdn].test_permission(user, command) then
             params['cmd'] = params.delete('server_cmd')
-            logger.info("PERMS: #{command} by #{user}@#{servername}: OK")
+            logger.info("PERMS: #{command} by #{user}@#{fqdn}: OK")
 
             uuid = SecureRandom.uuid
             promises[uuid] = Proc.new { |status_code, retval|
@@ -339,14 +328,14 @@ class HQ < Sinatra::Base
             }
 
             exchange.publish(params.to_json,
-                             :routing_key => routing_key,
+                             :routing_key => worker_routing_key,
                              :type => "command",
                              :message_id => uuid,
                              :timestamp => Time.now.to_i)
-            logger.info("PERMS: Forwarded command `#{routing_key}`")
+            logger.info("PERMS: Forwarded command `#{worker_routing_key}`")
             logger.debug(params)
           else
-            logger.warn("PERMS: #{command} by #{user}@#{servername}: FAIL")
+            logger.warn("PERMS: #{command} by #{user}@#{fqdn}: FAIL")
           end
         end
 
@@ -354,74 +343,84 @@ class HQ < Sinatra::Base
           hostname = params.delete('hostname')
           workerpool = params.delete('workerpool')
           manager_routing_key = "managers.#{hostname}"
+          fqdn = "#{hostname}.#{workerpool}"
 
           command = params.fetch('pool_cmd')
 
           if !@@satellites[:managers].include?(manager_routing_key) then
-            logger.error("MANAGER: Invalid manager addressed `#{user} => #{manager_routing_key}`")
+            logger.error("MANAGER: Unregistered manager addressed `#{user} => #{manager_routing_key}`")
             next
           end
 
-          # TODO: Review--when should this be created?
           begin
-            @@permissions[:pool].fetch(workerpool)
+            @@permissions.fetch(fqdn)
           rescue KeyError
-            perm_obj = Permissions.new(user)
-            perm_obj.hostname = hostname
-            perm_obj.workerpool = workerpool
-            perm_obj.grant(user, :all)
-            @@permissions[:pool][workerpool] = perm_obj if !@@permissions[:pool][workerpool]
+            logger.error("POOL: Cannot create server in a non-existent pool")
+            next
           end
 
-          if @@permissions[:pool][workerpool].test_permission(user, command) then
-            logger.info("PERMS: #{command} by #{user}@#{workerpool}: OK")
+          if @@permissions[fqdn].test_permission(user, command) then
+            logger.info("PERMS: #{command} by #{user}@#{fqdn}: OK")
 
             uuid = SecureRandom.uuid
             promises[uuid] = Proc.new { |status_code, retval|
               ws.send(retval)
             }
 
-            routing_key = "workers.#{hostname}.#{workerpool}"
+            worker_routing_key = "workers.#{hostname}.#{workerpool}"
             servername = params.fetch('server_name')
             params['cmd'] = params.delete('pool_cmd')
+            server_fqdn = "#{hostname}.#{workerpool}.#{servername}"
 
             case command
             when 'create'
+              if @@permissions[server_fqdn] then #early exit
+                logger.error("POOL: Server already exists, #{command} ignored: #{server_fqdn}")
+                next
+              end
+
               perm_obj = Permissions.new(user)
               perm_obj.hostname = hostname
               perm_obj.workerpool = workerpool
               perm_obj.servername = servername
               perm_obj.grant(user, :all)
-              @@permissions[:server][servername] = perm_obj if !@@permissions[:server][servername]
+              @@permissions[server_fqdn] = perm_obj
 
               exchange.publish(params.to_json,
-                               :routing_key => routing_key,
+                               :routing_key => worker_routing_key,
                                :type => "command",
                                :message_id => uuid,
                                :timestamp => Time.now.to_i)
-              logger.info("POOL: CREATE SERVER `#{servername} => #{routing_key}`")
+              logger.info("POOL: CREATE SERVER `#{servername} => #{worker_routing_key}`")
             when 'delete'
+              if !@@permissions[server_fqdn] then #early exit
+                logger.error("POOL: Server doesn't exist, #{command} ignored: #{server_fqdn}")
+                next
+              end
+              @@permissions.delete(server_fqdn)
+
               exchange.publish(params.to_json,
-                               :routing_key => routing_key,
+                               :routing_key => worker_routing_key,
                                :type => "command",
                                :message_id => uuid,
                                :timestamp => Time.now.to_i)
-              logger.info("POOL: DELETE SERVER `#{workerpool} => #{routing_key}`")
+              logger.info("POOL: DELETE SERVER `#{servername} => #{worker_routing_key}`")
             end
           else
-            logger.info("PERMS: #{command} by #{user}@#{workerpool}: FAIL")
+            logger.info("PERMS: #{command} by #{user}@#{fqdn}: FAIL")
           end
         end
 
         root_command = Proc.new do |params|
           hostname = params.delete('hostname')
-          routing_key = "managers.#{hostname}"
+          manager_routing_key = "managers.#{hostname}"
 
           workerpool = params.fetch('workerpool')
           command = params.fetch('root_cmd')
+          pool_fqdn = "#{hostname}.#{workerpool}"
 
-          if !@@satellites[:managers].include?(routing_key) then
-            logger.error("MANAGER: Invalid manager addressed `#{user} => #{routing_key}`")
+          if !@@satellites[:managers].include?(manager_routing_key) then
+            logger.error("MANAGER: Unregistered manager addressed `#{user} => #{manager_routing_key}`")
             next
           end
 
@@ -437,46 +436,57 @@ class HQ < Sinatra::Base
 
           case command
           when 'mkpool'
-            if !@@permissions[:pool][workerpool] then
+            begin
+              if @@permissions.fetch(pool_fqdn) then
+                logger.error("POOL: Pool already exists: #{command} ignored")
+                next
+              end
+            rescue KeyError
               perm_obj = Permissions.new(user)
               perm_obj.hostname = hostname
               perm_obj.workerpool = workerpool
               perm_obj.grant(user, :all)
-              @@permissions[:pool][workerpool] = perm_obj
-              logger.info("PERMS: CREATED PERMSCREEN `#{workerpool} => #{routing_key}`")
-
-              exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
-                               :routing_key => routing_key,
-                               :type => "directive",
-                               :message_id => uuid,
-                               :timestamp => Time.now.to_i)
-              logger.info("MANAGER: MKPOOL `#{workerpool} => #{routing_key}`")
-            else
-              logger.warn("PERMS: EXISTING PERMSCREEN `#{workerpool} => #{routing_key}` - NOOP")
+              @@permissions[pool_fqdn] = perm_obj
+              logger.info("PERMS: CREATED PERMSCREEN `#{workerpool} => #{manager_routing_key}`")
             end
+
+            exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
+                             :routing_key => manager_routing_key,
+                             :type => "directive",
+                             :message_id => uuid,
+                             :timestamp => Time.now.to_i)
+            logger.info("MANAGER: MKPOOL `#{workerpool} => #{manager_routing_key}`")
           when 'rmpool'
-            if @@permissions[:pool][workerpool] then
-              @@permissions[:pool].delete(workerpool)
-              logger.info("POOL: DELETED PERMSCREEN`#{workerpool} => #{routing_key}`")
+            begin
+              @@permissions.fetch(pool_fqdn)
+            rescue KeyError
+              logger.warn("PERMS: NO EXISTING PERMSCREEN `#{workerpool} => #{manager_routing_key}` - NOOP")
+              next
+            end
 
-              exchange.publish({ REMOVE: {workerpool: workerpool} }.to_json,
-                               :routing_key => routing_key,
-                               :type => "directive",
-                               :message_id => uuid,
-                               :timestamp => Time.now.to_i)
-              logger.info("POOL: DELETED `#{workerpool} => #{routing_key}`")
-            else
-              logger.warn("PERMS: NO EXISTING PERMSCREEN `#{workerpool} => #{routing_key}` - NOOP")
-            end
+            @@permissions.delete(pool_fqdn)
+            logger.info("POOL: DELETED PERMSCREEN`#{workerpool} => #{manager_routing_key}`")
+
+            exchange.publish({ REMOVE: {workerpool: workerpool} }.to_json,
+                             :routing_key => manager_routing_key,
+                             :type => "directive",
+                             :message_id => uuid,
+                             :timestamp => Time.now.to_i)
+            logger.info("POOL: DELETED `#{workerpool} => #{manager_routing_key}`")
           when 'spawnpool'
-            if @@permissions[:pool][workerpool] then
-              exchange.publish({ SPAWN: {workerpool: workerpool} }.to_json,
-                               :routing_key => routing_key,
-                               :type => "directive",
-                               :message_id => uuid,
-                               :timestamp => Time.now.to_i)
-              logger.info("MANAGER: SPAWNED POOL `#{workerpool} => #{routing_key}`")
+            begin
+              @@permissions.fetch(pool_fqdn)
+            rescue KeyError
+              logger.error("POOL: Cannot spawn worker in non-existent pool")
+              next
             end
+
+            exchange.publish({ SPAWN: {workerpool: workerpool} }.to_json,
+                             :routing_key => manager_routing_key,
+                             :type => "directive",
+                             :message_id => uuid,
+                             :timestamp => Time.now.to_i)
+            logger.info("MANAGER: SPAWNED POOL `#{workerpool} => #{manager_routing_key}`")
           when 'despawnpool'
             #not yet implemented
           end
@@ -485,18 +495,23 @@ class HQ < Sinatra::Base
         body_parameters = JSON.parse msg
         if body_parameters.key?('permission') then
           # permissions route
-          if body_parameters.key?('workerpool') then
+          if body_parameters.key?('server_name') then
             permission = body_parameters.delete('permission')
             affected_user = body_parameters.delete('affected_user')
+            hostname = body_parameters.delete('hostname')
             workerpool = body_parameters.delete('workerpool')
+            servername = body_parameters.delete('server_name')
+            fqdn = "#{hostname}.#{workerpool}.#{servername}"
 
-            pool_perms.call(permission, affected_user, workerpool)
-          elsif body_parameters.key?('server_name') then
+            server_perms.call(permission, affected_user, fqdn)
+          elsif body_parameters.key?('workerpool') then
             permission = body_parameters.delete('permission')
             affected_user = body_parameters.delete('affected_user')
-            servername = body_parameters.delete('server_name')
+            hostname = body_parameters.delete('hostname')
+            workerpool = body_parameters.delete('workerpool')
+            fqdn = "#{hostname}.#{workerpool}"
 
-            server_perms.call(permission, affected_user, servername)
+            pool_perms.call(permission, affected_user, fqdn)
           else # root
             permission = body_parameters.delete('permission')
             affected_user = body_parameters.delete('affected_user')
