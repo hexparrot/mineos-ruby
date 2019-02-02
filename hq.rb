@@ -304,45 +304,38 @@ class HQ < Sinatra::Base
           servername = params.fetch('server_name')
           fqdn = "#{hostname}.#{workerpool}.#{servername}"
 
-          begin
-            command = params.fetch('server_cmd')
-          rescue KeyError
-            # this should only happen in the case of a worker being used
-            # without a manager. this path is otherwise lost through the
-            # hierarchy of permissions from permissions-redefined commits.
-            # alt_cmd should be routed directly to server, but must
-            # otherwise be a valid request in every possible way.
+          if !@@satellites[:workers].include?(worker_routing_key) then
+            logger.error("WORKER: Unregistered worker addressed `#{user} => #{worker_routing_key}`")
+            next
+          end
 
-            command = params['server_cmd'] = params['alt_cmd']
-            case command
-            when 'create'
-              params.delete('alt_cmd') #ensured it exists via case
+          command = params['server_cmd']
+
+          alt_cmd = params['alt_cmd']
+          params.delete('alt_cmd') if alt_cmd
+
+          if alt_cmd == 'create' then
+            require_relative 'pools'
+            if Pools::VALID_NAME_REGEX.match(workerpool) then
+              # valid pool names may not be addressed directly
+              logger.error("PERMS: Invalid create server (msg directed to direct-worker, but may not match pool regex)")
+              next
+            end
+
+            if @@permissions[fqdn] then
+              logger.error("PERMS: Permissions already exist for direct-worker create command. NOOP")
+              logger.debug(params)
+              next
+            else
+              # if direct-worker is still a valid request, create the permscreen
               perm_obj = Permissions.new(user)
               perm_obj.hostname = hostname
               perm_obj.workerpool = workerpool
               perm_obj.servername = servername
               perm_obj.grant(user, :all)
               @@permissions[fqdn] = perm_obj
-            when 'delete'
-              params.delete('alt_cmd') #ensured it exists via case
-              @@permissions.delete(fqdn)
-
-              exchange.publish(params.to_json,
-                               :routing_key => worker_routing_key,
-                               :type => "command",
-                               :message_id => SecureRandom.uuid,
-                               :timestamp => Time.now.to_i)
-              logger.info("POOL: DELETE SERVER `#{servername} => #{worker_routing_key}`")
-
-            else
-              logger.error("WORKER: Server command requested but somehow absent")
-              next
+              logger.info("PERMS: CREATE SERVER (via alt_cmd) `#{servername} => #{worker_routing_key}`")
             end
-          end
-
-          if !@@satellites[:workers].include?(worker_routing_key) then
-            logger.error("WORKER: Unregistered worker addressed `#{user} => #{worker_routing_key}`")
-            next
           end
 
           begin
@@ -353,6 +346,24 @@ class HQ < Sinatra::Base
           end
 
           if @@permissions[fqdn].test_permission(user, command) then
+            if alt_cmd == 'delete' then
+              # inside if @@perms because it's about to get deleted
+              require_relative 'pools'
+              if Pools::VALID_NAME_REGEX.match(workerpool) then
+                # valid pool names may not be addressed directly
+                logger.error("PERMS: Invalid delete server (msg directed to direct-worker, but may not match pool regex)")
+                next
+              end
+
+              if @@permissions[fqdn] then
+                @@permissions.delete(fqdn)
+                logger.info("PERMS: DELETE SERVER (via alt_cmd) `#{servername} => #{worker_routing_key}`")
+              else
+                logger.error("PERMS: Permissions don't exist for direct-worker delete command. NOOP")
+                logger.debug(params)
+              end
+            end
+
             params['cmd'] = params.delete('server_cmd')
             logger.info("PERMS: #{command} by #{user}@#{fqdn}: OK")
 
@@ -366,7 +377,7 @@ class HQ < Sinatra::Base
                              :type => "command",
                              :message_id => uuid,
                              :timestamp => Time.now.to_i)
-            logger.info("PERMS: Forwarded command `#{worker_routing_key}`")
+            logger.info("POOL: Forwarded command `#{worker_routing_key}`")
             logger.debug(params)
           else
             logger.warn("PERMS: #{command} by #{user}@#{fqdn}: FAIL")
