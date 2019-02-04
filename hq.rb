@@ -29,7 +29,7 @@ class HQ < Sinatra::Base
   logger.level = Logger::DEBUG
 
   require_relative 'permmgr'
-  @@perm_mgr = PermManagement.new('plain:mc', logger_obj: logger, owner: 'plain:mc')
+  @@perm_mgr = PermManager.new('plain:mc')
 
   require 'yaml'
   amqp_creds = YAML::load_file('config/amqp.yml')['rabbitmq'].transform_keys(&:to_sym)
@@ -187,8 +187,8 @@ class HQ < Sinatra::Base
       ws.onmessage do |msg|
         user = "#{current_user.authtype}:#{current_user.id}"
 
-        require_relative 'permmgr'
-        perm_mgr = PermManagement.new user
+        perm_mgr = PermManager.new user
+        perm_mgr.set_logger(logger)
 
         ### DIRECTIVE PROCESSING
 
