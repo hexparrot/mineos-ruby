@@ -102,4 +102,45 @@ class PermManagerTest < Minitest::Test
     assert_equal("PERMS: CREATED PERMSCREEN `#{@workerpool} => managers.#{@hostname}`", inst.logs.shift.message)
     assert_equal("MANAGER: MKPOOL `#{@workerpool} => managers.#{@hostname}`", inst.logs.shift.message)
   end
+
+  def test_incremental_granting_of_root_permissions_for_non_owner
+    user = 'plain:user'
+    inst = PermManager.new(user)
+    user2 = 'plain:user2'
+    inst2 = PermManager.new(user2)
+
+    assert(!inst.perms[:root].grantor?(user2))
+    assert(!inst.perms[:root].test_permission(user2, 'mkgrantor'))
+    assert(!inst.perms[:root].test_permission(user2, 'rmgrantor'))
+    assert(!inst.perms[:root].test_permission(user2, 'grantall'))
+    assert(!inst.perms[:root].test_permission(user2, 'revokeall'))
+
+    assert(!inst.perms[:root].test_permission(user2, 'mkgrantor'))
+    assert(!inst.perms[:root].test_permission(user2, 'rmgrantor'))
+    assert(!inst.perms[:root].test_permission(user2, 'grantall'))
+    assert(!inst.perms[:root].test_permission(user2, 'revokeall'))
+
+    assert(!inst.perms[:root].test_permission(user2, 'mkpool'))
+    assert(!inst.perms[:root].test_permission(user2, 'rmpool'))
+    assert(!inst.perms[:root].test_permission(user2, 'spawnpool'))
+    assert(!inst.perms[:root].test_permission(user2, 'despawnpool'))
+    
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            root_cmd: 'mkpool' }.to_json
+
+    inst2.root_command(JSON.parse cmd)
+    assert_equal("PERMS: mkpool by #{user2}@#{@workerpool}: FAIL", inst2.logs.pop.message)
+
+    inst.root_perms('grantall', user2)
+    inst2.root_command(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal(@workerpool, amqp_data[:MKPOOL][:workerpool])
+      assert_equal("managers.#{@hostname}", rk)
+    }
+
+    assert_equal("PERMS: #{user} granting `root`:all to #{user2}", inst.logs.shift.message)
+    assert_equal("PERMS: (:all) mkpool, rmpool, spawn, despawn", inst.logs.shift.message)
+    assert_equal("PERMS: CREATED PERMSCREEN `#{@workerpool} => managers.#{@hostname}`", inst2.logs.shift.message)
+    assert_equal("MANAGER: MKPOOL `#{@workerpool} => managers.#{@hostname}`", inst2.logs.shift.message)
+  end
 end
