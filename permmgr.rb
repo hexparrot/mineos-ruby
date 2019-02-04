@@ -274,7 +274,6 @@ class PermManagement
 
         @@permissions[pool_fqdn] = perm_obj
         @@logger.info("PERMS: CREATED PERMSCREEN `#{workerpool} => #{manager_routing_key}`")
-@@logger.info("PERMS: CREATED PERMSCREEN @#{pool_fqdn}`")
       end
 
       xmitted = yield({ MKPOOL: {workerpool: workerpool} }, manager_routing_key)
