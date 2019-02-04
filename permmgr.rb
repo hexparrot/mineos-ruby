@@ -266,9 +266,9 @@ class PermManager
 
         xmitted = yield(params, worker_routing_key)
         fork_log :info, "POOL: DELETE SERVER `#{servername} => #{worker_routing_key}`" if xmitted
-      else
-        fork_log :info, "PERMS: #{command} by #{@granting_user}@#{fqdn}: FAIL"
       end
+    else
+      fork_log :info, "PERMS: #{command} by #{@granting_user}@#{fqdn}: FAIL"
     end
   end
 
