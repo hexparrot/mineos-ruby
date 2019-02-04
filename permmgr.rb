@@ -9,12 +9,14 @@ class PermManager
     @granting_user = granting_user
     @logger = Logger.new(STDOUT)
 
-    @@owner = granting_user if !defined? @@owner
-    @@permissions = { root: Permissions.new(@@owner) }
+    if !defined? @@admin then
+      @@admin = granting_user
+      @@permissions = { root: Permissions.new(granting_user) }
+    end
   end
 
-  def owner
-    @@owner
+  def admin
+    @@admin
   end
 
   def set_logger(new_logger)
