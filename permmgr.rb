@@ -1,3 +1,5 @@
+require 'securerandom'
+
 class PermManagement
   def initialize(granting_user, logger_obj: nil, owner: nil)
     @grantor = granting_user
@@ -85,7 +87,7 @@ class PermManagement
 
     begin
       if !@@permissions.fetch(fqdn).grantor?(@grantor) then
-        @@logger.warn("PERMS: Insufficient permissions for #{user} to cast `#{fqdn}`:#{permission} on #{affected_user}")
+        @@logger.warn("PERMS: Insufficient permissions for #{@grantor} to cast `#{fqdn}`:#{permission} on #{affected_user}")
         return #early exit if user is not a grantor!
       end
     rescue KeyError
@@ -115,4 +117,248 @@ class PermManagement
       @@logger.info("PERMS: (:all) start, stop, etc.")
     end
   end
+
+  ### commands
+
+  def server_command(params)
+    hostname = params.delete('hostname')
+    workerpool = params.delete('workerpool')
+    worker_routing_key = "workers.#{hostname}.#{workerpool}"
+
+    servername = params.fetch('server_name')
+    fqdn = "#{hostname}.#{workerpool}.#{servername}"
+
+    #if !@@satellites[:workers].include?(worker_routing_key) then
+    #  @@logger.error("WORKER: Unregistered worker addressed `#{@grantor} => #{worker_routing_key}`")
+    #  return
+    #end
+
+    command = params['server_cmd']
+    alt_cmd = params['alt_cmd']
+    params.delete('alt_cmd') if alt_cmd
+
+    if alt_cmd == 'create' then
+      require_relative 'pools'
+      if Pools::VALID_NAME_REGEX.match(workerpool) then
+        # valid pool names may not be addressed directly
+        @@logger.error("PERMS: Invalid create server (msg directed to direct-worker, but may not match pool regex)")
+        return
+      end
+
+      if @@permissions[fqdn] then
+        @@logger.error("PERMS: Permissions already exist for direct-worker create command. NOOP")
+        @@logger.debug(params)
+        return
+      else
+        # if direct-worker is still a valid request, create the permscreen
+        perm_obj = Permissions.new(@grantor)
+        perm_obj.hostname = hostname
+        perm_obj.workerpool = workerpool
+        perm_obj.servername = servername
+        perm_obj.grant(@grantor, :all)
+        @@permissions[fqdn] = perm_obj
+        @@logger.info("PERMS: CREATE SERVER (via alt_cmd) `#{servername} => #{worker_routing_key}`")
+      end
+    end
+
+    begin
+      @@permissions.fetch(fqdn)
+    rescue KeyError
+      @@logger.error("POOL: Cannot execute #{command} on a non-existent server `#{fqdn}`")
+      return
+    end
+
+    if @@permissions[fqdn].test_permission(@grantor, command) then
+      if alt_cmd == 'delete' then
+        # inside if @@perms because it's about to get deleted
+        require_relative 'pools'
+        if Pools::VALID_NAME_REGEX.match(workerpool) then
+          # valid pool names may not be addressed directly
+          @@logger.error("PERMS: Invalid delete server (msg directed to direct-worker, but may not match pool regex)")
+          return
+        end
+
+        if @@permissions[fqdn] then
+          @@permissions.delete(fqdn)
+          @@logger.info("PERMS: DELETE SERVER (via alt_cmd) `#{servername} => #{worker_routing_key}`")
+        else
+          @@logger.error("PERMS: Permissions don't exist for direct-worker delete command. NOOP")
+          @@logger.debug(params)
+        end
+      end
+
+      params['cmd'] = params.delete('server_cmd')
+      @@logger.info("PERMS: #{command} by #{@grantor}@#{fqdn}: OK")
+
+      uuid = SecureRandom.uuid
+      #promises[uuid] = Proc.new { |status_code, retval|
+      #  ws.send(retval)
+      #}
+
+      #exchange.publish(params.to_json,
+      #                 :routing_key => worker_routing_key,
+      #                 :type => "command",
+      #                 :message_id => uuid,
+      #                 :timestamp => Time.now.to_i)
+      @@logger.info("POOL: Forwarded command `#{worker_routing_key}`")
+      @@logger.debug(params)
+    else
+      @@logger.warn("PERMS: #{command} by #{@grantor}@#{fqdn}: FAIL")
+    end
+  end
+
+
+  def pool_command(params)
+    hostname = params.delete('hostname')
+    workerpool = params.delete('workerpool')
+    manager_routing_key = "managers.#{hostname}"
+    fqdn = "#{hostname}.#{workerpool}"
+
+    command = params.fetch('pool_cmd')
+
+    #if !@@satellites[:managers].include?(manager_routing_key) then
+    #  @@logger.error("MANAGER: Unregistered manager addressed `#{@grantor} => #{manager_routing_key}`")
+    #  return
+    #end
+
+    begin
+      @@permissions.fetch(fqdn)
+    rescue KeyError
+      @@logger.error("POOL: Cannot create server in a non-existent pool `#{fqdn}`")
+      return
+    end
+
+    if @@permissions[fqdn].test_permission(@grantor, command) then
+      @@logger.info("PERMS: #{command} by #{@grantor}@#{fqdn}: OK")
+
+      uuid = SecureRandom.uuid
+      #promises[uuid] = Proc.new { |status_code, retval|
+      #  ws.send(retval)
+      #}
+
+      worker_routing_key = "workers.#{hostname}.#{workerpool}"
+      servername = params.fetch('server_name')
+      params['cmd'] = params.delete('pool_cmd')
+      server_fqdn = "#{hostname}.#{workerpool}.#{servername}"
+
+      case command
+      when 'create'
+        if @@permissions[server_fqdn] then #early exit
+          @@logger.error("POOL: Server already exists, #{command} ignored: `#{server_fqdn}`")
+          return
+        end
+
+        perm_obj = Permissions.new(@grantor)
+        perm_obj.hostname = hostname
+        perm_obj.workerpool = workerpool
+        perm_obj.servername = servername
+        perm_obj.grant(@grantor, :all)
+        @@permissions[server_fqdn] = perm_obj
+
+        #exchange.publish(params.to_json,
+        #                 :routing_key => worker_routing_key,
+        #                 :type => "command",
+        #                 :message_id => uuid,
+        #                 :timestamp => Time.now.to_i)
+        @@logger.info("POOL: CREATE SERVER `#{servername} => #{worker_routing_key}`")
+      when 'delete'
+        if !@@permissions[server_fqdn] then #early exit
+          @@logger.error("POOL: Server doesn't exist, #{command} ignored: `#{server_fqdn}`")
+          return
+        end
+        @@permissions.delete(server_fqdn)
+
+          #exchange.publish(params.to_json,
+          #                 :routing_key => worker_routing_key,
+          #                 :type => "command",
+          #                 :message_id => uuid,
+          #                 :timestamp => Time.now.to_i)
+          @@logger.info("POOL: DELETE SERVER `#{servername} => #{worker_routing_key}`")
+        end
+      else
+        @@logger.info("PERMS: #{command} by #{@grantor}@#{fqdn}: FAIL")
+      end
+    end
+
+    def root_command(params)
+      hostname = params.delete('hostname')
+      manager_routing_key = "managers.#{hostname}"
+
+      workerpool = params.fetch('workerpool')
+      command = params.fetch('root_cmd')
+      pool_fqdn = "#{hostname}.#{workerpool}"
+
+      #if !@@satellites[:managers].include?(manager_routing_key) then
+      #  @@logger.error("MANAGER: Unregistered manager addressed `#{@grantor} => #{manager_routing_key}`")
+      #  next
+      #end
+
+      if !@@permissions[:root].test_permission(@grantor, command) then
+        @@logger.warn("PERMS: #{command} by #{@grantor}@#{workerpool}: FAIL")
+        return
+      end
+
+      uuid = SecureRandom.uuid
+      #promises[uuid] = Proc.new { |status_code, retval|
+      #  ws.send(retval)
+      #}
+
+      case command
+      when 'mkpool'
+        begin
+          if @@permissions.fetch(pool_fqdn) then
+            @@logger.error("POOL: Pool already exists: #{command} ignored `#{pool_fqdn}`")
+            return
+          end
+        rescue KeyError
+          perm_obj = Permissions.new(@grantor)
+          perm_obj.hostname = hostname
+          perm_obj.workerpool = workerpool
+          perm_obj.grant(@grantor, :all)
+          @@permissions[pool_fqdn] = perm_obj
+          @@logger.info("PERMS: CREATED PERMSCREEN `#{workerpool} => #{manager_routing_key}`")
+        end
+
+        #exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
+        #                 :routing_key => manager_routing_key,
+        #                 :type => "directive",
+        #                 :message_id => uuid,
+        #                 :timestamp => Time.now.to_i)
+        @@logger.info("MANAGER: MKPOOL `#{workerpool} => #{manager_routing_key}`")
+      when 'rmpool'
+        begin
+          @@permissions.fetch(pool_fqdn)
+        rescue KeyError
+          @@logger.warn("PERMS: NO EXISTING PERMSCREEN `#{workerpool} => #{manager_routing_key}` - NOOP")
+          return
+        end
+
+        @@permissions.delete(pool_fqdn)
+        @@logger.info("POOL: DELETED PERMSCREEN`#{workerpool} => #{manager_routing_key}`")
+
+        #exchange.publish({ REMOVE: {workerpool: workerpool} }.to_json,
+        #                 :routing_key => manager_routing_key,
+        #                 :type => "directive",
+        #                 :message_id => uuid,
+        #                 :timestamp => Time.now.to_i)
+        @@logger.info("POOL: DELETED `#{workerpool} => #{manager_routing_key}`")
+      when 'spawnpool'
+        begin
+          @@permissions.fetch(pool_fqdn)
+        rescue KeyError
+          @@logger.error("POOL: Cannot spawn worker in non-existent pool `#{pool_fqdn}`")
+          return
+        end
+
+        #exchange.publish({ SPAWN: {workerpool: workerpool} }.to_json,
+        #                 :routing_key => manager_routing_key,
+        #                 :type => "directive",
+        #                 :message_id => uuid,
+        #                 :timestamp => Time.now.to_i)
+      @@logger.info("MANAGER: SPAWNED POOL `#{workerpool} => #{manager_routing_key}`")
+    when 'despawnpool'
+      #not yet implemented
+    end
+  end
+
 end
