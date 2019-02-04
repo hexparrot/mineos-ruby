@@ -31,14 +31,24 @@ class PermManagerTest < Minitest::Test
     require 'logger'
 
     inst = PermManager.new('plain:user')
-    assert(inst.logger.is_a?(Logger))
 
     newlogger = Logger.new(STDOUT)
     inst.set_logger(newlogger)
-    assert(inst.logger.is_a?(Logger))
 
     ex = assert_raises(TypeError) { inst.set_logger({}) }
     assert_equal('PermManager requires a kind_of logger instance', ex.message)
+  end
+
+  def test_log_forker
+    inst = PermManager.new('plain:user')
+
+    require 'securerandom'
+    inst.fork_log(:warn, "this is a warning!", "abcdef1234567890")
+    item = inst.logs.first
+    assert(item)
+    assert_equal(:warn, item[:level])
+    assert_equal("this is a warning!", item[:message])
+    assert_equal("abcdef1234567890", item[:uuid])
   end
 
   def test_only_admin_can_grant_at_start

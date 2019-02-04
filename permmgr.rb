@@ -1,13 +1,16 @@
 require_relative 'perms'
 require 'logger'
 
+LogItem = Struct.new("LogItem", :level, :message, :uuid)
+
 class PermManager
-  attr_reader :granting_user, :logger
+  attr_reader :granting_user, :logs
 
   def initialize(granting_user)
     # grantor different for all, @@permissions shared!
     @granting_user = granting_user
     @logger = Logger.new(STDOUT)
+    @logs = []
 
     if !defined? @@admin then
       @@admin = granting_user
@@ -19,41 +22,46 @@ class PermManager
     @@admin
   end
 
+  def perms
+    @@permissions
+  end
+
   def set_logger(new_logger)
     raise TypeError.new('PermManager requires a kind_of logger instance') if !new_logger.kind_of?(Logger)
     @logger = new_logger
   end
 
-  def perms
-    @@permissions
+  def fork_log(level, message, uuid='')
+    @logs.push(Struct::LogItem.new(level, message, uuid))
+    @logger.send(level, message)
   end
 
   def root_perms(permission, affected_user)
     if !@@permissions[:root].grantor?(@granting_user) then
-      @@logger.warn("#{@granting_user} is not a root:grantor. #{permission} not granted to #{affected_user}")
+      fork_log :warn, "#{@granting_user} is not a root:grantor. #{permission} not granted to #{affected_user}"
       return
     end
 
     case permission
     when 'mkgrantor'
       @@permissions[:root].make_grantor(affected_user)
-      @@logger.info("PERMS: #{@granting_user} promoting #{affected_user} to `root`:grantor")
-      @@logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) grantall, revokeall")
+      fork_log :info, "PERMS: #{@granting_user} promoting #{affected_user} to `root`:grantor"
+      fork_log :info, "PERMS: (grantor) mkgrantor, rmgrantor (:all) grantall, revokeall"
       # effectively makes #affected_user as powerful as #user in regards to
       # full administration of the hq
     when 'rmgrantor'
       @@permissions[:root].unmake_grantor(affected_user)
-      @@logger.info("PERMS: #{@granting_user} revoking `root`:grantor from #{affected_user}")
-      @@logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) grantall, revokeall")
+      fork_log :info, "PERMS: #{@granting_user} revoking `root`:grantor from #{affected_user}"
+      fork_log :info, "PERMS: (grantor) mkgrantor, rmgrantor (:all) grantall, revokeall"
     when 'grantall'
       @@permissions[:root].grant(affected_user, :all)
-      @@logger.info("PERMS: #{@granting_user} granting `root`:all to #{affected_user}")
-      @@logger.info("PERMS: (:all) mkpool, rmpool, spawn, despawn")
+      fork_log :info, "PERMS: #{@granting_user} granting `root`:all to #{affected_user}"
+      fork_log :info, "PERMS: (:all) mkpool, rmpool, spawn, despawn"
       # allows #affected_user to create and destroy pools (remote users on all hosts)
     when 'revokeall'
       @@permissions[:root].revoke(affected_user, :all)
-      @@logger.info("PERMS: #{@granting_user} revoking `root`:all from #{affected_user}" )
-      @@logger.info("PERMS: (:all) mkpool, rmpool, spawn, despawn")
+      fork_log :info, "PERMS: #{@granting_user} revoking `root`:all from #{affected_user}" 
+      fork_log :info, "PERMS: (:all) mkpool, rmpool, spawn, despawn"
     end
   end
 
@@ -65,11 +73,11 @@ class PermManager
 
     begin
       if !@@permissions.fetch(fqdn).grantor?(@granting_user) then
-        @@logger.warn( "PERMS: Insufficient permissions for #{@granting_user} to cast `#{fqdn}`:#{permission} on #{affected_user}")
+        fork_log :warn,  "PERMS: Insufficient permissions for #{@granting_user} to cast `#{fqdn}`:#{permission} on #{affected_user}"
         return #early exit if user is not a grantor!
       end
     rescue KeyError
-      @@logger.warn("PERMS: #{@granting_user} cannot perform #{permission} on non-existent pool `#{fqdn}`")
+      fork_log :warn, "PERMS: #{@granting_user} cannot perform #{permission} on non-existent pool `#{fqdn}`"
       return
     end
 
@@ -77,22 +85,22 @@ class PermManager
     case permission
     when 'mkgrantor'
       @@permissions[fqdn].make_grantor(affected_user)
-      @@logger.info("PERMS: #{@granting_user} promoting #{affected_user} to `#{fqdn}`:grantor")
-      @@logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete")
+      fork_log :info, "PERMS: #{@granting_user} promoting #{affected_user} to `#{fqdn}`:grantor"
+      fork_log :info, "PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete"
       # allows #affected user to give ability to create/delete to others
     when 'rmgrantor'
       @@permissions[fqdn].unmake_grantor(affected_user)
-      @@logger.info("PERMS: #{@granting_user} revoking from #{affected_user} `#{fqdn}`:grantor")
-      @@logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete")
+      fork_log :info, "PERMS: #{@granting_user} revoking from #{affected_user} `#{fqdn}`:grantor"
+      fork_log :info, "PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete"
     when 'grantall'
       @@permissions[fqdn].grant(affected_user, :all)
-      @@logger.info("PERMS: #{@granting_user} granting #{affected_user} `#{fqdn}`:all")
-      @@logger.info("PERMS: (:all) create, delete")
+      fork_log :info, "PERMS: #{@granting_user} granting #{affected_user} `#{fqdn}`:all"
+      fork_log :info, "PERMS: (:all) create, delete"
       # allows #affected_user to create and destroy servers
     when 'revokeall'
       @@permissions[fqdn].revoke(affected_user, :all)
-      @@logger.info("PERMS: #{@granting_user} revoking from #{affected_user} on `#{fqdn}`:all")
-      @@logger.info("PERMS: (:all) create, delete")
+      fork_log :info, "PERMS: #{@granting_user} revoking from #{affected_user} on `#{fqdn}`:all"
+      fork_log :info, "PERMS: (:all) create, delete"
     end
   end
 
@@ -103,11 +111,11 @@ class PermManager
 
     begin
       if !@@permissions.fetch(fqdn).grantor?(@granting_user) then
-        @@logger.warn("PERMS: Insufficient permissions for #{@granting_user} to cast `#{fqdn}`:#{permission} on #{affected_user}")
+        fork_log :warn, "PERMS: Insufficient permissions for #{@granting_user} to cast `#{fqdn}`:#{permission} on #{affected_user}"
         return #early exit if user is not a grantor!
       end
     rescue KeyError
-      @@logger.warn("PERMS: #{@granting_user} cannot perform #{permission} on non-existent server `#{fqdn}`")
+      fork_log :warn, "PERMS: #{@granting_user} cannot perform #{permission} on non-existent server `#{fqdn}`"
       return
     end
 
@@ -115,22 +123,22 @@ class PermManager
     case permission
     when 'mkgrantor'
       @@permissions[fqdn].make_grantor(affected_user)
-      @@logger.info("PERMS: #{@granting_user} promoting #{affected_user} to grantor `#{fqdn}`:grantor")
-      @@logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) start, stop, etc.")
+      fork_log :info, "PERMS: #{@granting_user} promoting #{affected_user} to grantor `#{fqdn}`:grantor"
+      fork_log :info, "PERMS: (grantor) mkgrantor, rmgrantor (:all) start, stop, etc."
       # allows #affected user to give ability to start/stop servers
     when 'rmgrantor'
       @@permissions[fqdn].unmake_grantor(affected_user)
-      @@logger.info("PERMS: #{@granting_user} revoking from #{affected_user} `#{fqdn}`:grantor")
-      @@logger.info("PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete")
+      fork_log :info, "PERMS: #{@granting_user} revoking from #{affected_user} `#{fqdn}`:grantor"
+      fork_log :info, "PERMS: (grantor) mkgrantor, rmgrantor (:all) create, delete"
     when 'grantall'
       @@permissions[fqdn].grant(affected_user, :all)
-      @@logger.info("PERMS: #{@granting_user} granting #{affected_user} on `#{fqdn}`:all")
-      @@logger.info("PERMS: (:all) start, stop, etc.")
+      fork_log :info, "PERMS: #{@granting_user} granting #{affected_user} on `#{fqdn}`:all"
+      fork_log :info, "PERMS: (:all) start, stop, etc."
       # allows #affected_user to create and destroy servers
     when 'revokeall'
       @@permissions[fqdn].revoke(affected_user, :all)
-      @@logger.info("PERMS: #{@granting_user} revoking from #{affected_user} on `#{fqdn}`:all")
-      @@logger.info("PERMS: (:all) start, stop, etc.")
+      fork_log :info, "PERMS: #{@granting_user} revoking from #{affected_user} on `#{fqdn}`:all"
+      fork_log :info, "PERMS: (:all) start, stop, etc."
     end
   end
 
@@ -152,13 +160,13 @@ class PermManager
       require_relative 'pools'
       if Pools::VALID_NAME_REGEX.match(workerpool) then
         # valid pool names may not be addressed directly
-        @@logger.error("PERMS: Invalid create server (msg directed to direct-worker, but may not match pool regex)")
+        fork_log :error, "PERMS: Invalid create server (msg directed to direct-worker, but may not match pool regex)"
         return
       end
 
       if @@permissions[fqdn] then
-        @@logger.error("PERMS: Permissions already exist for direct-worker create command. NOOP")
-        @@logger.debug(params)
+        fork_log :error, "PERMS: Permissions already exist for direct-worker create command. NOOP"
+        fork_log :debug, params
         return
       else
         # if direct-worker is still a valid request, create the permscreen
@@ -168,14 +176,14 @@ class PermManager
         perm_obj.servername = servername
         perm_obj.grant(@granting_user, :all)
         @@permissions[fqdn] = perm_obj
-        @@logger.info("PERMS: CREATE SERVER (via alt_cmd) `#{servername} => #{worker_routing_key}`")
+        fork_log :info, "PERMS: CREATE SERVER (via alt_cmd) `#{servername} => #{worker_routing_key}`"
       end
     end
 
     begin
       @@permissions.fetch(fqdn)
     rescue KeyError
-      @@logger.error("POOL: Cannot execute #{command} on a non-existent server `#{fqdn}`")
+      fork_log :error, "POOL: Cannot execute #{command} on a non-existent server `#{fqdn}`"
       return
     end
 
@@ -185,27 +193,27 @@ class PermManager
         require_relative 'pools'
         if Pools::VALID_NAME_REGEX.match(workerpool) then
           # valid pool names may not be addressed directly
-          @@logger.error("PERMS: Invalid delete server (msg directed to direct-worker, but may not match pool regex)")
+          fork_log :error, "PERMS: Invalid delete server (msg directed to direct-worker, but may not match pool regex)"
           return
         end
 
         if @@permissions[fqdn] then
           @@permissions.delete(fqdn)
-          @@logger.info("PERMS: DELETE SERVER (via alt_cmd) `#{servername} => #{worker_routing_key}`")
+          fork_log :info, "PERMS: DELETE SERVER (via alt_cmd) `#{servername} => #{worker_routing_key}`"
         else
-          @@logger.error("PERMS: Permissions don't exist for direct-worker delete command. NOOP")
-          @@logger.debug(params)
+          fork_log :error, "PERMS: Permissions don't exist for direct-worker delete command. NOOP"
+          fork_log :debug, params
         end
       end
 
       params['cmd'] = params.delete('server_cmd')
-      @@logger.info("PERMS: #{command} by #{@granting_user}@#{fqdn}: OK")
+      fork_log :info, "PERMS: #{command} by #{@granting_user}@#{fqdn}: OK"
 
       xmitted = yield(params, worker_routing_key)
-      @@logger.info("HQ: Forwarded command `#{worker_routing_key}`") if xmitted
-      @@logger.debug(params) if xmitted
+      fork_log :info, "HQ: Forwarded command `#{worker_routing_key}`" if xmitted
+      fork_log :debug, params if xmitted
     else
-      @@logger.warn("PERMS: #{command} by #{@granting_user}@#{fqdn}: FAIL")
+      fork_log :warn, "PERMS: #{command} by #{@granting_user}@#{fqdn}: FAIL"
     end
   end
 
@@ -221,12 +229,12 @@ class PermManager
     begin
       @@permissions.fetch(fqdn)
     rescue KeyError
-      @@logger.error("POOL: Cannot create server in a non-existent pool `#{fqdn}`")
+      fork_log :error, "POOL: Cannot create server in a non-existent pool `#{fqdn}`"
       return
     end
 
     if @@permissions[fqdn].test_permission(@granting_user, command) then
-      @@logger.info("PERMS: #{command} by #{@granting_user}@#{fqdn}: OK")
+      fork_log :info, "PERMS: #{command} by #{@granting_user}@#{fqdn}: OK"
 
       worker_routing_key = "workers.#{hostname}.#{workerpool}"
       servername = params.fetch('server_name')
@@ -236,7 +244,7 @@ class PermManager
       case command
       when 'create'
         if @@permissions[server_fqdn] then #early exit
-          @@logger.error("POOL: Server already exists, #{command} ignored: `#{server_fqdn}`")
+          fork_log :error, "POOL: Server already exists, #{command} ignored: `#{server_fqdn}`"
           return
         end
 
@@ -248,18 +256,18 @@ class PermManager
         @@permissions[server_fqdn] = perm_obj
 
         xmitted = yield(params, worker_routing_key)
-        @@logger.info("POOL: CREATE SERVER `#{servername} => #{worker_routing_key}`") if xmitted
+        fork_log :info, "POOL: CREATE SERVER `#{servername} => #{worker_routing_key}`" if xmitted
       when 'delete'
         if !@@permissions[server_fqdn] then #early exit
-          @@logger.error("POOL: Server doesn't exist, #{command} ignored: `#{server_fqdn}`")
+          fork_log :error, "POOL: Server doesn't exist, #{command} ignored: `#{server_fqdn}`"
           return
         end
         @@permissions.delete(server_fqdn)
 
         xmitted = yield(params, worker_routing_key)
-        @@logger.info("POOL: DELETE SERVER `#{servername} => #{worker_routing_key}`") if xmitted
+        fork_log :info, "POOL: DELETE SERVER `#{servername} => #{worker_routing_key}`" if xmitted
       else
-        @@logger.info("PERMS: #{command} by #{@granting_user}@#{fqdn}: FAIL")
+        fork_log :info, "PERMS: #{command} by #{@granting_user}@#{fqdn}: FAIL"
       end
     end
   end
@@ -273,7 +281,7 @@ class PermManager
     pool_fqdn = "#{hostname}.#{workerpool}"
 
     if !@@permissions[:root].test_permission(@granting_user, command) then
-      @@logger.warn("PERMS: #{command} by #{@granting_user}@#{workerpool}: FAIL")
+      fork_log :warn, "PERMS: #{command} by #{@granting_user}@#{workerpool}: FAIL"
       return
     end
 
@@ -281,7 +289,7 @@ class PermManager
     when 'mkpool'
       begin
         if @@permissions.fetch(pool_fqdn) then
-          @@logger.error("POOL: Pool already exists: #{command} ignored `#{pool_fqdn}`")
+          fork_log :error, "POOL: Pool already exists: #{command} ignored `#{pool_fqdn}`"
           return
         end
       rescue KeyError
@@ -291,34 +299,34 @@ class PermManager
         perm_obj.grant(@granting_user, :all)
 
         @@permissions[pool_fqdn] = perm_obj
-        @@logger.info("PERMS: CREATED PERMSCREEN `#{workerpool} => #{manager_routing_key}`")
+        fork_log :info, "PERMS: CREATED PERMSCREEN `#{workerpool} => #{manager_routing_key}`"
       end
 
       xmitted = yield({ MKPOOL: {workerpool: workerpool} }, manager_routing_key)
-      @@logger.info("MANAGER: MKPOOL `#{workerpool} => #{manager_routing_key}`") if xmitted
+      fork_log :info, "MANAGER: MKPOOL `#{workerpool} => #{manager_routing_key}`" if xmitted
     when 'rmpool'
       begin
         @@permissions.fetch(pool_fqdn)
       rescue KeyError
-        @@logger.warn("PERMS: NO EXISTING PERMSCREEN `#{workerpool} => #{manager_routing_key}` - NOOP")
+        fork_log :warn, "PERMS: NO EXISTING PERMSCREEN `#{workerpool} => #{manager_routing_key}` - NOOP"
         return
       end
 
       @@permissions.delete(pool_fqdn)
-      @@logger.info("POOL: DELETED PERMSCREEN`#{workerpool} => #{manager_routing_key}`")
+      fork_log :info, "POOL: DELETED PERMSCREEN`#{workerpool} => #{manager_routing_key}`"
 
       xmitted = yield({ REMOVE: {workerpool: workerpool} }, manager_routing_key)
-      @@logger.info("POOL: DELETED `#{workerpool} => #{manager_routing_key}`") if xmitted
+      fork_log :info, "POOL: DELETED `#{workerpool} => #{manager_routing_key}`" if xmitted
     when 'spawnpool'
       begin
         @@permissions.fetch(pool_fqdn)
       rescue KeyError
-        @@logger.error("POOL: Cannot spawn worker in non-existent pool `#{pool_fqdn}`")
+        fork_log :error, "POOL: Cannot spawn worker in non-existent pool `#{pool_fqdn}`"
         return
       end
 
       xmitted = yield({ SPAWN: {workerpool: workerpool} }, manager_routing_key)
-      @@logger.info("MANAGER: SPAWNED POOL `#{workerpool} => #{manager_routing_key}`") if xmitted
+      fork_log :info, "MANAGER: SPAWNED POOL `#{workerpool} => #{manager_routing_key}`" if xmitted
     when 'despawnpool'
       #not yet implemented
     end
