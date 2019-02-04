@@ -221,35 +221,59 @@ class HQ < Sinatra::Base
         else
           if body_parameters.key?('alt_cmd') then
             perm_mgr.server_command(body_parameters) { |params, rk|
-              exchange.publish(params.to_json,
-                               :routing_key => rk,
-                               :type => "command",
-                               :message_id => SecureRandom.uuid,
-                               :timestamp => Time.now.to_i)
+              if !@@satellites[:workers].include?(rk) then
+                logger.error("WORKER: Unregistered worker addressed `#{user} => #{rk}`")
+                nil
+              else
+                exchange.publish(params.to_json,
+                                 :routing_key => rk,
+                                 :type => "command",
+                                 :message_id => SecureRandom.uuid,
+                                 :timestamp => Time.now.to_i)
+                true
+              end
             }
           elsif body_parameters.key?('root_cmd') then
             perm_mgr.root_command(body_parameters) { |params, rk|
-              exchange.publish(params.to_json,
-                               :routing_key => rk,
-                               :type => "directive",
-                               :message_id => SecureRandom.uuid,
-                               :timestamp => Time.now.to_i)
+              if !@@satellites[:managers].include?(rk) then
+                logger.error("MANAGER: Unregistered manager addressed `#{user} => #{rk}`")
+                nil
+              else
+                exchange.publish(params.to_json,
+                                 :routing_key => rk,
+                                 :type => "directive",
+                                 :message_id => SecureRandom.uuid,
+                                 :timestamp => Time.now.to_i)
+                true
+              end
             }
           elsif body_parameters.key?('pool_cmd') then
             perm_mgr.pool_command(body_parameters) { |params, rk|
-              exchange.publish(params.to_json,
-                               :routing_key => rk,
-                               :type => "command",
-                               :message_id => SecureRandom.uuid,
-                               :timestamp => Time.now.to_i)
+              if !@@satellites[:workers].include?(rk) then
+                logger.error("WORKER: Unregistered worker addressed `#{user} => #{rk}`")
+                nil
+              else
+                exchange.publish(params.to_json,
+                                 :routing_key => rk,
+                                 :type => "command",
+                                 :message_id => SecureRandom.uuid,
+                                 :timestamp => Time.now.to_i)
+                true
+              end
             }
           elsif body_parameters.key?('server_cmd') then
             perm_mgr.server_command(body_parameters) { |params, rk|
-              exchange.publish(params.to_json,
-                               :routing_key => rk,
-                               :type => "command",
-                               :message_id => SecureRandom.uuid,
-                               :timestamp => Time.now.to_i)
+              if !@@satellites[:workers].include?(rk) then
+                logger.error("WORKER: Unregistered worker addressed `#{user} => #{rk}`")
+                nil
+              else
+                exchange.publish(params.to_json,
+                                 :routing_key => rk,
+                                 :type => "command",
+                                 :message_id => SecureRandom.uuid,
+                                 :timestamp => Time.now.to_i)
+                true
+              end
             }
           end
         end

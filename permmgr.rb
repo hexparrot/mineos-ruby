@@ -126,11 +126,6 @@ class PermManagement
     servername = params.fetch('server_name')
     fqdn = "#{hostname}.#{workerpool}.#{servername}"
 
-    #if !@@satellites[:workers].include?(worker_routing_key) then
-    #  @@logger.error("WORKER: Unregistered worker addressed `#{@grantor} => #{worker_routing_key}`")
-    #  return
-    #end
-
     command = params['server_cmd']
     alt_cmd = params['alt_cmd']
     params.delete('alt_cmd') if alt_cmd
@@ -188,9 +183,9 @@ class PermManagement
       params['cmd'] = params.delete('server_cmd')
       @@logger.info("PERMS: #{command} by #{@grantor}@#{fqdn}: OK")
 
-      yield(params, worker_routing_key)
-      @@logger.info("POOL: Forwarded command `#{worker_routing_key}`")
-      @@logger.debug(params)
+      xmitted = yield(params, worker_routing_key)
+      @@logger.info("HQ: Forwarded command `#{worker_routing_key}`") if xmitted
+      @@logger.debug(params) if xmitted
     else
       @@logger.warn("PERMS: #{command} by #{@grantor}@#{fqdn}: FAIL")
     end
@@ -204,11 +199,6 @@ class PermManagement
     fqdn = "#{hostname}.#{workerpool}"
 
     command = params.fetch('pool_cmd')
-
-    #if !@@satellites[:managers].include?(manager_routing_key) then
-    #  @@logger.error("MANAGER: Unregistered manager addressed `#{@grantor} => #{manager_routing_key}`")
-    #  return
-    #end
 
     begin
       @@permissions.fetch(fqdn)
@@ -231,6 +221,7 @@ class PermManagement
           @@logger.error("POOL: Server already exists, #{command} ignored: `#{server_fqdn}`")
           return
         end
+
         perm_obj = Permissions.new(@grantor)
         perm_obj.hostname = hostname
         perm_obj.workerpool = workerpool
@@ -238,8 +229,8 @@ class PermManagement
         perm_obj.grant(@grantor, :all)
         @@permissions[server_fqdn] = perm_obj
 
-        yield(params, worker_routing_key)
-        @@logger.info("POOL: CREATE SERVER `#{servername} => #{worker_routing_key}`")
+        xmitted = yield(params, worker_routing_key)
+        @@logger.info("POOL: CREATE SERVER `#{servername} => #{worker_routing_key}`") if xmitted
       when 'delete'
         if !@@permissions[server_fqdn] then #early exit
           @@logger.error("POOL: Server doesn't exist, #{command} ignored: `#{server_fqdn}`")
@@ -247,8 +238,8 @@ class PermManagement
         end
         @@permissions.delete(server_fqdn)
 
-        yield(params, worker_routing_key)
-        @@logger.info("POOL: DELETE SERVER `#{servername} => #{worker_routing_key}`")
+        xmitted = yield(params, worker_routing_key)
+        @@logger.info("POOL: DELETE SERVER `#{servername} => #{worker_routing_key}`") if xmitted
       else
         @@logger.info("PERMS: #{command} by #{@grantor}@#{fqdn}: FAIL")
       end
@@ -262,11 +253,6 @@ class PermManagement
     workerpool = params.fetch('workerpool')
     command = params.fetch('root_cmd')
     pool_fqdn = "#{hostname}.#{workerpool}"
-
-    #if !@@satellites[:managers].include?(manager_routing_key) then
-    #  @@logger.error("MANAGER: Unregistered manager addressed `#{@grantor} => #{manager_routing_key}`")
-    #  next
-    #end
 
     if !@@permissions[:root].test_permission(@grantor, command) then
       @@logger.warn("PERMS: #{command} by #{@grantor}@#{workerpool}: FAIL")
@@ -285,12 +271,14 @@ class PermManagement
         perm_obj.hostname = hostname
         perm_obj.workerpool = workerpool
         perm_obj.grant(@grantor, :all)
+
         @@permissions[pool_fqdn] = perm_obj
         @@logger.info("PERMS: CREATED PERMSCREEN `#{workerpool} => #{manager_routing_key}`")
+@@logger.info("PERMS: CREATED PERMSCREEN @#{pool_fqdn}`")
       end
 
-      yield({ MKPOOL: {workerpool: workerpool} }, manager_routing_key)
-      @@logger.info("MANAGER: MKPOOL `#{workerpool} => #{manager_routing_key}`")
+      xmitted = yield({ MKPOOL: {workerpool: workerpool} }, manager_routing_key)
+      @@logger.info("MANAGER: MKPOOL `#{workerpool} => #{manager_routing_key}`") if xmitted
     when 'rmpool'
       begin
         @@permissions.fetch(pool_fqdn)
@@ -302,8 +290,8 @@ class PermManagement
       @@permissions.delete(pool_fqdn)
       @@logger.info("POOL: DELETED PERMSCREEN`#{workerpool} => #{manager_routing_key}`")
 
-      yield({ REMOVE: {workerpool: workerpool} }, manager_routing_key)
-      @@logger.info("POOL: DELETED `#{workerpool} => #{manager_routing_key}`")
+      xmitted = yield({ REMOVE: {workerpool: workerpool} }, manager_routing_key)
+      @@logger.info("POOL: DELETED `#{workerpool} => #{manager_routing_key}`") if xmitted
     when 'spawnpool'
       begin
         @@permissions.fetch(pool_fqdn)
@@ -312,8 +300,8 @@ class PermManagement
         return
       end
 
-      yield({ SPAWN: {workerpool: workerpool} }, manager_routing_key)
-      @@logger.info("MANAGER: SPAWNED POOL `#{workerpool} => #{manager_routing_key}`")
+      xmitted = yield({ SPAWN: {workerpool: workerpool} }, manager_routing_key)
+      @@logger.info("MANAGER: SPAWNED POOL `#{workerpool} => #{manager_routing_key}`") if xmitted
     when 'despawnpool'
       #not yet implemented
     end
