@@ -1,13 +1,29 @@
-class PermManagement
-  def initialize(granting_user, logger_obj: nil, owner: nil)
-    @grantor = granting_user
-    @@logger = logger_obj if !defined? @@logger
-    @@permissions = { root: Permissions.new(owner) } if !defined? @@permissions
+require_relative 'perms'
+require 'logger'
+
+class PermManager
+  attr_reader :grantor, :logger
+
+  def initialize(granting_user)
     # grantor different for all, @@permissions shared!
+    @grantor = granting_user
+    @logger = Logger.new(STDOUT)
+
+    @@permissions = {}
+    @@owner = granting_user if !defined? @@owner
+  end
+
+  def owner
+    @@owner
+  end
+
+  def set_logger(new_logger)
+    raise TypeError.new('PermManager requires a kind_of logger instance') if !new_logger.kind_of?(Logger)
+    @logger = new_logger
   end
 
   def perms
-    return @@permissions
+    @@permissions
   end
 
   def root_perms(permission, affected_user)
