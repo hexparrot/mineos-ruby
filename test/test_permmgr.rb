@@ -1,4 +1,5 @@
 require 'minitest/autorun'
+require 'json'
 require_relative '../permmgr'
 
 class PermManagerTest < Minitest::Test
@@ -57,5 +58,45 @@ class PermManagerTest < Minitest::Test
 
     assert(inst.perms[:root].grantor?('plain:user'))
     assert(!inst.perms[:root].grantor?('plain:follower'))
+  end
+
+  def test_incremental_granting_of_root_permissions
+    inst = PermManager.new('plain:user')
+
+    assert(inst.perms[:root].grantor?('plain:user'))
+    assert(!inst.perms[:root].test_permission('plain:user', 'mkgrantor'))
+    assert(!inst.perms[:root].test_permission('plain:user', 'rmgrantor'))
+    assert(!inst.perms[:root].test_permission('plain:user', 'grantall'))
+    assert(!inst.perms[:root].test_permission('plain:user', 'revokeall'))
+    # plain:user is owner and grantor? but not granted everything
+    # can self-grant, though, because owner can do that.
+
+    assert(!inst.perms[:root].test_permission('plain:user', 'mkgrantor'))
+    assert(!inst.perms[:root].test_permission('plain:user', 'rmgrantor'))
+    assert(!inst.perms[:root].test_permission('plain:user', 'grantall'))
+    assert(!inst.perms[:root].test_permission('plain:user', 'revokeall'))
+
+    assert(!inst.perms[:root].test_permission('plain:user', 'mkpool'))
+    assert(!inst.perms[:root].test_permission('plain:user', 'rmpool'))
+    assert(!inst.perms[:root].test_permission('plain:user', 'spawnpool'))
+    assert(!inst.perms[:root].test_permission('plain:user', 'despawnpool'))
+    
+    cmd = { hostname: 'ruby-worker',
+            workerpool: 'newpool',
+            root_cmd: 'mkpool' }.to_json
+
+    inst.root_command(JSON.parse cmd)
+    assert_equal("PERMS: mkpool by plain:user@newpool: FAIL", inst.logs.pop.message)
+
+    inst.root_perms('grantall', 'plain:user')
+    inst.root_command(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal('newpool', amqp_data[:MKPOOL][:workerpool])
+      assert_equal('managers.ruby-worker', rk)
+    }
+
+    assert_equal("PERMS: plain:user granting `root`:all to plain:user", inst.logs.shift.message)
+    assert_equal("PERMS: (:all) mkpool, rmpool, spawn, despawn", inst.logs.shift.message)
+    assert_equal("PERMS: CREATED PERMSCREEN `newpool => managers.ruby-worker`", inst.logs.shift.message)
+    assert_equal("MANAGER: MKPOOL `newpool => managers.ruby-worker`", inst.logs.shift.message)
   end
 end
