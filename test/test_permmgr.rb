@@ -11,19 +11,20 @@ class PermManagerTest < Minitest::Test
 
   def test_create_permmgr
     inst = PermManager.new('plain:user')
-    assert_equal('plain:user', inst.grantor)
+    assert_equal('plain:user', inst.granting_user)
     assert_equal('plain:user', inst.owner)
-    assert_equal({}, inst.perms)
+    assert('plain:user', inst.perms[:root].owner)
   end
 
   def test_owner_is_shared
     inst = PermManager.new('plain:user')
     inst2 = PermManager.new('plain:user2')
 
-    assert_equal('plain:user', inst.grantor)
+    assert_equal('plain:user', inst.granting_user)
     assert_equal('plain:user', inst.owner)
-    assert_equal('plain:user2', inst2.grantor)
+    assert_equal('plain:user2', inst2.granting_user)
     assert_equal('plain:user', inst2.owner)
+    assert_equal(inst.owner, inst2.owner)
   end
 
   def test_set_logger
@@ -38,5 +39,13 @@ class PermManagerTest < Minitest::Test
 
     ex = assert_raises(TypeError) { inst.set_logger({}) }
     assert_equal('PermManager requires a kind_of logger instance', ex.message)
+  end
+
+  def test_only_owner_can_grant_at_start
+    inst = PermManager.new('plain:user')
+    inst2 = PermManager.new('plain:follower')
+
+    assert(inst.perms[:root].grantor?('plain:user'))
+    assert(!inst.perms[:root].grantor?('plain:follower'))
   end
 end
