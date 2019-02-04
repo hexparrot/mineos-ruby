@@ -220,13 +220,37 @@ class HQ < Sinatra::Base
           end
         else
           if body_parameters.key?('alt_cmd') then
-            perm_mgr.server_command(body_parameters)
+            perm_mgr.server_command(body_parameters) { |params, rk|
+              exchange.publish(params.to_json,
+                               :routing_key => rk,
+                               :type => "command",
+                               :message_id => SecureRandom.uuid,
+                               :timestamp => Time.now.to_i)
+            }
           elsif body_parameters.key?('root_cmd') then
-            perm_mgr.root_command(body_parameters)
+            perm_mgr.root_command(body_parameters) { |params, rk|
+              exchange.publish(params.to_json,
+                               :routing_key => rk,
+                               :type => "directive",
+                               :message_id => SecureRandom.uuid,
+                               :timestamp => Time.now.to_i)
+            }
           elsif body_parameters.key?('pool_cmd') then
-            perm_mgr.pool_command(body_parameters)
+            perm_mgr.pool_command(body_parameters) { |params, rk|
+              exchange.publish(params.to_json,
+                               :routing_key => rk,
+                               :type => "command",
+                               :message_id => SecureRandom.uuid,
+                               :timestamp => Time.now.to_i)
+            }
           elsif body_parameters.key?('server_cmd') then
-            perm_mgr.server_command(body_parameters)
+            perm_mgr.server_command(body_parameters) { |params, rk|
+              exchange.publish(params.to_json,
+                               :routing_key => rk,
+                               :type => "command",
+                               :message_id => SecureRandom.uuid,
+                               :timestamp => Time.now.to_i)
+            }
           end
         end
       end # ws.onmessage

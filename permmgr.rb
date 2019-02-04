@@ -1,5 +1,3 @@
-require 'securerandom'
-
 class PermManagement
   def initialize(granting_user, logger_obj: nil, owner: nil)
     @grantor = granting_user
@@ -190,16 +188,7 @@ class PermManagement
       params['cmd'] = params.delete('server_cmd')
       @@logger.info("PERMS: #{command} by #{@grantor}@#{fqdn}: OK")
 
-      uuid = SecureRandom.uuid
-      #promises[uuid] = Proc.new { |status_code, retval|
-      #  ws.send(retval)
-      #}
-
-      #exchange.publish(params.to_json,
-      #                 :routing_key => worker_routing_key,
-      #                 :type => "command",
-      #                 :message_id => uuid,
-      #                 :timestamp => Time.now.to_i)
+      yield(params, worker_routing_key)
       @@logger.info("POOL: Forwarded command `#{worker_routing_key}`")
       @@logger.debug(params)
     else
@@ -231,11 +220,6 @@ class PermManagement
     if @@permissions[fqdn].test_permission(@grantor, command) then
       @@logger.info("PERMS: #{command} by #{@grantor}@#{fqdn}: OK")
 
-      uuid = SecureRandom.uuid
-      #promises[uuid] = Proc.new { |status_code, retval|
-      #  ws.send(retval)
-      #}
-
       worker_routing_key = "workers.#{hostname}.#{workerpool}"
       servername = params.fetch('server_name')
       params['cmd'] = params.delete('pool_cmd')
@@ -247,7 +231,6 @@ class PermManagement
           @@logger.error("POOL: Server already exists, #{command} ignored: `#{server_fqdn}`")
           return
         end
-
         perm_obj = Permissions.new(@grantor)
         perm_obj.hostname = hostname
         perm_obj.workerpool = workerpool
@@ -255,11 +238,7 @@ class PermManagement
         perm_obj.grant(@grantor, :all)
         @@permissions[server_fqdn] = perm_obj
 
-        #exchange.publish(params.to_json,
-        #                 :routing_key => worker_routing_key,
-        #                 :type => "command",
-        #                 :message_id => uuid,
-        #                 :timestamp => Time.now.to_i)
+        yield(params, worker_routing_key)
         @@logger.info("POOL: CREATE SERVER `#{servername} => #{worker_routing_key}`")
       when 'delete'
         if !@@permissions[server_fqdn] then #early exit
@@ -268,97 +247,76 @@ class PermManagement
         end
         @@permissions.delete(server_fqdn)
 
-          #exchange.publish(params.to_json,
-          #                 :routing_key => worker_routing_key,
-          #                 :type => "command",
-          #                 :message_id => uuid,
-          #                 :timestamp => Time.now.to_i)
-          @@logger.info("POOL: DELETE SERVER `#{servername} => #{worker_routing_key}`")
-        end
+        yield(params, worker_routing_key)
+        @@logger.info("POOL: DELETE SERVER `#{servername} => #{worker_routing_key}`")
       else
         @@logger.info("PERMS: #{command} by #{@grantor}@#{fqdn}: FAIL")
       end
     end
+  end
 
-    def root_command(params)
-      hostname = params.delete('hostname')
-      manager_routing_key = "managers.#{hostname}"
+  def root_command(params)
+    hostname = params.delete('hostname')
+    manager_routing_key = "managers.#{hostname}"
 
-      workerpool = params.fetch('workerpool')
-      command = params.fetch('root_cmd')
-      pool_fqdn = "#{hostname}.#{workerpool}"
+    workerpool = params.fetch('workerpool')
+    command = params.fetch('root_cmd')
+    pool_fqdn = "#{hostname}.#{workerpool}"
 
-      #if !@@satellites[:managers].include?(manager_routing_key) then
-      #  @@logger.error("MANAGER: Unregistered manager addressed `#{@grantor} => #{manager_routing_key}`")
-      #  next
-      #end
+    #if !@@satellites[:managers].include?(manager_routing_key) then
+    #  @@logger.error("MANAGER: Unregistered manager addressed `#{@grantor} => #{manager_routing_key}`")
+    #  next
+    #end
 
-      if !@@permissions[:root].test_permission(@grantor, command) then
-        @@logger.warn("PERMS: #{command} by #{@grantor}@#{workerpool}: FAIL")
+    if !@@permissions[:root].test_permission(@grantor, command) then
+      @@logger.warn("PERMS: #{command} by #{@grantor}@#{workerpool}: FAIL")
+      return
+    end
+
+    case command
+    when 'mkpool'
+      begin
+        if @@permissions.fetch(pool_fqdn) then
+          @@logger.error("POOL: Pool already exists: #{command} ignored `#{pool_fqdn}`")
+          return
+        end
+      rescue KeyError
+        perm_obj = Permissions.new(@grantor)
+        perm_obj.hostname = hostname
+        perm_obj.workerpool = workerpool
+        perm_obj.grant(@grantor, :all)
+        @@permissions[pool_fqdn] = perm_obj
+        @@logger.info("PERMS: CREATED PERMSCREEN `#{workerpool} => #{manager_routing_key}`")
+      end
+
+      yield({ MKPOOL: {workerpool: workerpool} }, manager_routing_key)
+      @@logger.info("MANAGER: MKPOOL `#{workerpool} => #{manager_routing_key}`")
+    when 'rmpool'
+      begin
+        @@permissions.fetch(pool_fqdn)
+      rescue KeyError
+        @@logger.warn("PERMS: NO EXISTING PERMSCREEN `#{workerpool} => #{manager_routing_key}` - NOOP")
         return
       end
 
-      uuid = SecureRandom.uuid
-      #promises[uuid] = Proc.new { |status_code, retval|
-      #  ws.send(retval)
-      #}
+      @@permissions.delete(pool_fqdn)
+      @@logger.info("POOL: DELETED PERMSCREEN`#{workerpool} => #{manager_routing_key}`")
 
-      case command
-      when 'mkpool'
-        begin
-          if @@permissions.fetch(pool_fqdn) then
-            @@logger.error("POOL: Pool already exists: #{command} ignored `#{pool_fqdn}`")
-            return
-          end
-        rescue KeyError
-          perm_obj = Permissions.new(@grantor)
-          perm_obj.hostname = hostname
-          perm_obj.workerpool = workerpool
-          perm_obj.grant(@grantor, :all)
-          @@permissions[pool_fqdn] = perm_obj
-          @@logger.info("PERMS: CREATED PERMSCREEN `#{workerpool} => #{manager_routing_key}`")
-        end
+      yield({ REMOVE: {workerpool: workerpool} }, manager_routing_key)
+      @@logger.info("POOL: DELETED `#{workerpool} => #{manager_routing_key}`")
+    when 'spawnpool'
+      begin
+        @@permissions.fetch(pool_fqdn)
+      rescue KeyError
+        @@logger.error("POOL: Cannot spawn worker in non-existent pool `#{pool_fqdn}`")
+        return
+      end
 
-        #exchange.publish({ MKPOOL: {workerpool: workerpool} }.to_json,
-        #                 :routing_key => manager_routing_key,
-        #                 :type => "directive",
-        #                 :message_id => uuid,
-        #                 :timestamp => Time.now.to_i)
-        @@logger.info("MANAGER: MKPOOL `#{workerpool} => #{manager_routing_key}`")
-      when 'rmpool'
-        begin
-          @@permissions.fetch(pool_fqdn)
-        rescue KeyError
-          @@logger.warn("PERMS: NO EXISTING PERMSCREEN `#{workerpool} => #{manager_routing_key}` - NOOP")
-          return
-        end
-
-        @@permissions.delete(pool_fqdn)
-        @@logger.info("POOL: DELETED PERMSCREEN`#{workerpool} => #{manager_routing_key}`")
-
-        #exchange.publish({ REMOVE: {workerpool: workerpool} }.to_json,
-        #                 :routing_key => manager_routing_key,
-        #                 :type => "directive",
-        #                 :message_id => uuid,
-        #                 :timestamp => Time.now.to_i)
-        @@logger.info("POOL: DELETED `#{workerpool} => #{manager_routing_key}`")
-      when 'spawnpool'
-        begin
-          @@permissions.fetch(pool_fqdn)
-        rescue KeyError
-          @@logger.error("POOL: Cannot spawn worker in non-existent pool `#{pool_fqdn}`")
-          return
-        end
-
-        #exchange.publish({ SPAWN: {workerpool: workerpool} }.to_json,
-        #                 :routing_key => manager_routing_key,
-        #                 :type => "directive",
-        #                 :message_id => uuid,
-        #                 :timestamp => Time.now.to_i)
+      yield({ SPAWN: {workerpool: workerpool} }, manager_routing_key)
       @@logger.info("MANAGER: SPAWNED POOL `#{workerpool} => #{manager_routing_key}`")
     when 'despawnpool'
       #not yet implemented
     end
   end
-
 end
+
