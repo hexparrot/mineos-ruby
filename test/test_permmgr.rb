@@ -220,5 +220,133 @@ class PermManagerTest < Minitest::Test
     assert_equal("PERMS: create by #{user2}@#{@hostname}.#{@workerpool}: OK", inst2.logs.shift.message)
     assert_equal("POOL: CREATE SERVER `#{servername} => workers.#{@hostname}.#{@workerpool}`", inst2.logs.shift.message)
   end
+
+  def test_incremental_granting_of_server_permissions
+    user = 'plain:user'
+    inst = PermManager.new(user)
+
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            root_cmd: 'mkpool' }.to_json
+
+    inst.root_perms('grantall', user)
+    inst.root_command(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal(@workerpool, amqp_data[:MKPOOL][:workerpool])
+      assert_equal("managers.#{@hostname}", rk)
+    }
+
+    inst.logs.clear # from root_command, not needing to be tested here
+    pool_fqdn = "#{@hostname}.#{@workerpool}"
+
+    # not a grantor, but can still create and delete
+    assert(inst.perms[pool_fqdn].grantor?(user))
+    assert(inst.perms[pool_fqdn].test_permission(user, 'create'))
+    assert(inst.perms[pool_fqdn].test_permission(user, 'delete'))
+
+    inst.pool_perms('grantall', user, pool_fqdn)
+
+    servername = 'testx'
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            server_name: servername,
+            pool_cmd: 'create' }.to_json
+
+    inst.pool_command(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal(servername, amqp_data["server_name"])
+      assert_equal("workers.#{@hostname}.#{@workerpool}", rk)
+    }
+
+    inst.logs.clear # from pool_command, not needing to be tested here
+    server_fqdn = "#{@hostname}.#{@workerpool}.#{servername}"
+    inst.server_perms('grantall', user, server_fqdn)
+
+    assert_equal("PERMS: #{user} granting #{user} on `#{@hostname}.#{@workerpool}.#{servername}`:all", inst.logs.shift.message)
+    assert_equal("PERMS: (:all) start, stop, etc.", inst.logs.shift.message)
+
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            server_name: servername,
+            server_cmd: "modify_sc",
+            section: "java",
+            attr: "java_xmx",
+            value: 512 }.to_json
+
+    inst.server_command(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal(servername, amqp_data["server_name"])
+      assert_equal("workers.#{@hostname}.#{@workerpool}", rk)
+    }
+
+    worker_routing_key = "workers.#{@hostname}.#{@workerpool}"
+
+    assert_equal("PERMS: modify_sc by #{user}@#{@hostname}.#{@workerpool}.#{servername}: OK", inst.logs.shift.message)
+    assert_equal("HQ: Forwarded command `#{worker_routing_key}`", inst.logs.shift.message)
+  end
+
+  def test_incremental_granting_of_server_permissions_for_non_owner
+    user = 'plain:user'
+    inst = PermManager.new(user)
+    user2 = 'plain:user2'
+    inst2 = PermManager.new(user2)
+
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            root_cmd: 'mkpool' }.to_json
+
+    inst.root_perms('grantall', user)
+    inst.root_command(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal(@workerpool, amqp_data[:MKPOOL][:workerpool])
+      assert_equal("managers.#{@hostname}", rk)
+    }
+
+    inst.logs.clear # from root_command, not needing to be tested here
+    pool_fqdn = "#{@hostname}.#{@workerpool}"
+
+    assert(!inst.perms[pool_fqdn].grantor?(user2))
+    assert(!inst.perms[pool_fqdn].test_permission(user2, 'create'))
+    assert(!inst.perms[pool_fqdn].test_permission(user2, 'delete'))
+
+    inst.pool_perms('grantall', user, pool_fqdn)
+
+    assert(!inst.perms[pool_fqdn].grantor?(user2))
+    assert(!inst.perms[pool_fqdn].test_permission(user2, 'create'))
+    assert(!inst.perms[pool_fqdn].test_permission(user2, 'delete'))
+
+    servername = 'testx'
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            server_name: servername,
+            pool_cmd: 'create' }.to_json
+
+    inst.pool_command(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal(servername, amqp_data["server_name"])
+      assert_equal("workers.#{@hostname}.#{@workerpool}", rk)
+    }
+
+    inst.logs.clear # from pool_command, not needing to be tested here
+
+    #user2 not given any permissions until here, giving server-level
+    server_fqdn = "#{@hostname}.#{@workerpool}.#{servername}"
+    inst.server_perms('grantall', user2, server_fqdn)
+    assert_equal("PERMS: #{user} granting #{user2} on `#{@hostname}.#{@workerpool}.#{servername}`:all", inst.logs.shift.message)
+    assert_equal("PERMS: (:all) start, stop, etc.", inst.logs.shift.message)
+
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            server_name: servername,
+            server_cmd: "modify_sc",
+            section: "java",
+            attr: "java_xmx",
+            value: 512 }.to_json
+
+    inst2.server_command(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal(servername, amqp_data["server_name"])
+      assert_equal("workers.#{@hostname}.#{@workerpool}", rk)
+    }
+
+    worker_routing_key = "workers.#{@hostname}.#{@workerpool}"
+
+    assert_equal("PERMS: modify_sc by #{user2}@#{@hostname}.#{@workerpool}.#{servername}: OK", inst2.logs.shift.message)
+    assert_equal("HQ: Forwarded command `#{worker_routing_key}`", inst2.logs.shift.message)
+  end
 end
 
