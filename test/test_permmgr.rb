@@ -447,5 +447,53 @@ class PermManagerTest < Minitest::Test
     assert(inst3.perms[:root].test_permission(user3, 'spawnpool'))
     assert(inst3.perms[:root].test_permission(user3, 'despawnpool'))
   end
+
+  def test_all_pool_perms
+    user = 'plain:user'
+    inst = PermManager.new(user)
+    user2 = 'plain:user2'
+    inst2 = PermManager.new(user2)
+    user3 = 'plain:user3'
+    inst3 = PermManager.new(user3)
+
+    # user2 made grantor, user3 given :all from user2
+    inst.root_perms('mkgrantor', user2)
+    inst2.root_perms('grantall', user3)
+    assert(inst.perms[:root].grantor?(user2))
+    assert(!inst.perms[:root].grantor?(user3))
+    assert(inst2.perms[:root].grantor?(user2))
+    assert(!inst2.perms[:root].grantor?(user3))
+    assert(inst3.perms[:root].grantor?(user2))
+    assert(!inst3.perms[:root].grantor?(user3))
+    # all three should report the same :root perms
+   
+    inst.logs.clear
+    inst2.logs.clear
+    inst3.logs.clear
+
+    assert(inst3.perms[:root].test_permission(user3, 'mkpool'))
+    assert(inst3.perms[:root].test_permission(user3, 'rmpool'))
+    assert(inst3.perms[:root].test_permission(user3, 'spawnpool'))
+    assert(inst3.perms[:root].test_permission(user3, 'despawnpool'))
+
+    ['mkgrantor', 'rmgrantor', 'grantall', 'revokeall'].each { |action|
+      inst3.root_perms(action, user2)
+      assert_equal("#{user3} is not a root:grantor. #{action} not granted to #{user2}", inst3.logs.shift.message)
+    }
+
+    # and then user2 takes it away from user3
+    inst2.root_perms('revokeall', user3)
+
+    assert(!inst3.perms[:root].test_permission(user3, 'mkpool'))
+    assert(!inst3.perms[:root].test_permission(user3, 'rmpool'))
+    assert(!inst3.perms[:root].test_permission(user3, 'spawnpool'))
+    assert(!inst3.perms[:root].test_permission(user3, 'despawnpool'))
+
+    # user2 still good though!
+    assert(!inst2.perms[:root].test_permission(user2, 'mkpool'))
+    assert(!inst2.perms[:root].test_permission(user2, 'rmpool'))
+    assert(!inst2.perms[:root].test_permission(user2, 'spawnpool'))
+    assert(!inst2.perms[:root].test_permission(user2, 'despawnpool'))
+  end
 end
 
