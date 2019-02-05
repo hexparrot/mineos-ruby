@@ -39,7 +39,7 @@ class PermManager
   def root_perms(permission, affected_user)
     if !@@permissions[:root].grantor?(@granting_user) then
       fork_log :warn, "#{@granting_user} is not a root:grantor. #{permission} not granted to #{affected_user}"
-      return
+      return false
     end
 
     case permission
@@ -62,7 +62,10 @@ class PermManager
       @@permissions[:root].revoke(affected_user, :all)
       fork_log :info, "PERMS: #{@granting_user} revoking `root`:all from #{affected_user}" 
       fork_log :info, "PERMS: (:all) mkpool, rmpool, spawn, despawn"
+    else
+      return false
     end
+    true
   end
 
   def pool_perms(permission, affected_user, fqdn)

@@ -377,16 +377,14 @@ class PermManagerTest < Minitest::Test
       cmd[:root_cmd] = action
 
       jsoned = cmd.to_json
-      inst.root_command(JSON.parse jsoned)
-      assert_equal("PERMS: #{action} by #{user}@#{@workerpool}: FAIL", inst.logs.shift.message)
+      assert(!inst.root_command(JSON.parse jsoned))
     }
 
     ['mkpool', 'rmpool', 'spawnpool', 'despawnpool'].each { |action|
       cmd[:root_cmd] = action
 
       jsoned = cmd.to_json
-      inst2.root_command(JSON.parse jsoned)
-      assert_equal("PERMS: #{action} by #{user2}@#{@workerpool}: FAIL", inst2.logs.shift.message)
+      assert(!inst2.root_command(JSON.parse jsoned))
     }
 
     assert(!inst2.perms[:root].grantor?(user2))
@@ -416,8 +414,7 @@ class PermManagerTest < Minitest::Test
     inst2.logs.clear
 
     ['mkgrantor', 'rmgrantor', 'grantall', 'revokeall'].each { |action|
-      inst2.root_perms(action, user)
-      assert_equal("#{user2} is not a root:grantor. #{action} not granted to #{user}", inst2.logs.shift.message)
+      assert(!inst2.root_perms(action, user))
     }
     # end of that test
 
@@ -434,13 +431,10 @@ class PermManagerTest < Minitest::Test
 
     # user giving mkpool/rmpool to user2
     inst.logs.clear
-    inst.root_perms('mkgrantor', user2)
-    assert_equal("PERMS: #{user} promoting #{user2} to `root`:grantor", inst.logs.shift.message)
+    assert(inst.root_perms('mkgrantor', user2))
 
     # user2 giving mkpool/rmpool to user3
-    inst2.root_perms('grantall', user3)
-    assert_equal("PERMS: #{user2} granting `root`:all to #{user3}", inst2.logs.shift.message)
-    assert_equal("PERMS: (:all) mkpool, rmpool, spawn, despawn", inst2.logs.shift.message)
+    assert(inst2.root_perms('grantall', user3))
 
     assert(inst3.perms[:root].test_permission(user3, 'mkpool'))
     assert(inst3.perms[:root].test_permission(user3, 'rmpool'))
@@ -448,7 +442,7 @@ class PermManagerTest < Minitest::Test
     assert(inst3.perms[:root].test_permission(user3, 'despawnpool'))
   end
 
-  def test_all_pool_perms
+  def test_chaining_all_root_perm_cmds
     user = 'plain:user'
     inst = PermManager.new(user)
     user2 = 'plain:user2'
@@ -477,9 +471,9 @@ class PermManagerTest < Minitest::Test
     assert(inst3.perms[:root].test_permission(user3, 'despawnpool'))
 
     ['mkgrantor', 'rmgrantor', 'grantall', 'revokeall'].each { |action|
-      inst3.root_perms(action, user2)
-      assert_equal("#{user3} is not a root:grantor. #{action} not granted to #{user2}", inst3.logs.shift.message)
+      assert(!inst3.root_perms(action, user2))
     }
+    assert(!inst3.root_perms('madeup', user2))
 
     # and then user2 takes it away from user3
     inst2.root_perms('revokeall', user3)
