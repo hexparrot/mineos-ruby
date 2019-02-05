@@ -84,7 +84,7 @@ class PermManagerTest < Minitest::Test
             root_cmd: 'mkpool' }.to_json
 
     inst.root_command(JSON.parse cmd)
-    assert_equal("PERMS: mkpool by #{user}@#{@workerpool}: FAIL", inst.logs.pop.message)
+    assert_equal("PERMS: mkpool by #{user}@#{@workerpool}: FAIL", inst.logs.shift.message)
 
     inst.root_perms('grantall', user)
     inst.root_command(JSON.parse(cmd)) { |amqp_data, rk|
@@ -120,7 +120,7 @@ class PermManagerTest < Minitest::Test
             root_cmd: 'mkpool' }.to_json
 
     inst2.root_command(JSON.parse cmd)
-    assert_equal("PERMS: mkpool by #{user2}@#{@workerpool}: FAIL", inst2.logs.pop.message)
+    assert_equal("PERMS: mkpool by #{user2}@#{@workerpool}: FAIL", inst2.logs.shift.message)
 
     inst.root_perms('grantall', user2)
     inst2.root_command(JSON.parse(cmd)) { |amqp_data, rk|
@@ -347,6 +347,105 @@ class PermManagerTest < Minitest::Test
 
     assert_equal("PERMS: modify_sc by #{user2}@#{@hostname}.#{@workerpool}.#{servername}: OK", inst2.logs.shift.message)
     assert_equal("HQ: Forwarded command `#{worker_routing_key}`", inst2.logs.shift.message)
+  end
+
+  def test_all_root_perms
+    user = 'plain:user'
+    inst = PermManager.new(user)
+    user2 = 'plain:user2'
+    inst2 = PermManager.new(user2)
+    user3 = 'plain:user3'
+    inst3 = PermManager.new(user3)
+
+    # root is grantor, but otherwise shouldn't be able to do anything.
+    assert(inst.perms[:root].grantor?(user))
+    assert(!inst.perms[:root].test_permission(user, 'mkgrantor'))
+    assert(!inst.perms[:root].test_permission(user, 'rmgrantor'))
+    assert(!inst.perms[:root].test_permission(user, 'grantall'))
+    assert(!inst.perms[:root].test_permission(user, 'revokeall'))
+    # plain:user is owner and grantor? but not granted everything
+    # can self-grant, though, because owner can do that.
+
+    assert(!inst.perms[:root].test_permission(user, 'mkpool'))
+    assert(!inst.perms[:root].test_permission(user, 'rmpool'))
+    assert(!inst.perms[:root].test_permission(user, 'spawnpool'))
+    assert(!inst.perms[:root].test_permission(user, 'despawnpool'))
+
+    cmd = { hostname: @hostname, workerpool: @workerpool }
+
+    ['mkpool', 'rmpool', 'spawnpool', 'despawnpool'].each { |action|
+      cmd[:root_cmd] = action
+
+      jsoned = cmd.to_json
+      inst.root_command(JSON.parse jsoned)
+      assert_equal("PERMS: #{action} by #{user}@#{@workerpool}: FAIL", inst.logs.shift.message)
+    }
+
+    ['mkpool', 'rmpool', 'spawnpool', 'despawnpool'].each { |action|
+      cmd[:root_cmd] = action
+
+      jsoned = cmd.to_json
+      inst2.root_command(JSON.parse jsoned)
+      assert_equal("PERMS: #{action} by #{user2}@#{@workerpool}: FAIL", inst2.logs.shift.message)
+    }
+
+    assert(!inst2.perms[:root].grantor?(user2))
+    assert(!inst2.perms[:root].test_permission(user2, 'mkgrantor'))
+    assert(!inst2.perms[:root].test_permission(user2, 'rmgrantor'))
+    assert(!inst2.perms[:root].test_permission(user2, 'grantall'))
+    assert(!inst2.perms[:root].test_permission(user2, 'revokeall'))
+
+    assert(!inst2.perms[:root].test_permission(user2, 'mkpool'))
+    assert(!inst2.perms[:root].test_permission(user2, 'rmpool'))
+    assert(!inst2.perms[:root].test_permission(user2, 'spawnpool'))
+    assert(!inst2.perms[:root].test_permission(user2, 'despawnpool'))
+
+    #grantall to user2 now from user@inst
+    inst.root_perms('grantall', user2)
+    assert(!inst2.perms[:root].grantor?(user2))
+
+    # user2 has permissions that pass...because :all
+    # however, grants aren't tested via test_permission, so
+    # test_permission also will pass for 'madeup'
+    assert(inst2.perms[:root].test_permission(user2, 'mkgrantor'))
+    assert(inst2.perms[:root].test_permission(user2, 'rmgrantor'))
+    assert(inst2.perms[:root].test_permission(user2, 'grantall'))
+    assert(inst2.perms[:root].test_permission(user2, 'revokeall'))
+    assert(inst2.perms[:root].test_permission(user2, 'madeup'))
+    # and now to test the actual granting permissions...
+    inst2.logs.clear
+
+    ['mkgrantor', 'rmgrantor', 'grantall', 'revokeall'].each { |action|
+      inst2.root_perms(action, user)
+      assert_equal("#{user2} is not a root:grantor. #{action} not granted to #{user}", inst2.logs.shift.message)
+    }
+    # end of that test
+
+    assert(inst2.perms[:root].test_permission(user2, 'mkpool'))
+    assert(inst2.perms[:root].test_permission(user2, 'rmpool'))
+    assert(inst2.perms[:root].test_permission(user2, 'spawnpool'))
+    assert(inst2.perms[:root].test_permission(user2, 'despawnpool'))
+
+    # and again because of owner (but not grantor)
+    assert(!inst.perms[:root].test_permission(user, 'mkpool'))
+    assert(!inst.perms[:root].test_permission(user, 'rmpool'))
+    assert(!inst.perms[:root].test_permission(user, 'spawnpool'))
+    assert(!inst.perms[:root].test_permission(user, 'despawnpool'))
+
+    # user giving mkpool/rmpool to user2
+    inst.logs.clear
+    inst.root_perms('mkgrantor', user2)
+    assert_equal("PERMS: #{user} promoting #{user2} to `root`:grantor", inst.logs.shift.message)
+
+    # user2 giving mkpool/rmpool to user3
+    inst2.root_perms('grantall', user3)
+    assert_equal("PERMS: #{user2} granting `root`:all to #{user3}", inst2.logs.shift.message)
+    assert_equal("PERMS: (:all) mkpool, rmpool, spawn, despawn", inst2.logs.shift.message)
+
+    assert(inst3.perms[:root].test_permission(user3, 'mkpool'))
+    assert(inst3.perms[:root].test_permission(user3, 'rmpool'))
+    assert(inst3.perms[:root].test_permission(user3, 'spawnpool'))
+    assert(inst3.perms[:root].test_permission(user3, 'despawnpool'))
   end
 end
 
