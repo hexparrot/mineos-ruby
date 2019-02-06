@@ -489,5 +489,40 @@ class PermManagerTest < Minitest::Test
     assert(!inst2.perms[:root].test_permission(user2, 'spawnpool'))
     assert(!inst2.perms[:root].test_permission(user2, 'despawnpool'))
   end
+
+  def test_chaining_all_pool_perms
+    user = 'plain:user'
+    inst = PermManager.new(user)
+    user2 = 'plain:user2'
+    inst2 = PermManager.new(user2)
+
+    # user 2 is a grantor/:all for :root
+    inst.root_perms('mkgrantor', user2)
+    inst.root_perms('grantall', user2)
+
+    cmd = { hostname: @hostname, workerpool: @workerpool, root_cmd: 'mkpool' }
+    jsoned = cmd.to_json
+    assert(!inst.root_command(JSON.parse jsoned)) #inst
+
+    inst2.root_command(JSON.parse jsoned) { |amqp_data, rk| #inst2
+      assert_equal(@workerpool, amqp_data[:MKPOOL][:workerpool])
+      assert_equal("managers.#{@hostname}", rk)
+    }
+    pool_fqdn = "#{@hostname}.#{@workerpool}"
+
+    assert(inst.perms[pool_fqdn].grantor?(user2)) # is created and is grantor
+    assert(inst.perms[pool_fqdn].test_permission(user2, 'create'))
+    assert(inst.perms[pool_fqdn].test_permission(user2, 'delete'))
+
+    servername = 'testx'
+    cmd = { hostname: @hostname, workerpool: @workerpool,
+            server_name: servername, pool_cmd: 'create' }
+    jsoned = cmd.to_json
+    inst2.pool_command(JSON.parse jsoned) { |amqp_data, rk|
+      assert_equal(servername, amqp_data['server_name'])
+      assert_equal('create', amqp_data['cmd'])
+      assert_equal("workers.#{@hostname}.#{@workerpool}", rk)
+    }
+  end
 end
 
