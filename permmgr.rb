@@ -73,7 +73,7 @@ class PermManager
     true
   end
 
-  def pool_perms(permission, affected_user, fqdn)
+  def cast_pool_perm!(permission, affected_user, fqdn)
     # Permissions within:
     # * create server
     # * delete server
@@ -226,7 +226,7 @@ class PermManager
   end
 
 
-  def pool_command(params)
+  def pool_exec_cmd!(params)
     hostname = params.delete('hostname')
     workerpool = params.delete('workerpool')
     manager_routing_key = "managers.#{hostname}"
@@ -242,8 +242,6 @@ class PermManager
     end
 
     if @@permissions[fqdn].test_permission(@granting_user, command) then
-      fork_log :info, "PERMS: #{command} by #{@granting_user}@#{fqdn}: OK"
-
       worker_routing_key = "workers.#{hostname}.#{workerpool}"
       servername = params.fetch('server_name')
       params['cmd'] = params.delete('pool_cmd')
@@ -252,7 +250,8 @@ class PermManager
       case command
       when 'create'
         if @@permissions[server_fqdn] then #early exit
-          fork_log :error, "POOL: Server already exists, #{command} ignored: `#{server_fqdn}`"
+          fork_log :error, "POOL: {#{@granting_user}} create_server(#{hostname}.#{workerpool}.#{servername}): FAIL"
+          fork_log :error, "POOL: [NOOP:server already exists] create_server(#{hostname}.#{workerpool}.#{servername})"
           return
         end
 
@@ -264,7 +263,7 @@ class PermManager
         @@permissions[server_fqdn] = perm_obj
 
         xmitted = yield(params, worker_routing_key)
-        fork_log :info, "POOL: CREATE SERVER `#{servername} => #{worker_routing_key}`" if xmitted
+        fork_log :info, "POOL: {#{@granting_user}} create_server(#{hostname}.#{workerpool}.#{servername}): OK" if xmitted
       when 'delete'
         if !@@permissions[server_fqdn] then #early exit
           fork_log :error, "POOL: Server doesn't exist, #{command} ignored: `#{server_fqdn}`"

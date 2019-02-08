@@ -153,6 +153,63 @@ class PermManagerTest < Minitest::Test
     assert_equal("POOL: [NOOP:pool doesn't exist] rmpool(#{@hostname}.#{@workerpool})", inst2.logs.shift.message)
   end
 
+  def test_create_pool_perms
+    owner = 'plain:owner'
+    inst = PermManager.new(owner)
+    creator = 'plain:creator'
+    inst2 = PermManager.new(creator)
+    user = 'plain:user'
+    inst3 = PermManager.new(user)
+    
+    assert(inst.cast_root_perm!('grantall', creator))
+
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            root_cmd: 'mkpool' }.to_json
+
+    inst2.root_exec_cmd!(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal(@workerpool, amqp_data[:MKPOOL][:workerpool])
+      assert_equal("managers.#{@hostname}", rk)
+    }
+    pool_fqdn = "#{@hostname}.#{@workerpool}"
+
+    assert(inst.perms[pool_fqdn].grantor?(creator))
+    assert(!inst.perms[pool_fqdn].grantor?(user))
+
+    assert(inst.perms[pool_fqdn].test_permission(creator, 'create'))
+    assert(inst.perms[pool_fqdn].test_permission(creator, 'delete'))
+    assert(!inst.perms[pool_fqdn].test_permission(user, 'create'))
+    assert(!inst.perms[pool_fqdn].test_permission(user, 'delete'))
+
+    assert(inst2.cast_pool_perm!('grantall', user, pool_fqdn))
+    inst2.logs.clear
+
+    servername = 'testx'
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            server_name: servername,
+            pool_cmd: 'create' }.to_json
+
+    success = inst2.pool_exec_cmd!(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal(servername, amqp_data["server_name"])
+      assert_equal("workers.#{@hostname}.#{@workerpool}", rk)
+    }
+    assert(success)
+    server_fqdn = "#{@hostname}.#{@workerpool}.#{servername}"
+
+    assert_equal("POOL: {#{creator}} create_server(#{@hostname}.#{@workerpool}.#{servername}): OK", inst2.logs.shift.message)
+
+    assert(inst.perms[server_fqdn].test_permission(creator, 'accept_eula'))
+    assert(inst.perms[server_fqdn].test_permission(creator, 'accept_eula'))
+    assert(!inst.perms[server_fqdn].test_permission(user, 'accept_eula'))
+    assert(!inst.perms[server_fqdn].test_permission(user, 'accept_eula'))
+
+    success = inst2.pool_exec_cmd!(JSON.parse(cmd)) {}
+    assert(!success)
+    assert_equal("POOL: {#{creator}} create_server(#{@hostname}.#{@workerpool}.#{servername}): FAIL", inst2.logs.shift.message)
+    assert_equal("POOL: [NOOP:server already exists] create_server(#{@hostname}.#{@workerpool}.#{servername})", inst2.logs.shift.message)
+  end
+
   def test_incremental_granting_of_root_permissions_for_non_owner
     user = 'plain:user'
     inst = PermManager.new(user)
