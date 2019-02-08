@@ -109,7 +109,10 @@ class PermManager
       @@permissions[fqdn].revoke(affected_user, :all)
       fork_log :info, "PERMS: #{@granting_user} revoking from #{affected_user} on `#{fqdn}`:all"
       fork_log :info, "PERMS: (:all) create, delete"
+    else
+      false
     end
+    true
   end
 
   def server_perms(permission, affected_user, fqdn)
@@ -243,8 +246,8 @@ class PermManager
 
     if @@permissions[fqdn].test_permission(@granting_user, command) then
       worker_routing_key = "workers.#{hostname}.#{workerpool}"
-      servername = params.fetch('server_name')
       params['cmd'] = params.delete('pool_cmd')
+      servername = params.fetch('server_name')
       server_fqdn = "#{hostname}.#{workerpool}.#{servername}"
 
       case command
@@ -266,16 +269,22 @@ class PermManager
         fork_log :info, "POOL: {#{@granting_user}} create_server(#{hostname}.#{workerpool}.#{servername}): OK" if xmitted
       when 'delete'
         if !@@permissions[server_fqdn] then #early exit
-          fork_log :error, "POOL: Server doesn't exist, #{command} ignored: `#{server_fqdn}`"
+          fork_log :error, "POOL: {#{@granting_user}} delete_server(#{hostname}.#{workerpool}.#{servername}): FAIL"
+          fork_log :error, "POOL: [NOOP:server doesn't exist] delete_server(#{hostname}.#{workerpool}.#{servername})"
           return
         end
         @@permissions.delete(server_fqdn)
 
         xmitted = yield(params, worker_routing_key)
-        fork_log :info, "POOL: DELETE SERVER `#{servername} => #{worker_routing_key}`" if xmitted
+        fork_log :info, "POOL: {#{@granting_user}} delete_server(#{hostname}.#{workerpool}.#{servername}): OK" if xmitted
+      else #case
+        false
       end
+      xmitted
     else
-      fork_log :info, "PERMS: #{command} by #{@granting_user}@#{fqdn}: FAIL"
+      servername = params.fetch('server_name')
+      fork_log :error, "POOL: {#{@granting_user}} delete_server(#{hostname}.#{workerpool}.#{servername}): FAIL"
+      false
     end
   end
 

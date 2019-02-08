@@ -176,12 +176,12 @@ class PermManagerTest < Minitest::Test
     assert(inst.perms[pool_fqdn].grantor?(creator))
     assert(!inst.perms[pool_fqdn].grantor?(user))
 
-    assert(inst.perms[pool_fqdn].test_permission(creator, 'create'))
-    assert(inst.perms[pool_fqdn].test_permission(creator, 'delete'))
-    assert(!inst.perms[pool_fqdn].test_permission(user, 'create'))
-    assert(!inst.perms[pool_fqdn].test_permission(user, 'delete'))
+    assert(inst2.perms[pool_fqdn].test_permission(creator, 'create'))
+    assert(inst2.perms[pool_fqdn].test_permission(creator, 'delete'))
+    assert(!inst3.perms[pool_fqdn].test_permission(user, 'create'))
+    assert(!inst3.perms[pool_fqdn].test_permission(user, 'delete'))
 
-    assert(inst2.cast_pool_perm!('grantall', user, pool_fqdn))
+    assert(inst2.cast_pool_perm!('grantall', creator, pool_fqdn))
     inst2.logs.clear
 
     servername = 'testx'
@@ -208,6 +208,28 @@ class PermManagerTest < Minitest::Test
     assert(!success)
     assert_equal("POOL: {#{creator}} create_server(#{@hostname}.#{@workerpool}.#{servername}): FAIL", inst2.logs.shift.message)
     assert_equal("POOL: [NOOP:server already exists] create_server(#{@hostname}.#{@workerpool}.#{servername})", inst2.logs.shift.message)
+
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            server_name: servername,
+            pool_cmd: 'delete' }.to_json
+
+    #delete from user (not creator) should fail
+    success = inst3.pool_exec_cmd!(JSON.parse(cmd)) {}
+    assert(!success)
+    assert_equal("POOL: {#{user}} delete_server(#{@hostname}.#{@workerpool}.#{servername}): FAIL", inst3.logs.shift.message)
+
+    success = inst2.pool_exec_cmd!(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal(servername, amqp_data["server_name"])
+      assert_equal("workers.#{@hostname}.#{@workerpool}", rk)
+    }
+    assert_equal("POOL: {#{creator}} delete_server(#{@hostname}.#{@workerpool}.#{servername}): OK", inst2.logs.shift.message)
+    assert(success)
+
+    success = inst2.pool_exec_cmd!(JSON.parse(cmd)) {}
+    assert(!success)
+    assert_equal("POOL: {#{creator}} delete_server(#{@hostname}.#{@workerpool}.#{servername}): FAIL", inst2.logs.shift.message)
+    assert_equal("POOL: [NOOP:server doesn't exist] delete_server(#{@hostname}.#{@workerpool}.#{servername})", inst2.logs.shift.message)
   end
 
   def test_incremental_granting_of_root_permissions_for_non_owner
