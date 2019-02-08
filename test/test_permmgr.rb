@@ -67,7 +67,7 @@ class PermManagerTest < Minitest::Test
     inst = PermManager.new(owner)
     user = 'plain:user2'
     inst2 = PermManager.new(user)
-    
+
     assert(inst.perms[:root].grantor?(owner))
     assert(inst2.perms[:root].grantor?(owner))
     assert(!inst.perms[:root].grantor?(user))
@@ -80,7 +80,7 @@ class PermManagerTest < Minitest::Test
     assert(!inst.perms[:root].test_permission(owner, 'spawnpool'))
     assert(!inst.perms[:root].test_permission(owner, 'despawnpool'))
     assert(!inst.perms[:root].test_permission(owner, 'fake'))
-      
+
     # inst/inst2 are equivalent when testing :root
     assert(!inst.perms[:root].test_permission(user, 'mkpool'))
     assert(!inst.perms[:root].test_permission(user, 'rmpool'))
@@ -130,7 +130,7 @@ class PermManagerTest < Minitest::Test
     assert_equal("PERMS: {#{user}} granted :all on (#{@hostname}.#{@workerpool})", inst2.logs.shift.message)
     assert_equal("PERMS: (:all) mkpool, rmpool, spawn, despawn", inst2.logs.shift.message)
     assert_equal("POOL: {#{user}} mkpool(#{@hostname}.#{@workerpool}): OK", inst2.logs.shift.message)
- 
+
     inst2.root_exec_cmd!(JSON.parse(cmd)) {}
     assert_equal("POOL: {#{user}} mkpool(#{@hostname}.#{@workerpool}): FAIL", inst2.logs.shift.message)
     assert_equal("POOL: [NOOP:pool already exists] mkpool(#{@hostname}.#{@workerpool})", inst2.logs.shift.message)
@@ -153,14 +153,15 @@ class PermManagerTest < Minitest::Test
     assert_equal("POOL: [NOOP:pool doesn't exist] rmpool(#{@hostname}.#{@workerpool})", inst2.logs.shift.message)
   end
 
-  def test_create_pool_perms
+  def test_executing_with_pool_perms
+    #folding both into this one, since only two perms within
     owner = 'plain:owner'
     inst = PermManager.new(owner)
     creator = 'plain:creator'
     inst2 = PermManager.new(creator)
     user = 'plain:user'
     inst3 = PermManager.new(user)
-    
+
     assert(inst.cast_root_perm!('grantall', creator))
 
     cmd = { hostname: @hostname,
@@ -248,7 +249,7 @@ class PermManagerTest < Minitest::Test
     assert(!inst.perms[:root].test_permission(user2, 'rmpool'))
     assert(!inst.perms[:root].test_permission(user2, 'spawnpool'))
     assert(!inst.perms[:root].test_permission(user2, 'despawnpool'))
-    
+
     cmd = { hostname: @hostname,
             workerpool: @workerpool,
             root_cmd: 'mkpool' }.to_json
@@ -594,7 +595,7 @@ class PermManagerTest < Minitest::Test
     assert(inst3.perms[:root].grantor?(user2))
     assert(!inst3.perms[:root].grantor?(user3))
     # all three should report the same :root perms
-   
+
     inst.logs.clear
     inst2.logs.clear
     inst3.logs.clear
@@ -681,7 +682,7 @@ class PermManagerTest < Minitest::Test
     assert(inst2.perms[server_fqdn].test_permission(user2, 'despawnpool'))
 
     cmd = { hostname: @hostname, workerpool: @workerpool, server_name: servername }
-    
+
     ['start', 'stop', 'kill', 'accept_eula'].each { |action|
       cmd[:server_cmd] = action
 
