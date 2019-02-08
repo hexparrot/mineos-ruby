@@ -115,7 +115,7 @@ class PermManager
     true
   end
 
-  def server_perms(permission, affected_user, fqdn)
+  def cast_server_perm!(permission, affected_user, fqdn)
     # Permissions within:
     # * modify_sc, modify_sp, start, stop, eula, etc.
     # * grantor: can grant server-commands to users

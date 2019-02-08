@@ -233,7 +233,7 @@ class PermManagerTest < Minitest::Test
     assert_equal("POOL: [NOOP:server doesn't exist] delete_server(#{@hostname}.#{@workerpool}.#{servername})", inst2.logs.shift.message)
   end
 
-  def test_server_perms
+  def test_executing_with_server_perms
     owner = 'plain:owner'
     inst = PermManager.new(owner)
     creator = 'plain:creator'
@@ -282,6 +282,7 @@ class PermManagerTest < Minitest::Test
     cmd = { hostname: @hostname,
             workerpool: @workerpool,
             server_name: servername }
+    server_fqdn = "#{@hostname}.#{@workerpool}.#{servername}"
 
     ['start', 'stop', 'kill', 'accept_eula'].each { |action|
       cmd[:server_cmd] = action
@@ -294,7 +295,7 @@ class PermManagerTest < Minitest::Test
       }
       assert(success)
 
-      assert_equal("SERVER: {#{creator}} #{action}(#{@hostname}.#{@workerpool}.#{servername}): OK", inst2.logs.shift.message)
+      assert_equal("SERVER: {#{creator}} #{action}(#{server_fqdn}): OK", inst2.logs.shift.message)
     }
 
     # user, doing things it can't
@@ -313,8 +314,39 @@ class PermManagerTest < Minitest::Test
       }
       assert(!success)
 
-      assert_equal("SERVER: {#{user}} #{action}(#{@hostname}.#{@workerpool}.#{servername}): FAIL", inst3.logs.shift.message)
+      assert_equal("SERVER: {#{user}} #{action}(#{server_fqdn}): FAIL", inst3.logs.shift.message)
     }
+
+    # ensure all 3 inst perform as expected
+    assert(!inst.perms[server_fqdn].test_permission(owner, 'accept_eula'))
+    assert(inst.perms[server_fqdn].test_permission(creator, 'accept_eula'))
+    assert(!inst.perms[server_fqdn].test_permission(user, 'accept_eula'))
+
+    assert(!inst2.perms[server_fqdn].test_permission(owner, 'accept_eula'))
+    assert(inst2.perms[server_fqdn].test_permission(creator, 'accept_eula'))
+    assert(!inst2.perms[server_fqdn].test_permission(user, 'accept_eula'))
+
+    assert(!inst3.perms[server_fqdn].test_permission(owner, 'accept_eula'))
+    assert(inst3.perms[server_fqdn].test_permission(creator, 'accept_eula'))
+    assert(!inst3.perms[server_fqdn].test_permission(user, 'accept_eula'))
+
+    # grant to user (1,3,2)
+    assert(!inst.cast_server_perm!('grantall', user, server_fqdn))
+    assert(!inst3.cast_server_perm!('grantall', user, server_fqdn))
+    assert(inst2.cast_server_perm!('grantall', user, server_fqdn))
+
+    assert(!inst.perms[server_fqdn].test_permission(owner, 'accept_eula'))
+    assert(inst.perms[server_fqdn].test_permission(creator, 'accept_eula'))
+    assert(inst.perms[server_fqdn].test_permission(user, 'accept_eula'))
+
+    # (3,1,2)
+    assert(!inst3.cast_server_perm!('mkgrantor', user, server_fqdn))
+    assert(!inst.cast_server_perm!('mkgrantor', user, server_fqdn))
+    assert(inst2.cast_server_perm!('mkgrantor', user, server_fqdn))
+
+    # newly granted user mkgrantor, give to owner
+    assert(inst3.cast_server_perm!('grantall', owner, server_fqdn))
+    assert(inst.perms[server_fqdn].test_permission(owner, 'accept_eula'))
   end
 end
 
