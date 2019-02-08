@@ -50,6 +50,11 @@ class PermissionsTest < Minitest::Test
     assert_equal('linux:will', inst.properties[:grantors].first)
   end
 
+  def test_owner
+    inst = Permissions.new('plain:user')
+    assert_equal('plain:user', inst.owner)
+  end
+
   def test_dump_hash
     inst = Permissions.new('plain:user')
     inst.load_file('config/owner.yml')

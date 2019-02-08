@@ -9,6 +9,11 @@ class Permissions
     make_grantor(owner)
   end
 
+  def to_s
+    require 'yaml'
+    @properties.merge(@permissions).to_yaml
+  end
+
   def load_file(filepath)
     require 'yaml'
     yaml_input = YAML::load_file(filepath)
