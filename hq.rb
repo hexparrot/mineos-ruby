@@ -203,7 +203,7 @@ class HQ < Sinatra::Base
             servername = body_parameters.delete('server_name')
             fqdn = "#{hostname}.#{workerpool}.#{servername}"
 
-            perm_mgr.server_perms(permission, affected_user, fqdn)
+            perm_mgr.cast_server_perm!(permission, affected_user, fqdn)
           elsif body_parameters.key?('workerpool') then
             permission = body_parameters.delete('permission')
             affected_user = body_parameters.delete('affected_user')
@@ -211,16 +211,16 @@ class HQ < Sinatra::Base
             workerpool = body_parameters.delete('workerpool')
             fqdn = "#{hostname}.#{workerpool}"
 
-            perm_mgr.pool_perms(permission, affected_user, fqdn)
+            perm_mgr.cast_pool_perm!(permission, affected_user, fqdn)
           else # root
             permission = body_parameters.delete('permission')
             affected_user = body_parameters.delete('affected_user')
 
-            perm_mgr.root_perms(permission, affected_user)
+            perm_mgr.cast_root_perm!(permission, affected_user)
           end
         else
           if body_parameters.key?('alt_cmd') then
-            perm_mgr.server_command(body_parameters) { |params, rk|
+            perm_mgr.server_exec_cmd!(body_parameters) { |params, rk|
               if !@@satellites[:workers].include?(rk) then
                 logger.error("WORKER: Unregistered worker addressed `#{user} => #{rk}`")
                 nil
@@ -234,7 +234,7 @@ class HQ < Sinatra::Base
               end
             }
           elsif body_parameters.key?('root_cmd') then
-            perm_mgr.root_command(body_parameters) { |params, rk|
+            perm_mgr.root_exec_cmd!(body_parameters) { |params, rk|
               if !@@satellites[:managers].include?(rk) then
                 logger.error("MANAGER: Unregistered manager addressed `#{user} => #{rk}`")
                 nil
@@ -248,7 +248,7 @@ class HQ < Sinatra::Base
               end
             }
           elsif body_parameters.key?('pool_cmd') then
-            perm_mgr.pool_command(body_parameters) { |params, rk|
+            perm_mgr.pool_exec_cmd!(body_parameters) { |params, rk|
               if !@@satellites[:workers].include?(rk) then
                 logger.error("WORKER: Unregistered worker addressed `#{user} => #{rk}`")
                 nil
@@ -262,7 +262,7 @@ class HQ < Sinatra::Base
               end
             }
           elsif body_parameters.key?('server_cmd') then
-            perm_mgr.server_command(body_parameters) { |params, rk|
+            perm_mgr.server_exec_cmd!(body_parameters) { |params, rk|
               if !@@satellites[:workers].include?(rk) then
                 logger.error("WORKER: Unregistered worker addressed `#{user} => #{rk}`")
                 nil
