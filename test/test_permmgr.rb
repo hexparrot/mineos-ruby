@@ -62,40 +62,95 @@ class PermManagerTest < Minitest::Test
     assert(!inst.perms[:root].grantor?('plain:follower'))
   end
 
-  def test_incremental_granting_of_root_permissions
-    user = 'plain:user'
-    inst = PermManager.new(user)
+  def test_create_root_perms
+    owner = 'plain:owner'
+    inst = PermManager.new(owner)
+    user = 'plain:user2'
+    inst2 = PermManager.new(user)
+    
+    assert(inst.perms[:root].grantor?(owner))
+    assert(inst2.perms[:root].grantor?(owner))
+    assert(!inst.perms[:root].grantor?(user))
+    assert(!inst2.perms[:root].grantor?(user))
+    # plain:user is owner and grantor? but not granted anything yet
 
-    assert(inst.perms[:root].grantor?(user))
-    assert(!inst.perms[:root].test_permission(user, 'mkgrantor'))
-    assert(!inst.perms[:root].test_permission(user, 'rmgrantor'))
-    assert(!inst.perms[:root].test_permission(user, 'grantall'))
-    assert(!inst.perms[:root].test_permission(user, 'revokeall'))
-    # plain:user is owner and grantor? but not granted everything
-    # can self-grant, though, because owner can do that.
-
+    # test only the commands (not status-changers like 'mkgrantor')
+    assert(!inst.perms[:root].test_permission(owner, 'mkpool'))
+    assert(!inst.perms[:root].test_permission(owner, 'rmpool'))
+    assert(!inst.perms[:root].test_permission(owner, 'spawnpool'))
+    assert(!inst.perms[:root].test_permission(owner, 'despawnpool'))
+    assert(!inst.perms[:root].test_permission(owner, 'fake'))
+      
+    # inst/inst2 are equivalent when testing :root
     assert(!inst.perms[:root].test_permission(user, 'mkpool'))
     assert(!inst.perms[:root].test_permission(user, 'rmpool'))
     assert(!inst.perms[:root].test_permission(user, 'spawnpool'))
     assert(!inst.perms[:root].test_permission(user, 'despawnpool'))
-    
+    assert(!inst.perms[:root].test_permission(user, 'fake'))
+
+    assert(inst.cast_root_perm!('grantall', user))
+
+    assert(!inst.perms[:root].test_permission(owner, 'mkpool'))
+    assert(!inst.perms[:root].test_permission(owner, 'rmpool'))
+    assert(!inst.perms[:root].test_permission(owner, 'spawnpool'))
+    assert(!inst.perms[:root].test_permission(owner, 'despawnpool'))
+    assert(!inst.perms[:root].test_permission(owner, 'fake'))
+
+    assert(inst.perms[:root].test_permission(user, 'mkpool'))
+    assert(inst.perms[:root].test_permission(user, 'rmpool'))
+    assert(inst.perms[:root].test_permission(user, 'spawnpool'))
+    assert(inst.perms[:root].test_permission(user, 'despawnpool'))
+    assert(inst.perms[:root].test_permission(user, 'fake'))
+  end
+
+  def test_executing_with_root_permissions
+    owner = 'plain:owner'
+    inst = PermManager.new(owner)
+    user = 'plain:user2'
+    inst2 = PermManager.new(user)
+
     cmd = { hostname: @hostname,
             workerpool: @workerpool,
             root_cmd: 'mkpool' }.to_json
 
-    inst.root_command(JSON.parse cmd)
-    assert_equal("PERMS: mkpool by #{user}@#{@workerpool}: FAIL", inst.logs.shift.message)
+    success = inst2.root_exec_cmd!(JSON.parse cmd) { |amqp_data, rk| }
+    assert_equal("PERMS: {#{user}} mkpool(#{@hostname}.#{@workerpool}): FAIL", inst2.logs.shift.message)
+    assert(!success)
 
-    inst.root_perms('grantall', user)
-    inst.root_command(JSON.parse(cmd)) { |amqp_data, rk|
+    assert(inst.cast_root_perm!('grantall', user))
+
+    inst.cast_root_perm!('grantall', user)
+    inst2.root_exec_cmd!(JSON.parse(cmd)) { |amqp_data, rk|
       assert_equal(@workerpool, amqp_data[:MKPOOL][:workerpool])
       assert_equal("managers.#{@hostname}", rk)
     }
 
-    assert_equal("PERMS: #{user} granting `root`:all to #{user}", inst.logs.shift.message)
-    assert_equal("PERMS: (:all) mkpool, rmpool, spawn, despawn", inst.logs.shift.message)
-    assert_equal("PERMS: CREATED PERMSCREEN `#{@workerpool} => managers.#{@hostname}`", inst.logs.shift.message)
-    assert_equal("MANAGER: MKPOOL `#{@workerpool} => managers.#{@hostname}`", inst.logs.shift.message)
+    #inst.perms['managers.@hostname.@workerpool'] doesn't exist, so create permscreen
+    assert_equal("PERMS: {#{user}} create_permscreen(#{@hostname}.#{@workerpool})", inst2.logs.shift.message)
+    assert_equal("PERMS: {#{user}} granted :all on (#{@hostname}.#{@workerpool})", inst2.logs.shift.message)
+    assert_equal("PERMS: (:all) mkpool, rmpool, spawn, despawn", inst2.logs.shift.message)
+    assert_equal("POOL: {#{user}} mkpool(#{@hostname}.#{@workerpool}): OK", inst2.logs.shift.message)
+ 
+    inst2.root_exec_cmd!(JSON.parse(cmd)) {}
+    assert_equal("POOL: {#{user}} mkpool(#{@hostname}.#{@workerpool}): FAIL", inst2.logs.shift.message)
+    assert_equal("POOL: [NOOP:pool already exists] mkpool(#{@hostname}.#{@workerpool})", inst2.logs.shift.message)
+
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            root_cmd: 'rmpool' }.to_json
+
+    inst2.root_exec_cmd!(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal(@workerpool, amqp_data[:RMPOOL][:workerpool])
+      assert_equal("managers.#{@hostname}", rk)
+    }
+
+    assert_equal("POOL: delete_permscreen(#{@hostname}.#{@workerpool}): OK", inst2.logs.shift.message)
+    assert_equal("POOL: {#{user}} rmpool(#{@hostname}.#{@workerpool}): OK", inst2.logs.shift.message)
+
+    # repeat on deleted
+    inst2.root_exec_cmd!(JSON.parse(cmd)) {}
+    assert_equal("POOL: {#{user}} rmpool(#{@hostname}.#{@workerpool}): FAIL", inst2.logs.shift.message)
+    assert_equal("POOL: [NOOP:pool doesn't exist] rmpool(#{@hostname}.#{@workerpool})", inst2.logs.shift.message)
   end
 
   def test_incremental_granting_of_root_permissions_for_non_owner

@@ -18,6 +18,11 @@ class PermManager
     end
   end
 
+  def to_s
+    require 'yaml'
+    @@permissions.to_yaml
+  end
+
   def admin
     @@admin
   end
@@ -36,7 +41,7 @@ class PermManager
     #@logger.send(level, message) #temporarily suspend logging for testing
   end
 
-  def root_perms(permission, affected_user)
+  def cast_root_perm!(permission, affected_user)
     if !@@permissions[:root].grantor?(@granting_user) then
       fork_log :warn, "#{@granting_user} is not a root:grantor. #{permission} not granted to #{affected_user}"
       return false
@@ -275,7 +280,7 @@ class PermManager
     end
   end
 
-  def root_command(params)
+  def root_exec_cmd!(params)
     hostname = params.delete('hostname')
     manager_routing_key = "managers.#{hostname}"
 
@@ -284,7 +289,7 @@ class PermManager
     pool_fqdn = "#{hostname}.#{workerpool}"
 
     if !@@permissions[:root].test_permission(@granting_user, command) then
-      fork_log :warn, "PERMS: #{command} by #{@granting_user}@#{workerpool}: FAIL"
+      fork_log :error, "PERMS: {#{granting_user}} #{command}(#{hostname}.#{workerpool}): FAIL"
       return
     end
 
@@ -292,7 +297,8 @@ class PermManager
     when 'mkpool'
       begin
         if @@permissions.fetch(pool_fqdn) then
-          fork_log :error, "POOL: Pool already exists: #{command} ignored `#{pool_fqdn}`"
+          fork_log :error, "POOL: {#{granting_user}} mkpool(#{pool_fqdn}): FAIL"
+          fork_log :error, "POOL: [NOOP:pool already exists] mkpool(#{pool_fqdn})"
           return
         end
       rescue KeyError
@@ -302,24 +308,27 @@ class PermManager
         perm_obj.grant(@granting_user, :all)
 
         @@permissions[pool_fqdn] = perm_obj
-        fork_log :info, "PERMS: CREATED PERMSCREEN `#{workerpool} => #{manager_routing_key}`"
+        fork_log :info, "PERMS: {#{@granting_user}} create_permscreen(#{pool_fqdn})"
       end
 
       xmitted = yield({ MKPOOL: {workerpool: workerpool} }, manager_routing_key)
-      fork_log :info, "MANAGER: MKPOOL `#{workerpool} => #{manager_routing_key}`" if xmitted
+      fork_log :info, "PERMS: {#{granting_user}} granted :all on (#{pool_fqdn})"
+      fork_log :info, "PERMS: (:all) mkpool, rmpool, spawn, despawn"
+      fork_log :info, "POOL: {#{granting_user}} mkpool(#{pool_fqdn}): OK"
     when 'rmpool'
       begin
         @@permissions.fetch(pool_fqdn)
       rescue KeyError
-        fork_log :warn, "PERMS: NO EXISTING PERMSCREEN `#{workerpool} => #{manager_routing_key}` - NOOP"
+        fork_log :error, "POOL: {#{granting_user}} rmpool(#{pool_fqdn}): FAIL"
+        fork_log :error, "POOL: [NOOP:pool doesn't exist] rmpool(#{pool_fqdn})"
         return
       end
 
       @@permissions.delete(pool_fqdn)
-      fork_log :info, "POOL: DELETED PERMSCREEN`#{workerpool} => #{manager_routing_key}`"
+      fork_log :info, "POOL: delete_permscreen(#{pool_fqdn}): OK"
 
-      xmitted = yield({ REMOVE: {workerpool: workerpool} }, manager_routing_key)
-      fork_log :info, "POOL: DELETED `#{workerpool} => #{manager_routing_key}`" if xmitted
+      xmitted = yield({ RMPOOL: {workerpool: workerpool} }, manager_routing_key)
+      fork_log :info, "POOL: {#{granting_user}} rmpool(#{pool_fqdn}): OK" if xmitted
     when 'spawnpool'
       begin
         @@permissions.fetch(pool_fqdn)
