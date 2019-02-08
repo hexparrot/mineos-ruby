@@ -155,7 +155,7 @@ class PermManager
 
   ### commands
 
-  def server_command(params)
+  def server_exec_cmd!(params)
     hostname = params.delete('hostname')
     workerpool = params.delete('workerpool')
     worker_routing_key = "workers.#{hostname}.#{workerpool}"
@@ -194,7 +194,8 @@ class PermManager
     begin
       @@permissions.fetch(fqdn)
     rescue KeyError
-      fork_log :error, "POOL: Cannot execute #{command} on a non-existent server `#{fqdn}`"
+      fork_log :error, "SERVER: {#{granting_user}} #{command}(#{fqdn}): FAIL"
+      fork_log :error, "SERVER: [NOOP:non-existent server] #{command}(#{fqdn})"
       return
     end
 
@@ -218,13 +219,12 @@ class PermManager
       end
 
       params['cmd'] = params.delete('server_cmd')
-      fork_log :info, "PERMS: #{command} by #{@granting_user}@#{fqdn}: OK"
+      fork_log :info, "SERVER: {#{@granting_user}} #{command}(#{fqdn}): OK"
 
-      xmitted = yield(params, worker_routing_key)
-      fork_log :info, "HQ: Forwarded command `#{worker_routing_key}`" if xmitted
-      fork_log :debug, params if xmitted
+      yield(params, worker_routing_key)
     else
-      fork_log :warn, "PERMS: #{command} by #{@granting_user}@#{fqdn}: FAIL"
+      fork_log :error, "SERVER: {#{@granting_user}} #{command}(#{fqdn}): FAIL"
+      false
     end
   end
 
@@ -267,6 +267,7 @@ class PermManager
 
         xmitted = yield(params, worker_routing_key)
         fork_log :info, "POOL: {#{@granting_user}} create_server(#{hostname}.#{workerpool}.#{servername}): OK" if xmitted
+        return xmitted
       when 'delete'
         if !@@permissions[server_fqdn] then #early exit
           fork_log :error, "POOL: {#{@granting_user}} delete_server(#{hostname}.#{workerpool}.#{servername}): FAIL"
@@ -277,14 +278,15 @@ class PermManager
 
         xmitted = yield(params, worker_routing_key)
         fork_log :info, "POOL: {#{@granting_user}} delete_server(#{hostname}.#{workerpool}.#{servername}): OK" if xmitted
+        return xmitted
       else #case
-        false
+        return false
       end
       xmitted
     else
       servername = params.fetch('server_name')
       fork_log :error, "POOL: {#{@granting_user}} delete_server(#{hostname}.#{workerpool}.#{servername}): FAIL"
-      false
+      return false
     end
   end
 
