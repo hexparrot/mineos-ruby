@@ -167,17 +167,24 @@ class PermManager
     alt_cmd = params['alt_cmd']
     params.delete('alt_cmd') if alt_cmd
 
+    if alt_cmd && alt_cmd != command then
+      fork_log :error, "SERVER: {#{@granting_user}} #{command}(#{fqdn}): FAIL"
+      fork_log :error, "SERVER: [NOOP:server_ and alt_ cmd mismatch] #{command}(#{fqdn})"
+      return
+    end
+
     if alt_cmd == 'create' then
       require_relative 'pools'
       if Pools::VALID_NAME_REGEX.match(workerpool) then
         # valid pool names may not be addressed directly
-        fork_log :error, "PERMS: Invalid create server (msg directed to direct-worker, but may not match pool regex)"
+        fork_log :error, "SERVER: {#{@granting_user}} create(#{fqdn}): FAIL"
+        fork_log :error, "SERVER: [NOOP:poolname may not match secured-server regex] create(#{fqdn})"
         return
       end
 
       if @@permissions[fqdn] then
-        fork_log :error, "PERMS: Permissions already exist for direct-worker create command. NOOP"
-        fork_log :debug, params
+        fork_log :error, "SERVER: {#{@granting_user}} create(#{fqdn}): FAIL"
+        fork_log :error, "SERVER: [NOOP:server already exists] create(#{fqdn})"
         return
       else
         # if direct-worker is still a valid request, create the permscreen
@@ -187,7 +194,7 @@ class PermManager
         perm_obj.servername = servername
         perm_obj.grant(@granting_user, :all)
         @@permissions[fqdn] = perm_obj
-        fork_log :info, "PERMS: CREATE SERVER (via alt_cmd) `#{servername} => #{worker_routing_key}`"
+        fork_log :info, "SERVER: {#{@granting_user}} alt_cmd_create(#{fqdn}): OK"
       end
     end
 
@@ -195,7 +202,7 @@ class PermManager
       @@permissions.fetch(fqdn)
     rescue KeyError
       fork_log :error, "SERVER: {#{granting_user}} #{command}(#{fqdn}): FAIL"
-      fork_log :error, "SERVER: [NOOP:non-existent server] #{command}(#{fqdn})"
+      fork_log :error, "SERVER: [NOOP:server doesn't exist] #{command}(#{fqdn})"
       return
     end
 

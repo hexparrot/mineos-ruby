@@ -262,7 +262,7 @@ class PermManagerTest < Minitest::Test
       assert(!success)
 
       assert_equal("SERVER: {#{user}} #{action}(#{@hostname}.#{@workerpool}.#{servername}): FAIL", inst3.logs.shift.message)
-      assert_equal("SERVER: [NOOP:non-existent server] #{action}(#{@hostname}.#{@workerpool}.#{servername})", inst3.logs.shift.message)
+      assert_equal("SERVER: [NOOP:server doesn't exist] #{action}(#{@hostname}.#{@workerpool}.#{servername})", inst3.logs.shift.message)
     }
 
     # creator, making server
@@ -347,6 +347,92 @@ class PermManagerTest < Minitest::Test
     # newly granted user mkgrantor, give to owner
     assert(inst3.cast_server_perm!('grantall', owner, server_fqdn))
     assert(inst.perms[server_fqdn].test_permission(owner, 'accept_eula'))
+  end
+
+  def test_alt_cmd_bad_regex
+    owner = 'plain:owner'
+    inst = PermManager.new(owner)
+
+    # create a server with bad workerpool regex
+    servername = 'testx'
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            server_name: servername,
+            alt_cmd: 'create',
+            server_cmd: 'create' }.to_json
+    server_fqdn = "#{@hostname}.#{@workerpool}.#{servername}"
+
+    success = inst.server_exec_cmd!(JSON.parse(cmd)) {}
+    assert_equal("SERVER: {#{owner}} create(#{server_fqdn}): FAIL", inst.logs.shift.message)
+    assert_equal("SERVER: [NOOP:poolname may not match secured-server regex] create(#{@hostname}.#{@workerpool}.#{servername})", inst.logs.shift.message)
+    assert(!success)
+  end
+
+  def test_alt_cmd_mismatching_cmds
+    owner = 'plain:owner'
+    inst = PermManager.new(owner)
+
+    # create a server with mismatching cmds
+    servername = 'testx'
+    cmd = { hostname: @hostname,
+            workerpool: 'user',
+            server_name: servername,
+            alt_cmd: 'delete',
+            server_cmd: 'create' }.to_json
+    server_fqdn = "#{@hostname}.user.#{servername}"
+
+    success = inst.server_exec_cmd!(JSON.parse(cmd)) {}
+    assert_equal("SERVER: {#{owner}} create(#{server_fqdn}): FAIL", inst.logs.shift.message)
+    assert_equal("SERVER: [NOOP:server_ and alt_ cmd mismatch] create(#{@hostname}.user.#{servername})", inst.logs.shift.message)
+    assert(!success)
+  end
+
+  def test_alt_cmd_delete_nonexistent_server
+    owner = 'plain:owner'
+    inst = PermManager.new(owner)
+
+    # delete a non-existent server
+    servername = 'testx'
+    cmd = { hostname: @hostname,
+            workerpool: 'user',
+            server_name: servername,
+            alt_cmd: 'delete',
+            server_cmd: 'delete' }.to_json
+    server_fqdn = "#{@hostname}.user.#{servername}"
+
+    success = inst.server_exec_cmd!(JSON.parse(cmd)) {}
+    assert_equal("SERVER: {#{owner}} delete(#{server_fqdn}): FAIL", inst.logs.shift.message)
+    assert_equal("SERVER: [NOOP:server doesn't exist] delete(#{@hostname}.user.#{servername})", inst.logs.shift.message)
+    assert(!success)
+  end
+
+  def test_alt_cmd_create_existing_server
+    owner = 'plain:owner'
+    inst = PermManager.new(owner)
+
+    # create an existing server
+    servername = 'testx'
+    cmd = { hostname: @hostname,
+            workerpool: 'user',
+            server_name: servername,
+            alt_cmd: 'create',
+            server_cmd: 'create' }.to_json
+    server_fqdn = "#{@hostname}.user.#{servername}"
+
+    success = inst.server_exec_cmd!(JSON.parse(cmd)) {|amqp_data, rk|
+      assert_equal(servername, amqp_data["server_name"])
+      assert_equal('create', amqp_data["cmd"])
+      assert_equal("workers.#{@hostname}.user", rk)
+    }
+    assert_equal("SERVER: {#{owner}} alt_cmd_create(#{server_fqdn}): OK", inst.logs.shift.message)
+    assert_equal("SERVER: {#{owner}} create(#{server_fqdn}): OK", inst.logs.shift.message)
+    assert(success)
+puts inst.logs
+
+    success = inst.server_exec_cmd!(JSON.parse(cmd)) {}
+    assert_equal("SERVER: {#{owner}} create(#{server_fqdn}): FAIL", inst.logs.shift.message)
+    assert_equal("SERVER: [NOOP:server already exists] create(#{@hostname}.user.#{servername})", inst.logs.shift.message)
+    assert(!success)
   end
 end
 
