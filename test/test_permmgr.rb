@@ -508,7 +508,6 @@ class PermManagerTest < Minitest::Test
     assert_equal("SERVER: {#{owner}} alt_cmd_create(#{server_fqdn}): OK", inst.logs.shift.message)
     assert_equal("SERVER: {#{owner}} create(#{server_fqdn}): OK", inst.logs.shift.message)
     assert(success)
-puts inst.logs
 
     success = inst.server_exec_cmd!(JSON.parse(cmd)) {}
     assert_equal("SERVER: {#{owner}} create(#{server_fqdn}): FAIL", inst.logs.shift.message)
