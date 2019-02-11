@@ -387,6 +387,87 @@ class PermManagerTest < Minitest::Test
     assert(!success)
   end
 
+  def test_alt_cmd_delete_existing_server
+    owner = 'plain:owner'
+    inst = PermManager.new(owner)
+
+    # delete a non-existent server
+    servername = 'testx'
+    cmd = { hostname: @hostname,
+            workerpool: 'user',
+            server_name: servername,
+            alt_cmd: 'create',
+            server_cmd: 'create' }.to_json
+    server_fqdn = "#{@hostname}.user.#{servername}"
+
+    success = inst.server_exec_cmd!(JSON.parse(cmd)) {|amqp_data, rk|
+      assert_equal(servername, amqp_data["server_name"])
+      assert_equal('create', amqp_data["cmd"])
+      assert_equal("workers.#{@hostname}.user", rk)
+    }
+    assert(success)
+    inst.logs.clear
+
+    cmd = { hostname: @hostname,
+            workerpool: 'user',
+            server_name: servername,
+            alt_cmd: 'delete',
+            server_cmd: 'delete' }.to_json
+    server_fqdn = "#{@hostname}.user.#{servername}"
+
+    success = inst.server_exec_cmd!(JSON.parse(cmd)) {|amqp_data, rk|
+      assert_equal(servername, amqp_data["server_name"])
+      assert_equal('delete', amqp_data["cmd"])
+      assert_equal("workers.#{@hostname}.user", rk)
+    }
+    assert_equal("SERVER: {#{owner}} alt_cmd_delete(#{server_fqdn}): OK", inst.logs.shift.message)
+    assert(success)
+  end
+
+  def test_alt_cmd_delete_existing_server_bad_regex
+    owner = 'plain:owner'
+    inst = PermManager.new(owner)
+
+    # creating the pool
+    assert(inst.cast_root_perm!('grantall', owner))
+
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            root_cmd: 'mkpool' }.to_json
+
+    inst.root_exec_cmd!(JSON.parse(cmd)) { |amqp_data, rk|
+      assert_equal(@workerpool, amqp_data[:MKPOOL][:workerpool])
+      assert_equal("managers.#{@hostname}", rk)
+    }
+    pool_fqdn = "#{@hostname}.#{@workerpool}"
+
+    # creator, making pool server
+    servername = 'testx'
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            server_name: servername,
+            pool_cmd: 'create' }.to_json
+
+    success = inst.pool_exec_cmd!(JSON.parse(cmd)) {|amqp_data, rk|
+      assert_equal(servername, amqp_data["server_name"])
+      assert_equal("workers.#{@hostname}.#{@workerpool}", rk)
+    }
+    assert(success)
+    inst.logs.clear
+
+    cmd = { hostname: @hostname,
+            workerpool: @workerpool,
+            server_name: servername,
+            alt_cmd: 'delete',
+            server_cmd: 'delete' }.to_json
+    server_fqdn = "#{@hostname}.user.#{servername}"
+
+    success = inst.server_exec_cmd!(JSON.parse(cmd)) {}
+    assert_equal("SERVER: {#{owner}} alt_cmd_delete(#{server_fqdn}): FAIL", inst.logs.shift.message)
+    assert_equal("SERVER: [NOOP:poolname may not match secured-server regex] delete(#{@hostname}.#{@workerpool}.#{servername})", inst.logs.shift.message)
+    assert(!success)
+  end
+
   def test_alt_cmd_delete_nonexistent_server
     owner = 'plain:owner'
     inst = PermManager.new(owner)
@@ -427,7 +508,6 @@ class PermManagerTest < Minitest::Test
     assert_equal("SERVER: {#{owner}} alt_cmd_create(#{server_fqdn}): OK", inst.logs.shift.message)
     assert_equal("SERVER: {#{owner}} create(#{server_fqdn}): OK", inst.logs.shift.message)
     assert(success)
-puts inst.logs
 
     success = inst.server_exec_cmd!(JSON.parse(cmd)) {}
     assert_equal("SERVER: {#{owner}} create(#{server_fqdn}): FAIL", inst.logs.shift.message)
