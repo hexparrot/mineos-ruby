@@ -212,7 +212,8 @@ class PermManager
         require_relative 'pools'
         if Pools::VALID_NAME_REGEX.match(workerpool) then
           # valid pool names may not be addressed directly
-          fork_log :error, "PERMS: Invalid delete server (msg directed to direct-worker, but may not match pool regex)"
+          fork_log :error, "SERVER: {#{@granting_user}} alt_cmd_delete(ruby-worker.user.testx): FAIL"
+          fork_log :error, "SERVER: [NOOP:poolname may not match secured-server regex] #{command}(#{fqdn})"
           return
         end
 
