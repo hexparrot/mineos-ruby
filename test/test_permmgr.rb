@@ -406,6 +406,7 @@ class PermManagerTest < Minitest::Test
       assert_equal("workers.#{@hostname}.user", rk)
     }
     assert(success)
+    inst.logs.clear
 
     cmd = { hostname: @hostname,
             workerpool: 'user',
@@ -419,6 +420,7 @@ class PermManagerTest < Minitest::Test
       assert_equal('delete', amqp_data["cmd"])
       assert_equal("workers.#{@hostname}.user", rk)
     }
+    assert_equal("SERVER: {#{owner}} alt_cmd_delete(#{server_fqdn}): OK", inst.logs.shift.message)
     assert(success)
   end
 

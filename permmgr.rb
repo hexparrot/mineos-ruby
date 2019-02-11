@@ -217,25 +217,20 @@ class PermManager
           return
         end
 
-        if @@permissions[fqdn] then
-          @@permissions.delete(fqdn)
-          fork_log :info, "PERMS: DELETE SERVER (via alt_cmd) `#{servername} => #{worker_routing_key}`"
-        else
-          fork_log :error, "PERMS: Permissions don't exist for direct-worker delete command. NOOP"
-          fork_log :debug, params
-        end
+        @@permissions.delete(fqdn)
+        fork_log :info, "SERVER: {#{@granting_user}} alt_cmd_delete(#{fqdn}): OK"
       end
 
       params['cmd'] = params.delete('server_cmd')
       fork_log :info, "SERVER: {#{@granting_user}} #{command}(#{fqdn}): OK"
 
       yield(params, worker_routing_key)
+      true
     else
       fork_log :error, "SERVER: {#{@granting_user}} #{command}(#{fqdn}): FAIL"
       false
     end
   end
-
 
   def pool_exec_cmd!(params)
     hostname = params.delete('hostname')
