@@ -38,7 +38,7 @@ class PermManager
 
   def fork_log(level, message, uuid='')
     @logs.push(Struct::LogItem.new(level, message, uuid))
-    #@logger.send(level, message) #temporarily suspend logging for testing
+    @logger.send(level, message) #temporarily suspend logging for testing
   end
 
   def cast_root_perm!(permission, affected_user)
