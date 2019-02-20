@@ -28,14 +28,44 @@ class HQ < Sinatra::Base
   logger.datetime_format = '%Y-%m-%d %H:%M:%S'
   logger.level = Logger::DEBUG
 
-  require_relative 'permmgr'
-  @@perm_mgr = PermManager.new('plain:mc')
-
   require 'yaml'
   amqp_creds = YAML::load_file('config/amqp.yml')['rabbitmq'].transform_keys(&:to_sym)
   logger.info("AMQP: Using credentials from location `config/amqp.yml`")
   s3_config = YAML::load_file('config/objstore.yml')
   logger.info("S3: Using credentials from location `config/objstore.yml`")
+
+  # create perm directory on disk
+  require 'fileutils'
+  perm_directory = File.join(File.expand_path(__dir__), 'config', 'perms')
+  FileUtils.mkdir_p perm_directory
+
+  # load perms
+  require_relative 'permmgr'
+  require_relative 'perms'
+  temp_perm_hash = {}
+  Dir["#{perm_directory}/*"].each do |fp|
+    fn = File.basename(fp)
+    no_ext = fn.rpartition('.').first
+    no_ext = :root if no_ext == 'root' # change to sym!
+
+    p_obj = Permissions.new(nil)
+    p_obj.load_file(fp)
+    temp_perm_hash[no_ext] = p_obj
+  end
+
+  if temp_perm_hash.key?(:root) then
+    @@perm_mgr = PermManager.new(temp_perm_hash[:root].owner)
+    @@perm_mgr.perms[:root] = temp_perm_hash.delete(:root)
+    logger.info("PERMS: Loaded :root permissions")
+  else
+    @@perm_mgr = PermManager.new('plain:mc')
+  end
+
+  temp_perm_hash.each do |key, perm_obj|
+    @@perm_mgr.perms[key] = perm_obj
+    logger.info("PERMS: Loaded #{key}")
+    logger.debug(perm_obj)
+  end
 
   require 'bunny'
   conn = Bunny.new(amqp_creds)
@@ -276,6 +306,11 @@ class HQ < Sinatra::Base
               end
             }
           end
+        end
+
+        # save permissions to disk @ ./config/perms/
+        perm_mgr.perms.each do |key, perm_obj|
+          perm_obj.save_file!(File.join(perm_directory, "#{key.to_s}.yml"))
         end
       end # ws.onmessage
 
