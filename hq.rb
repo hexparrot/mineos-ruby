@@ -50,7 +50,11 @@ class HQ < Sinatra::Base
 
     p_obj = Permissions.new(nil)
     p_obj.load_file(fp)
-    @@perm_mgr.perms[no_ext] = p_obj
+    if no_ext == 'root' then
+      @@perm_mgr.perms[:root] = p_obj
+    else
+      @@perm_mgr.perms[no_ext] = p_obj
+    end
     logger.info("PERMS: Loaded #{no_ext}")
     logger.debug(p_obj.to_s)
   end
