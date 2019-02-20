@@ -37,6 +37,24 @@ class HQ < Sinatra::Base
   s3_config = YAML::load_file('config/objstore.yml')
   logger.info("S3: Using credentials from location `config/objstore.yml`")
 
+  # create perm directory on disk
+  require 'fileutils'
+  perm_directory = File.join(File.expand_path(__dir__), 'config', 'perms')
+  FileUtils.mkdir_p perm_directory
+
+  # load perms
+  require_relative 'perms'
+  Dir["#{perm_directory}/*"].each do |fp|
+    fn = File.basename(fp)
+    no_ext = fn.rpartition('.').first
+
+    p_obj = Permissions.new(nil)
+    p_obj.load_file(fp)
+    @@perm_mgr.perms[no_ext] = p_obj
+    logger.info("PERMS: Loaded #{no_ext}")
+    logger.debug(p_obj.to_s)
+  end
+
   require 'bunny'
   conn = Bunny.new(amqp_creds)
   conn.start
@@ -221,10 +239,6 @@ class HQ < Sinatra::Base
 
           # save permissions to disk @ ./config/perms
           perm_mgr.perms.each do |key, perm_obj|
-            require 'fileutils'
-            perm_directory = File.join(File.expand_path(__dir__), 'config', 'perms')
-            FileUtils.mkdir_p perm_directory
-            
             perm_obj.save_file!(File.join(perm_directory, "#{key.to_s}.yml"))
           end
         else
@@ -286,11 +300,6 @@ class HQ < Sinatra::Base
             }
           end
         end
-perm_mgr.perms.each do |k,v|
-  p k
-  p v.to_s
-end
-logger.debug(perm_mgr.to_s)
       end # ws.onmessage
 
       # WEBSOCKET CLOSE
