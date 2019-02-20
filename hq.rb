@@ -218,6 +218,15 @@ class HQ < Sinatra::Base
 
             perm_mgr.cast_root_perm!(permission, affected_user)
           end
+
+          # save permissions to disk @ ./config/perms
+          perm_mgr.perms.each do |key, perm_obj|
+            require 'fileutils'
+            perm_directory = File.join(File.expand_path(__dir__), 'config', 'perms')
+            FileUtils.mkdir_p perm_directory
+            
+            perm_obj.save_file!(File.join(perm_directory, "#{key.to_s}.yml"))
+          end
         else
           if body_parameters.key?('alt_cmd') then
             perm_mgr.server_exec_cmd!(body_parameters) { |params, rk|
@@ -277,6 +286,11 @@ class HQ < Sinatra::Base
             }
           end
         end
+perm_mgr.perms.each do |k,v|
+  p k
+  p v.to_s
+end
+logger.debug(perm_mgr.to_s)
       end # ws.onmessage
 
       # WEBSOCKET CLOSE
