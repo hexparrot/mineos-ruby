@@ -23,6 +23,34 @@ class PermManager
     @@permissions.to_yaml
   end
 
+  def to_json
+    json_out = {
+      'root': {
+        'properties': {
+          'owner': @@permissions[:root].properties[:owner],
+          'grantors': @@permissions[:root].properties[:grantors]
+        },
+        'permissions': {
+          'all': @@permissions[:root].permissions[:all]
+        }
+      }
+    }
+
+    @@permissions.each do |s,v|
+      json_out[s] = {
+        'properties': {
+          'owner': @@permissions[s].properties[:owner],
+          'grantors': @@permissions[s].properties[:grantors]
+        },
+        'permissions': {
+          'all': @@permissions[s].permissions[:all]
+        }
+      }
+    end
+
+    json_out.to_json
+  end
+
   def admin
     @@admin
   end

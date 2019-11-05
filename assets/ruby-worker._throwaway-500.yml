@@ -1,0 +1,8 @@
+---
+properties:
+  owner: plain:will
+  grantors:
+  - plain:will
+permissions:
+  all:
+  - plain:will

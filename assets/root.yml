@@ -1,0 +1,8 @@
+---
+properties:
+  owner: plain:mc
+  grantors:
+  - plain:mc
+permissions:
+  all:
+  - plain:mc

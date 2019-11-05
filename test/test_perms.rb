@@ -238,6 +238,14 @@ class PermissionsTest < Minitest::Test
     assert_equal('mojang:stays', inst.owner)
   end
 
+  def test_load_file_doesnt_override_provided_owner_unless_nil
+    inst = Permissions.new(nil)
+    assert_nil(inst.owner)
+    inst.load_file('config/owner.yml')
+
+    assert_equal('linux:will', inst.owner)
+  end
+
   def test_save_file_uses_inst_owner
     inst = Permissions.new('plain:superceding')
     inst.load_file('config/owner.yml')
