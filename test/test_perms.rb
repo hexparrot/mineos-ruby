@@ -286,4 +286,29 @@ class PermissionsTest < Minitest::Test
     assert_equal('myserver', inst.servername)
   end
 
+  def test_grant_make_unique_set
+    inst = Permissions.new('plain:user')
+
+    inst.grant('mojang:hexparrot', :start)
+    inst.grant('mojang:hexparrot', :start)
+
+    assert_equal(1, inst.permissions[:start].length)
+
+    inst.grant('mojang:hexparrot', :start)
+    assert_equal(1, inst.permissions[:start].length)
+
+    inst.grant('linux:will', :start)
+    assert_equal(2, inst.permissions[:start].length)
+  end
+
+  def test_grantors_make_unique_set
+    inst = Permissions.new('plain:user')
+
+    inst.make_grantor('mojang:hexparrot')
+    assert_equal(2, inst.properties[:grantors].length)
+
+    inst.make_grantor('mojang:hexparrot')
+    assert_equal(2, inst.properties[:grantors].length)
+  end
+
 end

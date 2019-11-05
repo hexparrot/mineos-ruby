@@ -62,6 +62,7 @@ class Permissions
       @permissions[permission] = [user]
     else
       @permissions[permission] << user
+      @permissions[permission].uniq!
     end
   end
 
@@ -84,6 +85,7 @@ class Permissions
       @properties[:grantors] = [user]
     else
       @properties[:grantors] << user
+      @properties[:grantors].uniq!
     end
   end
 
