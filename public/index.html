@@ -3,6 +3,7 @@
     <script type='text/javascript' src='https://knockoutjs.com/downloads/knockout-3.5.1.debug.js'></script>
   </head>
   <body>
+      <input type="text" id="fqdn" data-bind="value: fqdn" />
       <input type="text" id="hostname" data-bind="value: hostname" />
       <input type="text" id="affected_user" data-bind="value: affected_user" />
       <h2>root abilities</h2>
@@ -28,31 +29,62 @@
        <button type="button" data-bind="click: permissions" data-type="server_perms" data-arg="revokeall">revoke server abilities</button>
        <br>
        <br>
-       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="modify_sc" data-supplement='{"section": "java", "attr": "java_xmx", "value": 512}'>xmx</button>
-       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="modify_sc" data-supplement='{"section": "java", "attr": "java_xms", "value": 512}'>xms</button>
-       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="modify_sc" data-supplement='{"section": "java", "attr": "jarfile", "value": "minecraft_server.1.8.9.jar"}'>jarfile</button>
-       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="accept_eula">eula</button>
-       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="receive_profile" data-supplement='{"group": "mojang", "version": "1.8.9"}'>receive</button>
+       <button type="button" data-bind="enable: has_permission('modify_sc'), click: permissions" data-type="server_cmd" data-arg="modify_sc" data-supplement='{"section": "java", "attr": "java_xmx", "value": 512}'>xmx</button>
+       <button type="button" data-bind="enable: has_permission('modify_sc'), click: permissions" data-type="server_cmd" data-arg="modify_sc" data-supplement='{"section": "java", "attr": "java_xms", "value": 512}'>xms</button>
+       <button type="button" data-bind="enable: has_permission('modify_sc'), click: permissions" data-type="server_cmd" data-arg="modify_sc" data-supplement='{"section": "java", "attr": "jarfile", "value": "minecraft_server.1.8.9.jar"}'>jarfile</button>
+       <button type="button" data-bind="enable: has_permission('accept_eula'), click: permissions" data-type="server_cmd" data-arg="accept_eula">eula</button>
+       <button type="button" data-bind="enable: has_permission('receive_profile'), click: permissions" data-type="server_cmd" data-arg="receive_profile" data-supplement='{"group": "mojang", "version": "1.8.9"}'>receive</button>
        <br>
        <br>
-       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="start">start</button>
-       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="stop">stop</button>
-       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="kill">kill</button>
+       <button type="button" data-bind="enable: has_permission('start'), click: permissions" data-type="server_cmd" data-arg="start">start</button>
+       <button type="button" data-bind="enable: has_permission('stop'), click: permissions" data-type="server_cmd" data-arg="stop">stop</button>
+       <button type="button" data-bind="enable: has_permission('kill'), click: permissions" data-type="server_cmd" data-arg="kill">kill</button>
        <br><br>
-       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="create" data-supplement='{"alt_cmd": "create"'>create server</button>
-       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="delete" data-supplement='{"alt_cmd": "delete"'>delete server</button>
+       <button type="button" data-bind="enable: has_permission('create'), click: permissions" data-type="server_cmd" data-arg="create" data-supplement='{"alt_cmd": "create"'>create server</button>
+       <button type="button" data-bind="enable: has_permission('delete'), click: permissions" data-type="server_cmd" data-arg="delete" data-supplement='{"alt_cmd": "delete"'>delete server</button>
        <hr>
      <div id="msgs"></div>
   </body>
 
   <script type="text/javascript">
+
+
+/* prototypes */
+
+    String.prototype.format = String.prototype.f = function() {
+      var s = this,
+          i = arguments.length;
+    
+      while (i--) { s = s.replace(new RegExp('\\{' + i + '\\}', 'gm'), arguments[i]);}
+      return s;
+    };
+
     var webs = null;
 
     function AppViewModel() {
+        this.whoami = ko.observable('plain:will');
+        this.perms = ko.observable();
         this.hostname = ko.observable('ruby-worker');
-        this.affected_user = ko.observable('plain:mc');
+        this.affected_user = ko.observable('plain:will');
         this.workerpool = ko.observable('_throwaway-500');
         this.server_name = ko.observable('test500');
+
+        this.fqdn = ko.computed(function(){
+          return "{0}.{1}.{2}".format(this.hostname(), this.workerpool(), this.server_name());
+        }, this);
+
+        this.has_permission = function(thing) {
+          var p = this.perms();
+          if (p) {
+            var pp = p[this.fqdn()]['permissions'];
+            if (thing in pp)
+              return pp[thing].indexOf(this.whoami()) >= 0
+            else if ('all' in pp)
+              return pp.all.indexOf(this.whoami()) >= 0
+            else
+              return false;
+          }
+        };
 
         this.permissions = function(a,b) {
           var ele = b.originalTarget.dataset;
@@ -109,23 +141,30 @@
     window.onload = function(){
       (function(){
 
+        // Activates knockout.js
+        var app = new AppViewModel();
+        ko.applyBindings(app);
+
         var ws       = new WebSocket('ws://' + window.location.host + window.location.pathname);
         ws.onopen    = function()  { console.log('websocket opened'); };
         ws.onclose   = function()  { console.log('websocket closed'); }
         ws.onmessage = function(m) { 
-          try { payload = JSON.parse(m.data) } catch (e) { console.log(m.data) };
-          if (payload['msg'] && payload['server_name']) {
-            var div = document.getElementById('msgs');
-            div.innerHTML += "[" + payload['server_name'] + "]-" + payload['msg'] + "<br>";
-          }
-          console.log("IN: %o", payload); 
+          //#console.log(m.data)
+          var p = JSON.parse(m.data)['permissions']
+          app.perms(JSON.parse(p));
+          //try { payload = JSON.parse(m.data) } catch (e) { console.log(m.data) };
+          //if (payload['msg'] && payload['server_name']) {
+          //  var div = document.getElementById('msgs');
+          //  div.innerHTML += "[" + payload['server_name'] + "]-" + payload['msg'] + "<br>";
+          //  console.log("IN: %o", payload); 
+          //} else (payload['permissions']) {
+          //  console.log(JSON.parse(payload['permissions']))
+          //}
         };
         webs = ws;
 
-        // Activates knockout.js
-        ko.applyBindings(new AppViewModel());
-
       })();
     }
+
   </script>
 </html>

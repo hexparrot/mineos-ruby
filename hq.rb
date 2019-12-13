@@ -308,6 +308,7 @@ class HQ < Sinatra::Base
           end
         end
 
+        ws.send({"permissions": perm_mgr.to_json}.to_json)
         # save permissions to disk @ ./config/perms/
         perm_mgr.perms.each do |key, perm_obj|
           perm_obj.save_file!(File.join(perm_directory, "#{key.to_s}.yml"))
