@@ -1,58 +1,111 @@
 <html>
+  <head>
+    <script type='text/javascript' src='https://knockoutjs.com/downloads/knockout-3.5.1.debug.js'></script>
+  </head>
   <body>
-     <form id="form">
-       <h1>webui</h1>
-       <input type="text" id="hostname" value="ruby-worker" />
-       <button type="button" data-type="command" data-string='{"cmd": "get_external_profile",
-"url": "https://launcher.mojang.com/v1/objects/b58b2ceb36e01bcd8dbf49c8fb66c55a9f0676cd/server.jar",
-"group": "mojang",
-"version": "1.8.9",
-"dest_filename": "minecraft_server.1.8.9.jar" }'>get profile from internet</button>
-       <hr>
-       <input type="text" id="affected_user" value="plain:mc" />
-       <h2>root abilities</h2>
-       <button type="button" data-type="root_perms" data-string='{"permission": "grantall"}'>grant root abilities (mkpool/rmpool/spawnpool)</button>
-       <button type="button" data-type="root_perms" data-string='{"permission": "revokeall"}'>revoke root abilities</button>
-       <br>
-       <br>
-       <input type="text" id="workerpool" value="_throwaway-500" />
-       <button type="button" data-type="root_cmd" data-string='{"root_cmd": "mkpool"}'>mkpool</button>
-       <button type="button" data-type="root_cmd" data-string='{"root_cmd": "rmpool"}'>rmpool</button>
-       <button type="button" data-type="root_cmd" data-string='{"root_cmd": "spawnpool"}'>spawnpool</button>
-       <hr>
+      <input type="text" id="hostname" data-bind="value: hostname" />
+      <input type="text" id="affected_user" data-bind="value: affected_user" />
+      <h2>root abilities</h2>
+      <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="grantall">grant root abilities (mkpool/rmpool/spawnpool)</button>
+      <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="revokeall">revoke root abilities</button>
+      <hr>
+      <input type="text" id="workerpool" data-bind="value: workerpool" />
+      <button type="button" data-bind="click: permissions" data-type="root_cmd" data-arg="mkpool">mkpool</button>
+      <button type="button" data-bind="click: permissions" data-type="root_cmd" data-arg="rmpool">rmpool</button>
+      <button type="button" data-bind="click: permissions" data-type="root_cmd" data-arg="spawnpool">spawnpool</button>
+      <hr>
        <h2>pool abilities</h2>
-       <button type="button" data-type="pool_perms" data-string='{"permission": "grantall"}'>grant pool abilities: create/delete</button>
-       <button type="button" data-type="pool_perms" data-string='{"permission": "revokeall"}'>revoke pool abilities</button>
+       <button type="button" data-bind="click: permissions" data-type="pool_perms" data-arg="grantall">grant pool abilities: create/delete</button>
+       <button type="button" data-bind="click: permissions" data-type="pool_perms" data-arg="revokeall">revoke pool abilities</button>
        <br>
        <br>
-       <input type="text" id="server_name" value="test" />
-       <button type="button" data-type="pool_cmd" data-string='{"pool_cmd": "create"}'>create server</button>
-       <button type="button" data-type="pool_cmd" data-string='{"pool_cmd": "delete"}'>delete server</button>
+       <input type="text" id="server_name" data-bind="value: server_name" />
+       <button type="button" data-bind="click: permissions" data-type="pool_cmd" data-arg="create">create server</button>
+       <button type="button" data-bind="click: permissions" data-type="pool_cmd" data-arg="delete">delete server</button>
        <hr>
        <h2>server abilities</h2>
-       <button type="button" data-type="server_perms" data-string='{"permission": "grantall"}'>grant server abilities: start/stop/etc</button>
-       <button type="button" data-type="server_perms" data-string='{"permission": "revokeall"}'>revoke server abilities</button>
+       <button type="button" data-bind="click: permissions" data-type="server_perms" data-arg="grantall">grant server abilities: start/stop/etc</button>
+       <button type="button" data-bind="click: permissions" data-type="server_perms" data-arg="revokeall">revoke server abilities</button>
        <br>
        <br>
-       <button type="button" data-type="server_cmd" data-string='{"server_cmd": "modify_sc", "section": "java", "attr": "java_xmx", "value": 512}'>xmx</button>
-       <button type="button" data-type="server_cmd" data-string='{"server_cmd": "modify_sc", "section": "java", "attr": "java_xms", "value": 512}'>xms</button>
-       <button type="button" data-type="server_cmd" data-string='{"server_cmd": "modify_sc", "section": "java", "attr": "jarfile", "value": "minecraft_server.1.8.9.jar"}'>jarfile</button>
-       <button type="button" data-type="server_cmd" data-string='{"server_cmd": "accept_eula"}'>eula</button>
-       <button type="button" data-type="server_cmd" data-string='{"server_cmd": "receive_profile", "group": "mojang", "version": "1.8.9"}'>receive</button>
+       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="modify_sc" data-supplement='{"section": "java", "attr": "java_xmx", "value": 512}'>xmx</button>
+       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="modify_sc" data-supplement='{"section": "java", "attr": "java_xms", "value": 512}'>xms</button>
+       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="modify_sc" data-supplement='{"section": "java", "attr": "jarfile", "value": "minecraft_server.1.8.9.jar"}'>jarfile</button>
+       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="accept_eula">eula</button>
+       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="receive_profile" data-supplement='{"group": "mojang", "version": "1.8.9"}'>receive</button>
        <br>
        <br>
-       <button type="button" data-type="server_cmd" data-string='{"server_cmd": "start"}'>start</button>
-       <button type="button" data-type="server_cmd" data-string='{"server_cmd": "stop"}'>stop</button>
-       <button type="button" data-type="server_cmd" data-string='{"server_cmd": "kill"}'>kill</button>
+       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="start">start</button>
+       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="stop">stop</button>
+       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="kill">kill</button>
        <br><br>
-       <button type="button" data-type="server_cmd" data-string='{"server_cmd": "create", "alt_cmd": "create"}'>create server</button>
-       <button type="button" data-type="server_cmd" data-string='{"server_cmd": "delete", "alt_cmd": "delete"}'>delete server</button>
+       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="create" data-supplement='{"alt_cmd": "create"'>create server</button>
+       <button type="button" data-bind="click: permissions" data-type="server_cmd" data-arg="delete" data-supplement='{"alt_cmd": "delete"'>delete server</button>
        <hr>
-     </form>
      <div id="msgs"></div>
   </body>
 
   <script type="text/javascript">
+    var webs = null;
+
+    function AppViewModel() {
+        this.hostname = ko.observable('ruby-worker');
+        this.affected_user = ko.observable('plain:mc');
+        this.workerpool = ko.observable('_throwaway-500');
+        this.server_name = ko.observable('test500');
+
+        this.permissions = function(a,b) {
+          var ele = b.originalTarget.dataset;
+          var payload = {};
+          switch(ele.type) {
+            case 'root_perms':
+              payload['permission'] = ele.arg;
+              payload['affected_user'] = this.affected_user();
+              webs.send(JSON.stringify(payload));
+              break;
+            case 'root_cmd':
+              payload[ele.type] = ele.arg;
+              payload['workerpool'] = this.workerpool();
+              payload['hostname'] = this.hostname();
+              webs.send(JSON.stringify(payload));
+              break;
+            case 'pool_perms':
+              payload['permission'] = ele.arg;
+              payload['hostname'] = this.hostname();
+              payload['workerpool'] = this.workerpool();
+              payload['affected_user'] = this.affected_user();
+              webs.send(JSON.stringify(payload));
+              break;
+            case 'pool_cmd':
+              payload[ele.type] = ele.arg;
+              payload['hostname'] = this.hostname();
+              payload['workerpool'] = this.workerpool();
+              payload['server_name'] = this.server_name();
+              webs.send(JSON.stringify(payload));
+              break;
+            case 'server_perms':
+              payload['permission'] = ele.arg;
+              payload['hostname'] = this.hostname();
+              payload['workerpool'] = this.workerpool();
+              payload['server_name'] = this.server_name();
+              payload['affected_user'] = this.affected_user();
+              webs.send(JSON.stringify(payload));
+              break;
+            case 'server_cmd':
+              payload[ele.type] = ele.arg;
+              payload['hostname'] = this.hostname();
+              payload['workerpool'] = this.workerpool();
+              payload['server_name'] = this.server_name();
+              if (ele.supplement)
+                payload = Object.assign({}, payload, JSON.parse(ele.supplement))
+              webs.send(JSON.stringify(payload));
+              break;
+            default:
+              break;
+          }
+        }
+    }
+
     window.onload = function(){
       (function(){
 
@@ -60,54 +113,17 @@
         ws.onopen    = function()  { console.log('websocket opened'); };
         ws.onclose   = function()  { console.log('websocket closed'); }
         ws.onmessage = function(m) { 
-          payload = JSON.parse(m.data)
+          try { payload = JSON.parse(m.data) } catch (e) { console.log(m.data) };
           if (payload['msg'] && payload['server_name']) {
             var div = document.getElementById('msgs');
             div.innerHTML += "[" + payload['server_name'] + "]-" + payload['msg'] + "<br>";
           }
           console.log("IN: %o", payload); 
         };
+        webs = ws;
 
-        var btns = document.querySelectorAll('button');
-        for (var i = 0; i < btns.length; i++) {
-          btns[i].addEventListener('click', function (event) {
-            var payload = JSON.parse(this.getAttribute('data-string'));
-            var type = this.getAttribute('data-type');
-
-            payload['hostname'] = document.getElementById('hostname').value
-
-            if (type == 'root_perms') {
-              payload['affected_user'] = document.getElementById('affected_user').value
-              console.log(payload);
-              ws.send(JSON.stringify(payload));
-            } else if (type == 'pool_perms') {
-              payload['workerpool'] = document.getElementById('workerpool').value
-              payload['affected_user'] = document.getElementById('affected_user').value
-              console.log(payload);
-              ws.send(JSON.stringify(payload));
-            } else if (type == 'server_perms') {
-              payload['workerpool'] = document.getElementById('workerpool').value
-              payload['server_name'] = document.getElementById('server_name').value
-              payload['affected_user'] = document.getElementById('affected_user').value
-              console.log(payload);
-              ws.send(JSON.stringify(payload));
-            } else if (type == 'root_cmd') {
-              payload['workerpool'] = document.getElementById('workerpool').value
-              console.log(payload);
-              ws.send(JSON.stringify(payload));
-            } else if (type == 'pool_cmd') {
-              payload['workerpool'] = document.getElementById('workerpool').value
-              payload['server_name'] = document.getElementById('server_name').value
-              console.log(payload);
-              ws.send(JSON.stringify(payload));
-            } else if (type == 'server_cmd') {
-              payload['workerpool'] = document.getElementById('workerpool').value
-              payload['server_name'] = document.getElementById('server_name').value
-              console.log(payload);
-              ws.send(JSON.stringify(payload));
-            }
-          }, false);
-        }
+        // Activates knockout.js
+        ko.applyBindings(new AppViewModel());
 
       })();
     }
