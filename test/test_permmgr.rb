@@ -551,5 +551,35 @@ class PermManagerTest < Minitest::Test
     assert_equal("plain:will", json_out[server]['properties']['grantors'][0])
     assert_equal(["plain:will"], json_out[server]['permissions']['all'])
   end
+
+  def test_get_interior_json_permissions
+    # load perms
+    require_relative '../perms'
+
+    # load inst.perms[:root]
+    fp = 'assets/root.yml'
+  
+    p_obj = Permissions.new(nil)
+    p_obj.load_file(fp)
+
+    inst = PermManager.new(p_obj.owner)
+    inst.perms[:root] = p_obj
+    assert_equal("plain:mc", inst.perms[:root].properties[:owner])
+
+    # load inst.perms['ruby-worker._throwaway-500']
+    fp = 'assets/ruby-worker._throwaway-501.yml'
+    server = 'ruby-worker._throwaway-501'
+
+    p_obj = Permissions.new(nil)
+    p_obj.load_file(fp)
+
+    inst.perms[server] = p_obj
+
+    #OK, after all this, we know our test case is loaded, so onto the json part!
+    #evidently this is all preferred to inst.server_xxx_cmd!
+    json_out = JSON.parse(inst.to_json)
+
+    assert_equal(["mojang:hexparrot"], json_out[server]['permissions']['modify_sc'])
+  end
 end
 

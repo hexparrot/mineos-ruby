@@ -42,10 +42,12 @@ class PermManager
           'owner': @@permissions[s].properties[:owner],
           'grantors': @@permissions[s].properties[:grantors]
         },
-        'permissions': {
-          'all': @@permissions[s].permissions[:all]
-        }
+        'permissions': {}
       }
+
+      @@permissions[s].permissions.each do |perm, recip|
+        json_out[s][:permissions][perm] = recip
+      end
     end
 
     json_out.to_json

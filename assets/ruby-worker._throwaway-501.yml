@@ -1,0 +1,8 @@
+---
+properties:
+  owner: plain:will
+  grantors:
+  - plain:will
+permissions:
+  modify_sc:
+  - mojang:hexparrot
