@@ -43,7 +43,9 @@
        <button type="button" data-bind="enable: has_permission('create'), click: permissions" data-type="server_cmd" data-arg="create" data-supplement='{"alt_cmd": "create"'>create server</button>
        <button type="button" data-bind="enable: has_permission('delete'), click: permissions" data-type="server_cmd" data-arg="delete" data-supplement='{"alt_cmd": "delete"'>delete server</button>
        <hr>
-     <div id="msgs"></div>
+    <ol data-bind="foreach: server_console">
+      <li data-bind="text: $data"></li>
+    </ol>
   </body>
 
   <script type="text/javascript">
@@ -68,6 +70,7 @@
         this.affected_user = ko.observable('plain:will');
         this.workerpool = ko.observable('_throwaway-500');
         this.server_name = ko.observable('test500');
+        this.server_console = ko.observableArray();
 
         this.fqdn = ko.computed(function(){
           return "{0}.{1}.{2}".format(this.hostname(), this.workerpool(), this.server_name());
@@ -149,17 +152,14 @@
         ws.onopen    = function()  { console.log('websocket opened'); };
         ws.onclose   = function()  { console.log('websocket closed'); }
         ws.onmessage = function(m) { 
-          //#console.log(m.data)
-          var p = JSON.parse(m.data)['permissions']
-          app.perms(JSON.parse(p));
-          //try { payload = JSON.parse(m.data) } catch (e) { console.log(m.data) };
-          //if (payload['msg'] && payload['server_name']) {
-          //  var div = document.getElementById('msgs');
-          //  div.innerHTML += "[" + payload['server_name'] + "]-" + payload['msg'] + "<br>";
-          //  console.log("IN: %o", payload); 
-          //} else (payload['permissions']) {
-          //  console.log(JSON.parse(payload['permissions']))
-          //}
+          var inbound = JSON.parse(m.data);
+          console.log(inbound)
+          if ('permissions' in inbound) {
+            var p = inbound['permissions']
+            app.perms(JSON.parse(p));
+          } else if ('msg' in inbound && 'server_name' in inbound) {
+            app.server_console.push("{0}: {1}".format(inbound['server_name'], inbound['msg']))
+          }
         };
         webs = ws;
 
