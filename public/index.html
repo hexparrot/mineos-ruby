@@ -5,9 +5,10 @@
   <body>
       <p>Logged in as: <b data-bind="text: whoami"></b></p>
       <p>Show available permissions for</p>
-      <select data-bind="options: registered_entities, value: fqdn"></select>
+      <select data-bind="options: opts, optionsText: 'fqdn', optionsValue: 'fqdn', value: selected"></select>
       <p>Affected user</p>
       <input type="text" id="affected_user" data-bind="value: affected_user" />
+      <input type="text" data-bind="value: selected" />
       <input type="text" data-bind="value: hostname" />
       <h2>root abilities</h2>
       <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="grantall">grant root abilities (mkpool/rmpool/spawnpool)</button>
@@ -69,42 +70,10 @@
     function AppViewModel() {
         var self = this;
         this.whoami = ko.observable();
-        this.perms = ko.observable();
+        this.perms = ko.observable({});
         this.affected_user = ko.observable('plain:will');
 
-        this.fqdn = ko.observable('');
-        this.hostname = ko.computed(function() {
-          var split_fqdn = self.fqdn().split('.');
-          try {
-            if (split_fqdn[0])
-              return split_fqdn[0];
-          } catch (e) {}
-          return null;
-        })
-
-        this.workerpool = ko.computed(function() {
-          var split_fqdn = self.fqdn().split('.');
-          try {
-            if (split_fqdn[1])
-              return split_fqdn[1];
-          } catch (e) {}
-          return null;
-        })
-
-        this.server_name = ko.observable('test500');
         this.server_console = ko.observableArray();
-        this.registered_hosts = ko.observableArray([]);
-        this.registered_pools = ko.observableArray([]);
-
-        this.registered_entities = ko.computed(function() {
-          var entries = [];
-          entries.push('root');
-          for (h in self.registered_hosts())
-            entries.push(self.registered_hosts()[h])
-          for (p in self.registered_pools())
-            entries.push(self.registered_pools()[p])
-          return entries;
-        })
 
         this.has_permission = function(group, thing) {
           var p = this.perms();
@@ -116,18 +85,10 @@
                 fqdn = "root";
                 break;
               case 'pool':
-                var split_fqdn = this.fqdn().split('.')
-                if (!split_fqdn[1])
-                  return false;
-                else
-                  fqdn = "{0}.{1}".format(split_fqdn[0], split_fqdn[1]);
+                fqdn = (self.workerpool() ? self.selected() : false)
                 break;
               case 'server':
-                var split_fqdn = this.fqdn().split('.')
-                if (!split_fqdn[1])
-                  return false;
-                else
-                  fqdn = "{0}.{1}.{2}".format(split_fqdn[0], split_fqdn[1], this.server_name());
+                fqdn = (self.server_name() ? self.selected() : false)
                 break;
               default:
                 console.log("invalid group perm requested");
@@ -149,6 +110,42 @@
             return false;
           }
         }
+
+        this.split_fqdn = function(fqdn) {
+          try {
+            var components = fqdn.split(/\./).filter(function(e) { return e.length > 0 });
+          } catch (e) {
+            return {}
+          }
+
+          switch(components.length) {
+            case 1:
+              return {fqdn: fqdn, hostname: components[0], workerpool: '', server_name: ''};
+              break;
+            case 2: 
+              return {fqdn: fqdn, hostname: components[0], workerpool: components[1], server_name: ''};
+              break;
+            case 3: 
+              return {fqdn: fqdn, hostname: components[0], workerpool: components[1], server_name: components[2]};
+              break;
+          }
+        }
+
+        this.selected = ko.observable();
+        this.hostname = ko.computed(function() { return self.split_fqdn(self.selected())['hostname'] })
+        this.workerpool = ko.computed(function() { return self.split_fqdn(self.selected())['workerpool'] })
+        this.server_name = ko.computed(function() { return self.split_fqdn(self.selected())['server_name'] })
+
+        this.opts = ko.computed(function() {
+          var opts = [];
+          var json = self.perms();
+          for (var key in json) {
+            if (json.hasOwnProperty(key)) {
+              opts.push(self.split_fqdn(key));
+            }
+          }
+          return opts;
+        });
 
         this.permissions = function(a,b) {
           var ele = b.originalTarget.dataset;
@@ -218,21 +215,10 @@
           if ('permissions' in inbound) {
             var p = inbound['permissions']
             app.perms(JSON.parse(p));
-            console.log(app.perms())
           } else if ('whoami' in inbound) {
             app.whoami(inbound['whoami']);
           } else if ('msg' in inbound && 'server_name' in inbound) {
             app.server_console.push("{0}: {1}".format(inbound['server_name'], inbound['msg']));
-          } else if ('workers' in inbound) {
-            for (i in inbound['workers']) {
-              var text = inbound['workers'][i];
-              var a = text.split('.')
-              if (app.registered_hosts().indexOf(a[0]) < 0) //if absent
-                app.registered_hosts.push(a[0]);
-              if (app.registered_pools().indexOf(text) < 0) //if absent
-                app.registered_pools.push(text);
-            }
-            //app.registered_workers(inbound['workers']);
           }
         };
         webs = ws;
