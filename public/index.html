@@ -4,9 +4,11 @@
   </head>
   <body>
       <p data-bind="text: whoami"></p>
-      <input type="text" id="fqdn" data-bind="value: fqdn" />
+      <input type="text" id="fqdn" data-bind="" />
+      <p data-bind="text: fqdn"></p>
       <input type="text" id="hostname" data-bind="value: hostname" />
       <input type="text" id="affected_user" data-bind="value: affected_user" />
+      <select data-bind="options: registered_workers, value: fqdn"></select>
       <h2>root abilities</h2>
       <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="grantall">grant root abilities (mkpool/rmpool/spawnpool)</button>
       <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="revokeall">revoke root abilities</button>
@@ -72,24 +74,23 @@
         this.workerpool = ko.observable('_throwaway-500');
         this.server_name = ko.observable('test500');
         this.server_console = ko.observableArray();
-
-        this.fqdn = ko.computed(function(){
-          return "{0}.{1}.{2}".format(this.hostname(), this.workerpool(), this.server_name());
-        }, this);
+        this.registered_workers = ko.observable();
+        this.fqdn = ko.observable();
 
         this.has_permission = function(group, thing) {
           var p = this.perms();
           var aff_user = this.affected_user();
+          var fqdn = '';
           if (p) {
             switch(group) {
               case 'root':
-                var fqdn = "root";
+                fqdn = "root";
                 break;
               case 'pool':
-                var fqdn = "{0}.{1}".format(this.hostname(), this.workerpool());
+                fqdn = "{0}.{1}".format(this.hostname(), this.workerpool());
                 break;
               case 'server':
-                var fqdn = this.fqdn();
+                fqdn = "{0}.{1}.{2}".format(this.hostname(), this.workerpool(), this.server_name());
                 break;
               default:
                 console.log("invalid group perm requested");
@@ -180,7 +181,9 @@
           } else if ('whoami' in inbound) {
             app.whoami(inbound['whoami']);
           } else if ('msg' in inbound && 'server_name' in inbound) {
-            app.server_console.push("{0}: {1}".format(inbound['server_name'], inbound['msg']))
+            app.server_console.push("{0}: {1}".format(inbound['server_name'], inbound['msg']));
+          } else if ('workers' in inbound) {
+            app.registered_workers(inbound['workers']);
           }
         };
         webs = ws;
