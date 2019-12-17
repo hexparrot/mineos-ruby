@@ -9,26 +9,28 @@
       <p>Affected user</p>
       <input type="text" id="affected_user" data-bind="value: affected_user" />
       <input type="text" data-bind="value: selected" />
-      <input type="text" data-bind="value: hostname" />
+      <input type="text" data-bind="value: new_hostname" />
       <h2>root abilities</h2>
-      <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="grantall">grant root abilities (mkpool/rmpool/spawnpool)</button>
+      <button type="button" data-bind="enable: can_grant('root', 'grantall'), click: permissions" data-type="root_perms" data-arg="grantall">grant root abilities (mkpool/rmpool/spawnpool)</button>
       <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="revokeall">revoke root abilities</button>
       <hr>
-      <input type="text" id="workerpool" data-bind="value: workerpool" />
+      <input type="text" id="workerpool" data-bind="value: new_workerpool" />
       <button type="button" data-bind="enable: has_permission('root', 'mkpool'), click: permissions" data-type="root_cmd" data-arg="mkpool">mkpool</button>
       <button type="button" data-bind="enable: has_permission('root', 'rmpool'), click: permissions" data-type="root_cmd" data-arg="rmpool">rmpool</button>
       <button type="button" data-bind="enable: has_permission('root', 'spawnpool'), click: permissions" data-type="root_cmd" data-arg="spawnpool">spawnpool</button>
       <hr>
        <h2>pool abilities</h2>
+      <p data-bind="text: workerpool"></p>
        <button type="button" data-bind="click: permissions" data-type="pool_perms" data-arg="grantall">grant pool abilities: create/delete</button>
        <button type="button" data-bind="click: permissions" data-type="pool_perms" data-arg="revokeall">revoke pool abilities</button>
        <br>
        <br>
-       <input type="text" data-bind="value: server_name" />
+       <input type="text" data-bind="value: new_server_name" />
        <button type="button" data-bind="enable: has_permission('pool', 'create'), click: permissions" data-type="pool_cmd" data-arg="create">create server</button>
        <button type="button" data-bind="enable: has_permission('pool', 'delete'), click: permissions" data-type="pool_cmd" data-arg="delete">delete server</button>
        <hr>
        <h2>server abilities</h2>
+       <p data-bind="text: server_name"></p>
        <button type="button" data-bind="click: permissions" data-type="server_perms" data-arg="grantall">grant server abilities: start/stop/etc</button>
        <button type="button" data-bind="click: permissions" data-type="server_perms" data-arg="revokeall">revoke server abilities</button>
        <br>
@@ -71,9 +73,43 @@
         var self = this;
         this.whoami = ko.observable();
         this.perms = ko.observable({});
-        this.affected_user = ko.observable('plain:will');
+        this.affected_user = ko.observable('plain:mc');
 
         this.server_console = ko.observableArray();
+
+        this.can_grant = function(group, thing) {
+          var p = this.perms();
+          var me = this.whoami();
+          var fqdn = null;
+
+          if (p) {
+            switch(group) {
+              case 'root':
+                fqdn = "root";
+                break;
+              case 'pool':
+                fqdn = (self.workerpool() ? self.selected() : false)
+                break;
+              case 'server':
+                fqdn = (self.server_name() ? self.selected() : false)
+                break;
+              default:
+                console.log("invalid group perm requested");
+                return false;
+            }
+            try {
+              var pp = p[fqdn]['properties'];
+            } catch (e) {
+              return false;
+            }
+
+            if (me == pp.owner)
+              return true;
+            else if (pp.grantors.indexOf(me) >= 0)
+              return true;
+            return false;
+          }
+        }
 
         this.has_permission = function(group, thing) {
           var p = this.perms();
@@ -135,6 +171,9 @@
         this.hostname = ko.computed(function() { return self.split_fqdn(self.selected())['hostname'] })
         this.workerpool = ko.computed(function() { return self.split_fqdn(self.selected())['workerpool'] })
         this.server_name = ko.computed(function() { return self.split_fqdn(self.selected())['server_name'] })
+        this.new_hostname = ko.observable('');
+        this.new_workerpool = ko.observable('');
+        this.new_server_name = ko.observable('');
 
         this.opts = ko.computed(function() {
           var opts = [];
@@ -158,8 +197,8 @@
               break;
             case 'root_cmd':
               payload[ele.type] = ele.arg;
-              payload['workerpool'] = this.workerpool();
-              payload['hostname'] = this.hostname();
+              payload['workerpool'] = this.new_workerpool();
+              payload['hostname'] = this.new_hostname();
               webs.send(JSON.stringify(payload));
               break;
             case 'pool_perms':
@@ -172,8 +211,8 @@
             case 'pool_cmd':
               payload[ele.type] = ele.arg;
               payload['hostname'] = this.hostname();
-              payload['workerpool'] = this.workerpool();
-              payload['server_name'] = this.server_name();
+              payload['workerpool'] = this.new_workerpool();
+              payload['server_name'] = this.new_server_name();
               webs.send(JSON.stringify(payload));
               break;
             case 'server_perms':
@@ -187,8 +226,8 @@
             case 'server_cmd':
               payload[ele.type] = ele.arg;
               payload['hostname'] = this.hostname();
-              payload['workerpool'] = this.workerpool();
-              payload['server_name'] = this.server_name();
+              payload['workerpool'] = this.new_workerpool();
+              payload['server_name'] = this.new_server_name();
               if (ele.supplement)
                 payload = Object.assign({}, payload, JSON.parse(ele.supplement))
               webs.send(JSON.stringify(payload));
