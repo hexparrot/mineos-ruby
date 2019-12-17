@@ -308,6 +308,7 @@ class HQ < Sinatra::Base
           end
         end
 
+        ws.send({"managers": @@satellites[:managers].map {|x| x.to_str}.compact }.to_json)
         ws.send({"whoami": user}.to_json)
         ws.send({"permissions": perm_mgr.to_json}.to_json)
         # save permissions to disk @ ./config/perms/

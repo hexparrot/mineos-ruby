@@ -6,11 +6,13 @@
       <p>Logged in as: <b data-bind="text: whoami"></b></p>
       <p>Show available permissions for</p>
       <select data-bind="options: opts, optionsText: 'fqdn', optionsValue: 'fqdn', value: selected"></select>
+      <select data-bind="options: managers, value: hostname"></select>
       <p>Affected user</p>
       <input type="text" id="affected_user" data-bind="value: affected_user" />
       <input type="text" data-bind="value: selected" />
-      <input type="text" data-bind="value: new_hostname" />
+      <h2>hostname</h2>
       <h2>root abilities</h2>
+      <p data-bind="text: hostname"></p>
       <button type="button" data-bind="enable: can_grant('root', 'grantall'), click: permissions" data-type="root_perms" data-arg="grantall">grant root abilities (mkpool/rmpool/spawnpool)</button>
       <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="revokeall">revoke root abilities</button>
       <hr>
@@ -167,11 +169,11 @@
           }
         }
 
+        this.managers = ko.observableArray();
         this.selected = ko.observable();
-        this.hostname = ko.computed(function() { return self.split_fqdn(self.selected())['hostname'] })
+        this.hostname = ko.observable();
         this.workerpool = ko.computed(function() { return self.split_fqdn(self.selected())['workerpool'] })
         this.server_name = ko.computed(function() { return self.split_fqdn(self.selected())['server_name'] })
-        this.new_hostname = ko.observable('');
         this.new_workerpool = ko.observable('');
         this.new_server_name = ko.observable('');
 
@@ -198,7 +200,7 @@
             case 'root_cmd':
               payload[ele.type] = ele.arg;
               payload['workerpool'] = this.new_workerpool();
-              payload['hostname'] = this.new_hostname();
+              payload['hostname'] = this.hostname();
               webs.send(JSON.stringify(payload));
               break;
             case 'pool_perms':
@@ -250,7 +252,6 @@
         ws.onclose   = function()  { console.log('websocket closed'); }
         ws.onmessage = function(m) { 
           var inbound = JSON.parse(m.data);
-          //console.log(inbound)
           if ('permissions' in inbound) {
             var p = inbound['permissions']
             app.perms(JSON.parse(p));
@@ -258,6 +259,15 @@
             app.whoami(inbound['whoami']);
           } else if ('msg' in inbound && 'server_name' in inbound) {
             app.server_console.push("{0}: {1}".format(inbound['server_name'], inbound['msg']));
+          } else if ('managers' in inbound) {
+            for (m in inbound['managers']) {
+              var worker = inbound['managers'][m].substring(inbound['managers'][m].indexOf('.')+1)
+              if (app.managers.indexOf(worker) < 0)
+                app.managers.push(worker.substring(worker.indexOf('.')+1));
+            }
+          } else {
+            console.log(inbound)
+            
           }
         };
         webs = ws;
