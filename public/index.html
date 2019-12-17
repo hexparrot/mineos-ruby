@@ -8,11 +8,12 @@
       <select data-bind="options: registered_entities, value: fqdn"></select>
       <p>Affected user</p>
       <input type="text" id="affected_user" data-bind="value: affected_user" />
+      <input type="text" data-bind="value: hostname" />
       <h2>root abilities</h2>
       <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="grantall">grant root abilities (mkpool/rmpool/spawnpool)</button>
       <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="revokeall">revoke root abilities</button>
       <hr>
-      <input type="text" id="workerpool" data-bind="" />
+      <input type="text" id="workerpool" data-bind="value: workerpool" />
       <button type="button" data-bind="enable: has_permission('root', 'mkpool'), click: permissions" data-type="root_cmd" data-arg="mkpool">mkpool</button>
       <button type="button" data-bind="enable: has_permission('root', 'rmpool'), click: permissions" data-type="root_cmd" data-arg="rmpool">rmpool</button>
       <button type="button" data-bind="enable: has_permission('root', 'spawnpool'), click: permissions" data-type="root_cmd" data-arg="spawnpool">spawnpool</button>
@@ -22,7 +23,7 @@
        <button type="button" data-bind="click: permissions" data-type="pool_perms" data-arg="revokeall">revoke pool abilities</button>
        <br>
        <br>
-       <input type="text" id="server_name" data-bind="value: server_name" />
+       <input type="text" data-bind="value: server_name" />
        <button type="button" data-bind="enable: has_permission('pool', 'create'), click: permissions" data-type="pool_cmd" data-arg="create">create server</button>
        <button type="button" data-bind="enable: has_permission('pool', 'delete'), click: permissions" data-type="pool_cmd" data-arg="delete">delete server</button>
        <hr>
@@ -217,6 +218,7 @@
           if ('permissions' in inbound) {
             var p = inbound['permissions']
             app.perms(JSON.parse(p));
+            console.log(app.perms())
           } else if ('whoami' in inbound) {
             app.whoami(inbound['whoami']);
           } else if ('msg' in inbound && 'server_name' in inbound) {
@@ -229,7 +231,6 @@
                 app.registered_hosts.push(a[0]);
               if (app.registered_pools().indexOf(text) < 0) //if absent
                 app.registered_pools.push(text);
-              console.log(app.registered_entities);
             }
             //app.registered_workers(inbound['workers']);
           }
