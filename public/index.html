@@ -3,11 +3,11 @@
     <script type='text/javascript' src='https://knockoutjs.com/downloads/knockout-3.5.1.debug.js'></script>
   </head>
   <body>
-      <p data-bind="text: whoami"></p>
-      <p data-bind="text: fqdn"></p>
-      <input type="text" id="hostname" data-bind="" />
-      <input type="text" id="affected_user" data-bind="value: affected_user" />
+      <p>Logged in as: <b data-bind="text: whoami"></b></p>
+      <p>Show available permissions for</p>
       <select data-bind="options: registered_entities, value: fqdn"></select>
+      <p>Affected user</p>
+      <input type="text" id="affected_user" data-bind="value: affected_user" />
       <h2>root abilities</h2>
       <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="grantall">grant root abilities (mkpool/rmpool/spawnpool)</button>
       <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="revokeall">revoke root abilities</button>
@@ -22,7 +22,7 @@
        <button type="button" data-bind="click: permissions" data-type="pool_perms" data-arg="revokeall">revoke pool abilities</button>
        <br>
        <br>
-       <input type="text" id="server_name" data-bind="" />
+       <input type="text" id="server_name" data-bind="value: server_name" />
        <button type="button" data-bind="enable: has_permission('pool', 'create'), click: permissions" data-type="pool_cmd" data-arg="create">create server</button>
        <button type="button" data-bind="enable: has_permission('pool', 'delete'), click: permissions" data-type="pool_cmd" data-arg="delete">delete server</button>
        <hr>
@@ -69,9 +69,27 @@
         var self = this;
         this.whoami = ko.observable();
         this.perms = ko.observable();
-        this.hostname = ko.observable('ruby-worker');
         this.affected_user = ko.observable('plain:will');
-        this.workerpool = ko.observable('_throwaway-500');
+
+        this.fqdn = ko.observable('');
+        this.hostname = ko.computed(function() {
+          var split_fqdn = self.fqdn().split('.');
+          try {
+            if (split_fqdn[0])
+              return split_fqdn[0];
+          } catch (e) {}
+          return null;
+        })
+
+        this.workerpool = ko.computed(function() {
+          var split_fqdn = self.fqdn().split('.');
+          try {
+            if (split_fqdn[1])
+              return split_fqdn[1];
+          } catch (e) {}
+          return null;
+        })
+
         this.server_name = ko.observable('test500');
         this.server_console = ko.observableArray();
         this.registered_hosts = ko.observableArray([]);
@@ -86,8 +104,6 @@
             entries.push(self.registered_pools()[p])
           return entries;
         })
-
-        this.fqdn = ko.observable();
 
         this.has_permission = function(group, thing) {
           var p = this.perms();
