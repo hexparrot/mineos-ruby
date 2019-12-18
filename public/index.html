@@ -17,24 +17,24 @@
       <button type="button" data-bind="click: permissions" data-type="root_perms" data-arg="revokeall">revoke root abilities</button>
       <hr>
       <input type="text" id="workerpool" data-bind="value: new_workerpool" />
-      <button type="button" data-bind="enable: has_permission('root', 'mkpool'), click: permissions" data-type="root_cmd" data-arg="mkpool">mkpool</button>
-      <button type="button" data-bind="enable: has_permission('root', 'rmpool'), click: permissions" data-type="root_cmd" data-arg="rmpool">rmpool</button>
-      <button type="button" data-bind="enable: has_permission('root', 'spawnpool'), click: permissions" data-type="root_cmd" data-arg="spawnpool">spawnpool</button>
+      <button type="button" data-bind="enable: has_permission('root', 'mkpool') && new_workerpool, click: permissions" data-type="root_cmd" data-arg="mkpool">mkpool</button>
+      <button type="button" data-bind="enable: has_permission('root', 'rmpool') && workerpool, click: permissions" data-type="root_cmd" data-arg="rmpool">rmpool</button>
+      <button type="button" data-bind="enable: has_permission('root', 'spawnpool') && workerpool, click: permissions" data-type="root_cmd" data-arg="spawnpool">spawnpool</button>
       <hr>
        <h2>pool abilities</h2>
       <p data-bind="text: workerpool"></p>
-       <button type="button" data-bind="click: permissions" data-type="pool_perms" data-arg="grantall">grant pool abilities: create/delete</button>
-       <button type="button" data-bind="click: permissions" data-type="pool_perms" data-arg="revokeall">revoke pool abilities</button>
+       <button type="button" data-bind="enable: workerpool, click: permissions" data-type="pool_perms" data-arg="grantall">grant pool abilities: create/delete</button>
+       <button type="button" data-bind="enable: workerpool, click: permissions" data-type="pool_perms" data-arg="revokeall">revoke pool abilities</button>
        <br>
        <br>
        <input type="text" data-bind="value: new_server_name" />
-       <button type="button" data-bind="enable: has_permission('pool', 'create'), click: permissions" data-type="pool_cmd" data-arg="create">create server</button>
-       <button type="button" data-bind="enable: has_permission('pool', 'delete'), click: permissions" data-type="pool_cmd" data-arg="delete">delete server</button>
+       <button type="button" data-bind="enable: has_permission('pool', 'create') && new_server_name, click: permissions" data-type="pool_cmd" data-arg="create">create server</button>
+       <button type="button" data-bind="enable: has_permission('pool', 'delete') && server_name, click: permissions" data-type="pool_cmd" data-arg="delete">delete server</button>
        <hr>
        <h2>server abilities</h2>
        <p data-bind="text: server_name"></p>
-       <button type="button" data-bind="click: permissions" data-type="server_perms" data-arg="grantall">grant server abilities: start/stop/etc</button>
-       <button type="button" data-bind="click: permissions" data-type="server_perms" data-arg="revokeall">revoke server abilities</button>
+       <button type="button" data-bind="enable: workerpool && server_name, click: permissions" data-type="server_perms" data-arg="grantall">grant server abilities: start/stop/etc</button>
+       <button type="button" data-bind="enable: workerpool && server_name, click: permissions" data-type="server_perms" data-arg="revokeall">revoke server abilities</button>
        <br>
        <br>
        <button type="button" data-bind="enable: has_permission('server', 'modify_sc'), click: permissions" data-type="server_cmd" data-arg="modify_sc" data-supplement='{"section": "java", "attr": "java_xmx", "value": 512}'>xmx</button>
@@ -213,7 +213,7 @@
             case 'pool_cmd':
               payload[ele.type] = ele.arg;
               payload['hostname'] = this.hostname();
-              payload['workerpool'] = this.new_workerpool();
+              payload['workerpool'] = (ele.arg == 'mkpool' ? this.new_workerpool() : this.workerpool());
               payload['server_name'] = this.new_server_name();
               webs.send(JSON.stringify(payload));
               break;
@@ -228,8 +228,8 @@
             case 'server_cmd':
               payload[ele.type] = ele.arg;
               payload['hostname'] = this.hostname();
-              payload['workerpool'] = this.new_workerpool();
-              payload['server_name'] = this.new_server_name();
+              payload['workerpool'] = this.workerpool();
+              payload['server_name'] = (ele.arg == 'create' ? this.new_server_name() : this.server_name());;
               if (ele.supplement)
                 payload = Object.assign({}, payload, JSON.parse(ele.supplement))
               webs.send(JSON.stringify(payload));
