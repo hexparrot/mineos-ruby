@@ -12,8 +12,8 @@ EM.run do
   rsa_time = nil
 
   require 'yaml'
-  amqp_creds = YAML::load_file('config/amqp.yml')['rabbitmq'].transform_keys(&:to_sym)
-  logger.info("AMQP: Using credentials from location `config/amqp.yml`")
+  amqp_creds = YAML::load_file('/usr/local/etc/amqp.yml')['amqp']
+  logger.info("AMQP: Using credentials from location `/usr/local/etc/amqp.yml`")
 
   require 'bunny'
   conn = Bunny.new(amqp_creds)

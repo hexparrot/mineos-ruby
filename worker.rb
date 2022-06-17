@@ -49,12 +49,12 @@ elsif options[:amqp_file] then
   require 'pathname'
 
   normalized_path = Pathname.new(options[:rabbit_creds]).cleanpath
-  amqp_creds = YAML::load_file(normalized_path)['rabbitmq'].transform_keys(&:to_sym)
+  amqp_creds = YAML::load_file(normalized_path)['amqp']
   logger.info("AMQP: Specified creds via filepath")
 else
-  fallback_path = File.join(File.dirname(__FILE__), 'config', 'amqp.yml')
-  amqp_creds = YAML::load_file(fallback_path)['rabbitmq'].transform_keys(&:to_sym)
-  logger.info("AMQP: Using credentials from location: config/amqp.yml")
+  fallback_path = "/usr/local/etc/amqp.yml"
+  amqp_creds = YAML::load_file(fallback_path)['amqp']
+  logger.info("AMQP: Using credentials from location: #{amqp_creds}")
 end
 
 EM.run do

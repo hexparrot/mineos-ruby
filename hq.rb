@@ -29,10 +29,10 @@ class HQ < Sinatra::Base
   logger.level = Logger::DEBUG
 
   require 'yaml'
-  amqp_creds = YAML::load_file('config/amqp.yml')['rabbitmq'].transform_keys(&:to_sym)
-  logger.info("AMQP: Using credentials from location `config/amqp.yml`")
-  s3_config = YAML::load_file('config/objstore.yml')
-  logger.info("S3: Using credentials from location `config/objstore.yml`")
+  amqp_creds = YAML::load_file('/usr/local/etc/amqp.yml')['amqp']
+  logger.info("AMQP: Using credentials from location `/usr/local/etc/amqp.yml`")
+  s3_config = YAML::load_file('/usr/local/etc/objstore.yml')
+  logger.info("S3: Using credentials from location `/usr/local/etc/objstore.yml`")
 
   # create perm directory on disk
   require 'fileutils'
