@@ -84,7 +84,7 @@ class HQ < Sinatra::Base
 
   # AMQP handling
   ch
-  .queue('', exclusive: true)
+  .queue('')
   .bind(exchange_stdout, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
     parsed = JSON.parse payload
@@ -100,7 +100,7 @@ class HQ < Sinatra::Base
   end
 
   ch
-  .queue('hq', exclusive: true)
+  .queue('hq')
   .bind(exchange, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
 

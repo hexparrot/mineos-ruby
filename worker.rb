@@ -400,7 +400,7 @@ EM.run do
   }
 
   ch
-  .queue("workers.#{hostname}.#{workerpool}", exclusive: true)
+  .queue("workers.#{hostname}.#{workerpool}")
   .bind(exchange, routing_key: "workers.#.#")
   .subscribe do |delivery_info, metadata, payload|
     #logger.debug("received cmd: #{payload}")
