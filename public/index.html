@@ -49,10 +49,10 @@
     var webs = null;
 
     function AppViewModel() {
-        this.hostname = ko.observable('ruby-worker');
+        this.hostname = ko.observable('mineos-worker');
         this.affected_user = ko.observable('plain:mc');
-        this.workerpool = ko.observable('_throwaway-500');
-        this.server_name = ko.observable('test500');
+        this.workerpool = ko.observable('user');
+        this.server_name = ko.observable('server500');
 
         this.permissions = function(a,b) {
           var ele = b.originalTarget.dataset;
