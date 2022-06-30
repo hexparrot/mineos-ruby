@@ -5,6 +5,7 @@ require 'securerandom'
 require_relative 'perms'
 
 SOCKET = Struct.new("Socket", :websocket, :user)
+STDOUT.sync = true
 
 class HQ < Sinatra::Base
   set :server, :thin
