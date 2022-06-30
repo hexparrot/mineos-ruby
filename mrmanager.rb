@@ -6,6 +6,7 @@ require 'logger'
 logger = Logger.new(STDOUT)
 logger.datetime_format = '%Y-%m-%d %H:%M:%S'
 logger.level = Logger::DEBUG
+STDOUT.sync = true
 
 EM.run do
   hostname = Socket.gethostname
