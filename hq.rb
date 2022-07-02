@@ -7,6 +7,10 @@ require_relative 'perms'
 SOCKET = Struct.new("Socket", :websocket, :user)
 STDOUT.sync = true
 
+# Defines the HQ class, responsible for all the thinking in this operation.
+# It provides the authoritative source on all mineos operations, between
+# user logins and authentication, a listening webui on 4567, and a websocket
+# endpoint for remote control of all manager and worker nodes.
 class HQ < Sinatra::Base
   set :server, :thin
   set :sockets, []
@@ -36,6 +40,9 @@ class HQ < Sinatra::Base
   logger.info("S3: Using credentials from location `/usr/local/etc/objstore.yml`")
 
   # create perm directory on disk
+  # this specific local path contains all the state for user logins' permissions
+  # between handling pools, servers, and commands to a server.
+  # The permissions manager is set to save after each operation
   require 'fileutils'
   perm_directory = File.join(File.expand_path(__dir__), 'config', 'perms')
   FileUtils.mkdir_p perm_directory
@@ -68,6 +75,8 @@ class HQ < Sinatra::Base
     logger.debug(perm_obj)
   end
 
+  ## AMQP services provided by rabbitmq. The channels must be
+  # secured by auth/enc
   require 'bunny'
   conn = Bunny.new(amqp_creds)
   conn.start
@@ -76,10 +85,17 @@ class HQ < Sinatra::Base
   ch = conn.create_channel
 
   # exchange for directives (hostname specific)
+  # directives includes tasks like IDENT (workers, id yourself)
   exchange = ch.topic("backend")
   logger.debug("AMQP: Attached to exchange: `backend`")
 
   # exchange for stdout
+  # Any messages from each of the workers' STDOUT/STDERR can be
+  # sent over amqp to any listening channels.  By default, this
+  # will be the webui the user is connected to.  However,
+  # there need not be any consumers of these feeds, and there
+  # likewise is support for any amount of listening (webuis are
+  # not limited in count, and can all cooperate in tandem).
   exchange_stdout = ch.direct('stdout')
   logger.debug("AMQP: Attached to exchange: `stdout`")
 
@@ -105,6 +121,7 @@ class HQ < Sinatra::Base
   .bind(exchange, :routing_key => "hq")
   .subscribe do |delivery_info, metadata, payload|
 
+    # when sent a command, routed to HQ, respond with meaningful, actionable http codes
     inbound_command = Proc.new do |delivery_info, metadata, payload|
       if metadata[:headers]['exception'] then
         promises[metadata.correlation_id].call 400, payload
@@ -115,6 +132,11 @@ class HQ < Sinatra::Base
       end
     end
 
+    # Directives are configuration-centered payloads made to ensure all satellites
+    # are operating with the necessary, identical infrastructure.
+    # Baked into this is a lot of meticulous--and now seemingly frivilous to the point
+    # of confusing--added metadata in all publishes. message_id and correlation_ids do
+    # actually correspond as expected, though the practical value added is marginal..
     inbound_directive = Proc.new do |delivery_info, metadata, payload|
       case metadata[:headers]['directive']
       when 'IDENT'
@@ -165,6 +187,7 @@ class HQ < Sinatra::Base
       when 'VERIFY_OBJSTORE'
         routing_key = "workers.#{metadata[:headers]['hostname']}.#{metadata[:headers]['workerpool']}"
 
+        # If the worker does not report knowing the minio/awscreds, publish it and route it directly.
         if payload == '' then
           logger.info("VERIFY_OBJSTORE: returned, creds absent. Sending AWSCREDS to `#{routing_key}`")
           # on receipt of non-true VERIFY_OBJSTORE, send object store creds
@@ -183,6 +206,7 @@ class HQ < Sinatra::Base
                            :timestamp => Time.now.to_i)
         else
           # truthy responses do not need follow up
+          # This worker now has access to the s3 store, and all the profiles within.
           logger.debug("VERIFY_OBJSTORE: returned, creds present. NOOP `#{routing_key}`")
         end
       end # case
@@ -249,6 +273,7 @@ class HQ < Sinatra::Base
 
             perm_mgr.cast_root_perm!(permission, affected_user)
           end
+          # end permissions route
         else
           if body_parameters.key?('alt_cmd') then
             perm_mgr.server_exec_cmd!(body_parameters) { |params, rk|
@@ -333,6 +358,7 @@ class HQ < Sinatra::Base
     if login_token
       logger.info("#{params[:username]} validated")
       @@users << login_token
+      # presence of user in @@users signifies valid login
       session.clear
       session[:user_id] = login_token[:uuid]
     else
