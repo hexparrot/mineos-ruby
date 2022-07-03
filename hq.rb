@@ -240,104 +240,8 @@ class HQ < Sinatra::Base
 
       # WEBSOCKET ON-RECEIVE
       ws.onmessage do |msg|
-        user = "#{current_user.authtype}:#{current_user.id}"
-
-        perm_mgr = PermManager.new user
-        perm_mgr.set_logger(logger)
-
-        ### DIRECTIVE PROCESSING
-
-        body_parameters = JSON.parse msg
-        if body_parameters.key?('permission') then
-          # permissions route
-          if body_parameters.key?('server_name') then
-            permission = body_parameters.delete('permission')
-            affected_user = body_parameters.delete('affected_user')
-            hostname = body_parameters.delete('hostname')
-            workerpool = body_parameters.delete('workerpool')
-            servername = body_parameters.delete('server_name')
-            fqdn = "#{hostname}.#{workerpool}.#{servername}"
-
-            perm_mgr.cast_server_perm!(permission, affected_user, fqdn)
-          elsif body_parameters.key?('workerpool') then
-            permission = body_parameters.delete('permission')
-            affected_user = body_parameters.delete('affected_user')
-            hostname = body_parameters.delete('hostname')
-            workerpool = body_parameters.delete('workerpool')
-            fqdn = "#{hostname}.#{workerpool}"
-
-            perm_mgr.cast_pool_perm!(permission, affected_user, fqdn)
-          else # root
-            permission = body_parameters.delete('permission')
-            affected_user = body_parameters.delete('affected_user')
-
-            perm_mgr.cast_root_perm!(permission, affected_user)
-          end
-          # end permissions route
-        else
-          if body_parameters.key?('alt_cmd') then
-            perm_mgr.server_exec_cmd!(body_parameters) { |params, rk|
-              if !@@satellites[:workers].include?(rk) then
-                logger.error("WORKER: Unregistered worker addressed `#{user} => #{rk}`")
-                nil
-              else
-                exchange.publish(params.to_json,
-                                 :routing_key => rk,
-                                 :type => "command",
-                                 :message_id => SecureRandom.uuid,
-                                 :timestamp => Time.now.to_i)
-                true
-              end
-            }
-          elsif body_parameters.key?('root_cmd') then
-            perm_mgr.root_exec_cmd!(body_parameters) { |params, rk|
-              if !@@satellites[:managers].include?(rk) then
-                logger.error("MANAGER: Unregistered manager addressed `#{user} => #{rk}`")
-                nil
-              else
-                exchange.publish(params.to_json,
-                                 :routing_key => rk,
-                                 :type => "directive",
-                                 :message_id => SecureRandom.uuid,
-                                 :timestamp => Time.now.to_i)
-                true
-              end
-            }
-          elsif body_parameters.key?('pool_cmd') then
-            perm_mgr.pool_exec_cmd!(body_parameters) { |params, rk|
-              if !@@satellites[:workers].include?(rk) then
-                logger.error("WORKER: Unregistered worker addressed `#{user} => #{rk}`")
-                nil
-              else
-                exchange.publish(params.to_json,
-                                 :routing_key => rk,
-                                 :type => "command",
-                                 :message_id => SecureRandom.uuid,
-                                 :timestamp => Time.now.to_i)
-                true
-              end
-            }
-          elsif body_parameters.key?('server_cmd') then
-            perm_mgr.server_exec_cmd!(body_parameters) { |params, rk|
-              if !@@satellites[:workers].include?(rk) then
-                logger.error("WORKER: Unregistered worker addressed `#{user} => #{rk}`")
-                nil
-              else
-                exchange.publish(params.to_json,
-                                 :routing_key => rk,
-                                 :type => "command",
-                                 :message_id => SecureRandom.uuid,
-                                 :timestamp => Time.now.to_i)
-                true
-              end
-            }
-          end
-        end
-
-        # save permissions to disk @ ./config/perms/
-        perm_mgr.perms.each do |key, perm_obj|
-          perm_obj.save_file!(File.join(perm_directory, "#{key.to_s}.yml"))
-        end
+        params = JSON.parse msg
+        process_ingress(params, perm_directory, logger, exchange)
       end # ws.onmessage
 
       # WEBSOCKET CLOSE
@@ -367,6 +271,25 @@ class HQ < Sinatra::Base
     redirect '/'
   end
 
+  post '/commit' do
+    user = "#{current_user.authtype}:#{current_user.id}"
+
+    perm_mgr = PermManager.new user
+    perm_mgr.set_logger(logger)
+
+    ### DIRECTIVE PROCESSING
+
+    require 'cgi'
+    bp = CGI::parse request.body.read
+
+    body_parameters = {}
+    bp.each do |key,value|
+      body_parameters[key] = value.first
+    end
+
+    process_ingress(params, perm_directory, logger, exchange)
+  end
+
 ## helpers
 
   helpers do
@@ -375,6 +298,107 @@ class HQ < Sinatra::Base
         @@users.find { |u| u[:uuid] == session[:user_id] }
       else
         nil
+      end
+    end
+
+    def process_ingress(body_parameters, perm_dir, log_inst, exc_inst)
+
+      user = "#{current_user.authtype}:#{current_user.id}"
+
+      perm_mgr = PermManager.new user
+      perm_mgr.set_logger(log_inst)
+
+      ### DIRECTIVE PROCESSING
+
+      if body_parameters.key?('permission') then
+        # permissions route
+        if body_parameters.key?('server_name') then
+          permission = body_parameters.delete('permission')
+          affected_user = body_parameters.delete('affected_user')
+          hostname = body_parameters.delete('hostname')
+          workerpool = body_parameters.delete('workerpool')
+          servername = body_parameters.delete('server_name')
+          fqdn = "#{hostname}.#{workerpool}.#{servername}"
+
+          perm_mgr.cast_server_perm!(permission, affected_user, fqdn)
+        elsif body_parameters.key?('workerpool') then
+          permission = body_parameters.delete('permission')
+          affected_user = body_parameters.delete('affected_user')
+          hostname = body_parameters.delete('hostname')
+          workerpool = body_parameters.delete('workerpool')
+          fqdn = "#{hostname}.#{workerpool}"
+
+          perm_mgr.cast_pool_perm!(permission, affected_user, fqdn)
+        else # root
+          permission = body_parameters.delete('permission')
+          affected_user = body_parameters.delete('affected_user')
+
+          perm_mgr.cast_root_perm!(permission, affected_user)
+        end
+        # end permissions route
+      else
+        if body_parameters.key?('alt_cmd') then
+          perm_mgr.server_exec_cmd!(body_parameters) { |params, rk|
+            if !@@satellites[:workers].include?(rk) then
+              logger.error("WORKER: Unregistered worker addressed `#{user} => #{rk}`")
+              nil
+            else
+              exc_inst.publish(params.to_json,
+                               :routing_key => rk,
+                               :type => "command",
+                               :message_id => SecureRandom.uuid,
+                               :timestamp => Time.now.to_i)
+              true
+            end
+          }
+        elsif body_parameters.key?('root_cmd') then
+          perm_mgr.root_exec_cmd!(body_parameters) { |params, rk|
+            if !@@satellites[:managers].include?(rk) then
+              logger.error("MANAGER: Unregistered manager addressed `#{user} => #{rk}`")
+              nil
+            else
+              exc_inst.publish(params.to_json,
+                               :routing_key => rk,
+                               :type => "directive",
+                               :message_id => SecureRandom.uuid,
+                               :timestamp => Time.now.to_i)
+              true
+            end
+          }
+        elsif body_parameters.key?('pool_cmd') then
+          perm_mgr.pool_exec_cmd!(body_parameters) { |params, rk|
+            if !@@satellites[:workers].include?(rk) then
+              logger.error("WORKER: Unregistered worker addressed `#{user} => #{rk}`")
+              nil
+            else
+              exc_inst.publish(params.to_json,
+                               :routing_key => rk,
+                               :type => "command",
+                               :message_id => SecureRandom.uuid,
+                               :timestamp => Time.now.to_i)
+              true
+            end
+          }
+        elsif body_parameters.key?('server_cmd') then
+          perm_mgr.server_exec_cmd!(body_parameters) { |params, rk|
+            if !@@satellites[:workers].include?(rk) then
+              logger.error("WORKER: Unregistered worker addressed `#{user} => #{rk}`")
+              nil
+            else
+              exc_inst.publish(params.to_json,
+                               :routing_key => rk,
+                               :type => "command",
+                               :message_id => SecureRandom.uuid,
+                               :timestamp => Time.now.to_i)
+              true
+            end
+          }
+        end
+      end
+
+      # save permissions to disk @ ./config/perms/
+      perm_mgr.perms.each do |key, perm_obj|
+        perm_obj.save_file!(File.join(perm_dir, "#{key.to_s}.yml"))
       end
     end
   end
