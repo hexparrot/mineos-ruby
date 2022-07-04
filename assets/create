@@ -1,0 +1,45 @@
+#!/bin/bash
+
+SERVERNAME=server500
+WORKERPOOL=user
+HOSTNAME=mineos-worker
+UI_USER=mc
+UI_PASS=password
+HOST_IP=10.137.0.1
+WEBUI_PORT=4567
+
+#authenticate and create cookie
+curl -c cookiefile -d "username=${UI_USER}&password=${UI_PASS}" http://${HOST_IP}:${WEBUI_PORT}/sign_in
+
+# create worker.rb process owned by "user" on VM "mineos-worker"
+#{"root_cmd":"spawnpool","workerpool":"user","hostname":"mineos-worker"}
+curl -b cookiefile -X POST http://${HOST_IP}:${HOST_IP}/commit -d "root_cmd=spawnpool&hostname=${HOSTNAME}&workerpool=${WORKERPOOL}"
+
+# create a server called "server500"
+#{"pool_cmd":"create","hostname":"mineos-worker","workerpool":"user","server_name":"server500"}
+curl -b cookiefile -X POST http://${HOST_IP}:${HOST_IP}/commit -d "pool_cmd=create&hostname=${HOSTNAME}&workerpool=${WORKERPOOL}&server_name=${SERVERNAME}"
+
+# allow the mineos user "mc" to do all serverwide controls
+#{"permission":"grantall","hostname":"mineos-worker","workerpool":"user","server_name":"server500","affected_user":"plain:mc"}
+curl -b cookiefile -X POST http://${HOST_IP}:${HOST_IP}/commit -d "permission=grantall&hostname=${HOSTNAME}&workerpool=${WORKERPOOL}&server_name=${SERVERNAME}&affected_user=plain:mc"
+
+# set the XMX value by default to 512
+#{"server_cmd":"modify_sc","hostname":"mineos-worker","workerpool":"user","server_name":"server500","section":"java","attr":"java_xmx","value":512}
+curl -b cookiefile -X POST http://${HOST_IP}:${HOST_IP}/commit -d "server_cmd=modify_sc&hostname=${HOSTNAME}&workerpool=${WORKERPOOL}&server_name=${SERVERNAME}&section=java&attr=java_xmx&value=512"
+
+# set server500 to run an old version, 1.8.9
+######{"server_cmd":"modify_sc","hostname":"mineos-worker","workerpool":"user","server_name":"server500","section":"java","attr":"jarfile","value":"minecraft_server.1.8.9.jar"}
+curl -b cookiefile -X POST http://${HOST_IP}:${HOST_IP}/commit -d "server_cmd=modify_sc&hostname=${HOSTNAME}&workerpool=${WORKERPOOL}&server_name=${SERVERNAME}&section=java&attr=jarfile&value=minecraft_server.1.8.9.jar"
+
+# accept the eula
+#{"server_cmd":"accept_eula","hostname":"mineos-worker","workerpool":"user","server_name":"server500"}
+curl -b cookiefile -X POST http://${HOST_IP}:${HOST_IP}/commit -d "server_cmd=accept_eula&hostname=${HOSTNAME}&workerpool=${WORKERPOOL}&server_name=${SERVERNAME}"
+
+# have the profile zapped on down to the live server files on the worker: /home/user/minecraft/servers/server500/
+#{"server_cmd":"receive_profile","hostname":"mineos-worker","workerpool":"user","server_name":"server500","group":"mojang","version":"1.8.9"}
+curl -b cookiefile -X POST http://${HOST_IP}:${HOST_IP}/commit -d "server_cmd=receive_profile&hostname=${HOSTNAME}&workerpool=${WORKERPOOL}&server_name=${SERVERNAME}&group=mojang&version=1.8.9"
+
+# start the server
+#{"server_cmd":"start","hostname":"mineos-worker","workerpool":"user","server_name":"server500"}
+#curl -b cookiefile -X POST http://${HOST_IP}:${HOST_IP}/commit -d "server_cmd=start&hostname=${HOSTNAME}&workerpool=${WORKERPOOL}&server_name=${SERVERNAME}"
+
